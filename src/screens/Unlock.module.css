@@ -1,0 +1,55 @@
+.screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}
+
+.column {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: enter 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.subtitle {
+  margin: 0 0 8px;
+  color: var(--color-text-muted);
+  line-height: 1.55;
+}
+
+.error {
+  color: var(--color-danger);
+  font-size: 13px;
+}
+
+.submit {
+  width: 100%;
+}
+
+.footnote {
+  margin: 0;
+  color: var(--color-text-faint);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

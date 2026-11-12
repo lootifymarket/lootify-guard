@@ -9,4 +9,7 @@ publish = false
 tauri-build = { version = "2.7", features = [] }
 
 [dependencies]
+lootify-guard-core = { path = "../crates/core" }
+serde = { version = "1", features = ["derive"] }
 tauri = { version = "2.12", features = [] }
+zeroize = "1.9"

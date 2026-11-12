@@ -1,0 +1,52 @@
+.lockup {
+  display: flex;
+  align-items: center;
+}
+
+.words {
+  display: flex;
+  flex-direction: column;
+}
+
+.name {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.product {
+  font-weight: 500;
+  letter-spacing: 0.32em;
+  color: var(--color-text-muted);
+}
+
+.md {
+  gap: 14px;
+}
+
+.md .words {
+  gap: 2px;
+}
+
+.md .name {
+  font-size: 20px;
+}
+
+.md .product {
+  font-size: 11px;
+}
+
+.sm {
+  gap: 12px;
+}
+
+.sm .words {
+  gap: 1px;
+}
+
+.sm .name {
+  font-size: 16px;
+}
+
+.sm .product {
+  font-size: 10px;
+}

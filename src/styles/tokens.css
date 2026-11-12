@@ -1,0 +1,24 @@
+:root {
+  --color-bg: #050505;
+  --color-panel: #0a0a0a;
+  --color-field: #0f0f0f;
+  --color-dialog: #111111;
+  --color-dialog-border: #222222;
+  --color-line: #161616;
+  --color-line-strong: #1f1f1f;
+  --color-border: #262626;
+  --color-disabled: #1a1a1a;
+  --color-text: #f2f2f2;
+  --color-text-secondary: #a3a3a3;
+  --color-text-muted: #8a8a8a;
+  --color-text-faint: #737373;
+  --color-accent: #e5252a;
+  --color-on-accent: #ffffff;
+  --color-danger: #ff4d4f;
+
+  --font-sans: 'Geist Variable', system-ui, sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, monospace;
+
+  --radius-control: 10px;
+  --radius-dialog: 14px;
+}
