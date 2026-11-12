@@ -73,20 +73,6 @@
   outline-offset: -2px;
 }
 
-.avatar {
-  width: 32px;
-  height: 32px;
-  flex: 0 0 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: var(--color-divider);
-  color: var(--color-text-secondary);
-  font-size: 11px;
-  font-weight: 600;
-}
-
 .names {
   display: flex;
   flex-direction: column;
@@ -96,6 +82,14 @@
 
 .login {
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nickname {
+  color: var(--color-text-muted);
+  font-size: 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

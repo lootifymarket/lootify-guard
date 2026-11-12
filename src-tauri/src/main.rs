@@ -34,6 +34,8 @@ fn main() {
             accounts::reveal_revocation_code,
             accounts::export_mafile,
             accounts::remove_account,
+            accounts::sign_in,
+            accounts::refresh_profile,
         ])
         .run(tauri::generate_context!())
         .expect("failed to run tauri application");

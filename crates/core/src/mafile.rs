@@ -90,6 +90,9 @@ pub fn parse(file: &[u8]) -> Result<Account, MaFileError> {
             token_gid: mafile.token_gid,
             device_id: mafile.device_id,
         },
+        session: None,
+        password: None,
+        profile: None,
     })
 }
 
@@ -175,6 +178,7 @@ fn required_secret(secret: Option<Secret>, name: &'static str) -> Result<Secret,
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::contents::Session;
 
     const SHARED: &str = "zvIayp3JPvtvX/QGHqsqKBk/44s=";
     const IDENTITY: &str = "AAECAwQFBgcICQoLDA0ODxAREhM=";
@@ -316,6 +320,25 @@ mod tests {
         let exported: serde_json::Value =
             serde_json::from_slice(&export(&parse_json(&file).unwrap())).unwrap();
         assert_eq!(exported, file);
+    }
+
+    #[test]
+    fn export_keeps_the_session_and_password_out() {
+        let mut account = parse_json(&sda()).unwrap();
+        account.session = Some(Session {
+            access_token: "access-token-value".to_owned().into(),
+            refresh_token: "refresh-token-value".to_owned().into(),
+        });
+        account.password = Some("steam-password-value".to_owned().into());
+
+        let file = String::from_utf8(export(&account).to_vec()).unwrap();
+        for secret in [
+            "access-token-value",
+            "refresh-token-value",
+            "steam-password-value",
+        ] {
+            assert!(!file.contains(secret), "{secret}");
+        }
     }
 
     #[test]

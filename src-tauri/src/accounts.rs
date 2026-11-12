@@ -6,6 +6,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use lootify_guard_core::contents::{Account, Contents};
 use lootify_guard_core::guard;
 use lootify_guard_core::mafile;
+use lootify_guard_core::steam::{self, SteamError};
 use serde::Serialize;
 use tauri::async_runtime::spawn_blocking;
 use tauri::{State, Window};
@@ -35,6 +36,10 @@ pub struct AccountSummary {
     code: String,
     device_id: Option<String>,
     has_revocation_code: bool,
+    signed_in: bool,
+    persona_name: Option<String>,
+    /// A data URL, so the page can show it without fetching anything itself.
+    avatar: Option<String>,
 }
 
 #[derive(Default, Serialize)]
@@ -70,6 +75,16 @@ pub fn list_accounts(state: State<'_, VaultState>) -> Result<AccountList, Comman
                 code: guard::code(&account.authenticator.shared_secret, now)?,
                 device_id: account.authenticator.device_id.clone(),
                 has_revocation_code: account.authenticator.revocation_code.is_some(),
+                signed_in: account.session.is_some(),
+                persona_name: account
+                    .profile
+                    .as_ref()
+                    .map(|profile| profile.persona_name.clone()),
+                avatar: account
+                    .profile
+                    .as_ref()
+                    .and_then(|profile| profile.avatar.as_ref())
+                    .map(|avatar| format!("data:image/jpeg;base64,{avatar}")),
             })
         })
         .collect::<Result<_, CommandError>>()?;
@@ -215,6 +230,76 @@ pub fn remove_account(
     }
     vault.save_data(contents.to_bytes())?;
     Ok(())
+}
+
+/// Signs in to Steam as the account. The password is kept in the vault only when
+/// `remember_password` is set; otherwise any saved one is dropped.
+#[tauri::command]
+pub async fn sign_in(
+    state: State<'_, VaultState>,
+    account_name: String,
+    password: String,
+    remember_password: bool,
+) -> Result<(), CommandError> {
+    let password = Zeroizing::new(password);
+    let account = {
+        let unlocked = state.unlocked();
+        let vault = unlocked.as_ref().ok_or(CommandError::Locked)?;
+        find(&Contents::from_bytes(vault.data())?, &account_name)?.clone()
+    };
+    let signed_in = spawn_blocking({
+        let password = password.clone();
+        move || steam::sign_in(&account, &password)
+    })
+    .await??;
+
+    let mut unlocked = state.unlocked();
+    let vault = unlocked.as_mut().ok_or(CommandError::Locked)?;
+    let mut contents = Contents::from_bytes(vault.data())?;
+    let account = contents
+        .account_mut(&account_name)
+        .ok_or_else(no_such_account)?;
+    account.steam_id = Some(signed_in.steam_id);
+    account.session = Some(signed_in.session);
+    account.password = remember_password.then(|| password.to_string().into());
+    vault.save_data(contents.to_bytes())?;
+    Ok(())
+}
+
+/// Checks the account's Steam session and updates its nickname and avatar. A session
+/// Steam no longer accepts is dropped, so the page offers to sign in again.
+#[tauri::command]
+pub async fn refresh_profile(
+    state: State<'_, VaultState>,
+    account_name: String,
+) -> Result<(), CommandError> {
+    let account = {
+        let unlocked = state.unlocked();
+        let vault = unlocked.as_ref().ok_or(CommandError::Locked)?;
+        find(&Contents::from_bytes(vault.data())?, &account_name)?.clone()
+    };
+    let fetched = spawn_blocking(move || steam::fetch_profile(&account)).await?;
+
+    let mut unlocked = state.unlocked();
+    let vault = unlocked.as_mut().ok_or(CommandError::Locked)?;
+    let mut contents = Contents::from_bytes(vault.data())?;
+    let account = contents
+        .account_mut(&account_name)
+        .ok_or_else(no_such_account)?;
+    let result = match fetched {
+        Ok((session, profile)) => {
+            account.session = Some(session);
+            account.profile = Some(profile);
+            Ok(())
+        }
+        Err(SteamError::SessionExpired) => {
+            account.session = None;
+            Err(SteamError::SessionExpired.into())
+        }
+        Err(err) => return Err(err.into()),
+    };
+    vault.save_data(contents.to_bytes())?;
+    result
 }
 
 /// Asks for the master password again, or for biometrics when there is no password,

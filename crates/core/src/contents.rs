@@ -15,6 +15,25 @@ pub struct Account {
     pub steam_id: Option<u64>,
     pub account_name: String,
     pub authenticator: Authenticator,
+    pub session: Option<Session>,
+    /// Kept only when the user asks, so the app can sign in again by itself.
+    pub password: Option<Secret>,
+    pub profile: Option<Profile>,
+}
+
+/// What Steam shows for the account, kept so the list doesn't ask Steam each time.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Profile {
+    pub persona_name: String,
+    /// A 64×64 JPEG, base64.
+    pub avatar: Option<String>,
+}
+
+/// Tokens from signing in to Steam as the mobile app.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Session {
+    pub access_token: Secret,
+    pub refresh_token: Secret,
 }
 
 /// The data Steam hands out when a mobile authenticator is added. All of it is kept,
@@ -87,6 +106,12 @@ impl Contents {
             .find(|account| account.account_name == account_name)
     }
 
+    pub fn account_mut(&mut self, account_name: &str) -> Option<&mut Account> {
+        self.accounts
+            .iter_mut()
+            .find(|account| account.account_name == account_name)
+    }
+
     pub fn remove_account(&mut self, account_name: &str) -> bool {
         let count = self.accounts.len();
         self.accounts
@@ -129,6 +154,12 @@ mod tests {
                 token_gid: Some("2a2b2c2d2e2f".to_owned()),
                 device_id: Some("android:0b6c5d4e-1f2a-3b4c-5d6e-7f8091a2b3c4".to_owned()),
             },
+            session: Some(Session {
+                access_token: "eyJhY2Nlc3MiOnRydWV9.access".to_owned().into(),
+                refresh_token: "eyJyZWZyZXNoIjp0cnVlfQ.refresh".to_owned().into(),
+            }),
+            password: Some("steam-password-1".to_owned().into()),
+            profile: None,
         }
     }
 
@@ -140,6 +171,9 @@ mod tests {
             auth.revocation_code.as_ref(),
             auth.secret_1.as_ref(),
             auth.uri.as_ref(),
+            account.session.as_ref().map(|s| &s.access_token),
+            account.session.as_ref().map(|s| &s.refresh_token),
+            account.password.as_ref(),
         ]
         .into_iter()
         .flatten()

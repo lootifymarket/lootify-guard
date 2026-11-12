@@ -1,0 +1,23 @@
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  border-radius: 50%;
+  background: var(--color-divider);
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  object-fit: cover;
+}
+
+.sm {
+  width: 32px;
+  height: 32px;
+  font-size: 11px;
+}
+
+.lg {
+  width: 56px;
+  height: 56px;
+  font-size: 16px;
+}

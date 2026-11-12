@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import {
   CODE_PERIOD_SECS,
+  describe,
   type Account,
   type AccountList,
 } from '../../api/accounts.ts'
+import Avatar from '../../components/Avatar.tsx'
 import { useCopy } from '../../lib/useCopy.ts'
 import ImportMaFiles from './ImportMaFiles.tsx'
-import { matchesQuery, useSecondsLeft } from './useAccounts.ts'
+import { matchesQuery, useCodeSecondsLeft } from './useAccounts.ts'
 import layout from './layout.module.css'
 import styles from './Accounts.module.css'
 
@@ -73,13 +75,21 @@ export default function Accounts({ list, onImported, onOpen }: Props) {
                 aria-pressed={account === selected}
                 onClick={() => setSelectedName(account.accountName)}
               >
-                <span className={styles.avatar} aria-hidden="true">
-                  {account.accountName.slice(0, 2).toUpperCase()}
-                </span>
+                <Avatar
+                  name={account.accountName}
+                  src={account.avatar}
+                  size="sm"
+                />
                 <span className={styles.names}>
                   <span className={styles.login}>{account.accountName}</span>
-                  {account.steamId && (
-                    <span className={styles.steamId}>{account.steamId}</span>
+                  {account.personaName ? (
+                    <span className={styles.nickname}>
+                      {account.personaName}
+                    </span>
+                  ) : (
+                    account.steamId && (
+                      <span className={styles.steamId}>{account.steamId}</span>
+                    )
                   )}
                 </span>
               </button>
@@ -109,14 +119,14 @@ function Details({
   codesExpireAt: number
 }) {
   const { copy, label } = useCopy()
-  const secondsLeft = useSecondsLeft(codesExpireAt)
+  const secondsLeft = useCodeSecondsLeft(codesExpireAt)
 
   return (
     <aside className={styles.details} aria-label={account.accountName}>
       <div className={styles.identity}>
-        <span className={styles.detailsName}>{account.accountName}</span>
-        {account.steamId && (
-          <span className={styles.steamId}>{account.steamId}</span>
+        <span className={styles.detailsName}>{describe(account).title}</span>
+        {describe(account).details && (
+          <span className={styles.steamId}>{describe(account).details}</span>
         )}
       </div>
       <div className={styles.guard}>

@@ -1,40 +1,54 @@
 import { useEffect, useState } from 'react'
 import {
   CODE_PERIOD_SECS,
+  describe,
   exportMaFile,
+  refreshProfile,
   revealRevocationCode,
   type Account,
 } from '../../../api/accounts.ts'
-import { biometricStatus, type BiometricMethod } from '../../../api/vault.ts'
+import {
+  biometricStatus,
+  errorMessage,
+  type BiometricMethod,
+} from '../../../api/vault.ts'
+import Avatar from '../../../components/Avatar.tsx'
 import Button from '../../../components/Button.tsx'
 import { useCopy } from '../../../lib/useCopy.ts'
-import { useSecondsLeft } from '../useAccounts.ts'
+import { useCodeSecondsLeft } from '../useAccounts.ts'
 import layout from '../layout.module.css'
 import ConfirmOwner from './ConfirmOwner.tsx'
 import RemoveAccount from './RemoveAccount.tsx'
+import SignIn from './SignIn.tsx'
 import styles from './AccountPage.module.css'
 
 type Props = {
   account: Account
   codesExpireAt: number
   onBack: () => void
+  onChanged: () => void
   onRemoved: () => void
 }
 
-type OpenDialog = 'reveal' | 'export' | 'remove' | null
+type OpenDialog = 'signIn' | 'reveal' | 'export' | 'remove' | null
 
 export default function AccountPage({
   account,
   codesExpireAt,
   onBack,
+  onChanged,
   onRemoved,
 }: Props) {
   const [dialog, setDialog] = useState<OpenDialog>(null)
   const [revocationCode, setRevocationCode] = useState<string | null>(null)
   const [exported, setExported] = useState<string | null>(null)
   const [biometric, setBiometric] = useState<BiometricMethod | null>(null)
+  const [checking, setChecking] = useState(false)
+  const [checked, setChecked] = useState<{ ok: boolean; text: string } | null>(
+    null,
+  )
   const { copy, label } = useCopy()
-  const secondsLeft = useSecondsLeft(codesExpireAt)
+  const secondsLeft = useCodeSecondsLeft(codesExpireAt)
   const name = account.accountName
 
   useEffect(() => {
@@ -42,6 +56,20 @@ export default function AccountPage({
       setBiometric(status.enrolled ? status.method : null),
     )
   }, [])
+
+  async function checkSession() {
+    setChecking(true)
+    setChecked(null)
+    try {
+      await refreshProfile(name)
+      setChecked({ ok: true, text: 'Steam accepted the session.' })
+    } catch (err) {
+      setChecked({ ok: false, text: errorMessage(err) })
+    } finally {
+      setChecking(false)
+      onChanged()
+    }
+  }
 
   async function reveal(password: string | null) {
     setRevocationCode(await revealRevocationCode(name, password))
@@ -61,13 +89,11 @@ export default function AccountPage({
           ← Accounts
         </button>
         <div className={styles.identity}>
-          <span className={styles.avatar} aria-hidden="true">
-            {name.slice(0, 2).toUpperCase()}
-          </span>
+          <Avatar name={name} src={account.avatar} size="lg" />
           <div className={styles.names}>
-            <h1 className={layout.title}>{name}</h1>
-            <span className={account.steamId ? styles.steamId : styles.muted}>
-              {account.steamId ?? 'Imported from .maFile'}
+            <h1 className={layout.title}>{describe(account).title}</h1>
+            <span className={styles.steamId}>
+              {describe(account).details || 'Imported from .maFile'}
             </span>
           </div>
         </div>
@@ -102,9 +128,35 @@ export default function AccountPage({
         </h2>
         <dl className={styles.facts}>
           <div className={styles.fact}>
+            <dt>Steam session</dt>
+            <dd className={styles.reveal}>
+              <span className={account.signedIn ? undefined : styles.muted}>
+                {account.signedIn ? 'Signed in' : 'Not signed in'}
+              </span>
+              {account.signedIn ? (
+                <button
+                  type="button"
+                  className={styles.link}
+                  disabled={checking}
+                  onClick={() => void checkSession()}
+                >
+                  {checking ? 'Checking…' : 'Check'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className={styles.link}
+                  onClick={() => setDialog('signIn')}
+                >
+                  Sign in
+                </button>
+              )}
+            </dd>
+          </div>
+          <div className={styles.fact}>
             <dt>Steam ID</dt>
             <dd className={account.steamId ? styles.mono : styles.muted}>
-              {account.steamId ?? 'Not in the .maFile'}
+              {account.steamId ?? 'Appears after you sign in'}
             </dd>
           </div>
           <div className={styles.fact}>
@@ -137,6 +189,14 @@ export default function AccountPage({
             </dd>
           </div>
         </dl>
+        {checked && (
+          <p
+            className={checked.ok ? styles.muted : styles.error}
+            role={checked.ok ? 'status' : 'alert'}
+          >
+            {checked.text}
+          </p>
+        )}
         <div className={styles.actions}>
           <button
             type="button"
@@ -179,6 +239,15 @@ export default function AccountPage({
         onConfirm={exportFile}
         onBiometricsOutdated={() => setBiometric(null)}
         onClose={() => setDialog(null)}
+      />
+      <SignIn
+        open={dialog === 'signIn'}
+        accountName={name}
+        onClose={() => setDialog(null)}
+        onSignedIn={() => {
+          setDialog(null)
+          void checkSession()
+        }}
       />
       <RemoveAccount
         open={dialog === 'remove'}
