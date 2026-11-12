@@ -1,0 +1,248 @@
+import { useEffect, useEffectEvent, useState } from 'react'
+import type { Account } from '../../api/accounts.ts'
+import {
+  listConfirmations,
+  respondToConfirmations,
+  type Confirmation,
+  type ConfirmationKind,
+} from '../../api/confirmations.ts'
+import { errorMessage } from '../../api/vault.ts'
+import Button from '../../components/Button.tsx'
+import Dialog from '../../components/Dialog.tsx'
+import dialogStyles from '../../components/Dialog.module.css'
+import Icon from '../../components/Icon.tsx'
+import styles from './Confirmations.module.css'
+
+type Item = Confirmation & { accountName: string }
+type Failure = { accountName: string; reason: string }
+
+const KIND_NAMES: Record<ConfirmationKind, string> = {
+  trade: 'Trade',
+  marketListing: 'Market',
+  apiKey: 'API key',
+  other: 'Other',
+}
+
+const REFRESH =
+  'M23 4v6h-6M1 20v-6h6M3.5 9a9 9 0 0 1 14.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15'
+
+// Each account is a few requests to Steam, possibly through a slow proxy.
+const PARALLEL_ACCOUNTS = 4
+
+type Props = {
+  accounts: Account[]
+  onChanged: () => void
+}
+
+/** Pending trade and market confirmations across every signed-in account. */
+export default function Confirmations({ accounts, onChanged }: Props) {
+  const signedIn = accounts
+    .filter((account) => account.signedIn)
+    .map((account) => account.accountName)
+  const signedInKey = signedIn.join('\n')
+  const [items, setItems] = useState<Item[] | null>(null)
+  const [failures, setFailures] = useState<Failure[]>([])
+  const [revision, setRevision] = useState(0)
+  const [busy, setBusy] = useState<Set<string>>(new Set())
+  const [itemErrors, setItemErrors] = useState<Record<string, string>>({})
+  const [confirmingAll, setConfirmingAll] = useState(false)
+  const changed = useEffectEvent(onChanged)
+
+  useEffect(() => {
+    let active = true
+    const queue = signedInKey ? signedInKey.split('\n') : []
+    const found: Item[] = []
+    const failed: Failure[] = []
+    async function worker() {
+      for (let name = queue.shift(); name; name = queue.shift()) {
+        try {
+          const pending = await listConfirmations(name)
+          found.push(...pending.map((item) => ({ ...item, accountName: name })))
+        } catch (err) {
+          failed.push({ accountName: name, reason: errorMessage(err) })
+        }
+      }
+    }
+    void Promise.all(Array.from({ length: PARALLEL_ACCOUNTS }, worker)).then(
+      () => {
+        if (!active) return
+        setItems(found.sort((a, b) => b.createdAt - a.createdAt))
+        setFailures(failed)
+        // A failed account may have lost its session, which the list shows.
+        if (failed.length > 0) changed()
+      },
+    )
+    return () => {
+      active = false
+    }
+  }, [signedInKey, revision])
+
+  async function respond(targets: Item[], accept: boolean) {
+    const ids = targets.map((item) => item.id)
+    setBusy((all) => new Set([...all, ...ids]))
+    const byAccount = new Map<string, Item[]>()
+    for (const item of targets) {
+      byAccount.set(item.accountName, [
+        ...(byAccount.get(item.accountName) ?? []),
+        item,
+      ])
+    }
+    const done = new Set<string>()
+    const errors: Record<string, string> = {}
+    await Promise.all(
+      [...byAccount].map(async ([accountName, group]) => {
+        try {
+          await respondToConfirmations(accountName, group, accept)
+          group.forEach((item) => done.add(item.id))
+        } catch (err) {
+          group.forEach((item) => (errors[item.id] = errorMessage(err)))
+        }
+      }),
+    )
+    setItems((all) => all?.filter((item) => !done.has(item.id)) ?? null)
+    setItemErrors((all) => ({ ...all, ...errors }))
+    setBusy((all) => new Set([...all].filter((id) => !ids.includes(id))))
+    if (Object.keys(errors).length > 0) onChanged()
+  }
+
+  const loading = items === null && signedIn.length > 0
+
+  return (
+    <section className={styles.panel} aria-labelledby="confirmations-title">
+      <div className={styles.head}>
+        <h2 id="confirmations-title" className={styles.title}>
+          Confirmations{items ? ` · ${items.length}` : ''}
+        </h2>
+        <div className={styles.tools}>
+          <button
+            type="button"
+            className={styles.iconButton}
+            aria-label="Refresh confirmations"
+            title="Refresh"
+            disabled={loading}
+            onClick={() => {
+              setItems(null)
+              setRevision((r) => r + 1)
+            }}
+          >
+            <Icon path={REFRESH} size={14} stroke={2} />
+          </button>
+          <Button
+            size="sm"
+            disabled={!items?.length || busy.size > 0}
+            onClick={() => setConfirmingAll(true)}
+          >
+            Confirm all
+          </Button>
+        </div>
+      </div>
+
+      {signedIn.length === 0 && (
+        <p className={styles.note}>
+          Sign in to an account on its page to see its confirmations here.
+        </p>
+      )}
+      {loading && <p className={styles.note}>Loading…</p>}
+      {items?.length === 0 && failures.length === 0 && (
+        <p className={styles.note}>Nothing to confirm.</p>
+      )}
+
+      {failures.map((failure) => (
+        <p key={failure.accountName} className={styles.failure} role="alert">
+          {failure.accountName}:{' '}
+          <span className={styles.reason}>{failure.reason}</span>
+        </p>
+      ))}
+
+      {items?.map((item) => (
+        <div key={item.id} className={styles.item}>
+          <div className={styles.itemHead}>
+            <span className={styles.itemWords}>
+              <span className={styles.headline}>{item.headline}</span>
+              {item.summary.length > 0 && (
+                <span className={styles.summary}>
+                  {item.summary.join(', ')}
+                </span>
+              )}
+            </span>
+            <span className={styles.meta}>
+              {item.accountName} · {KIND_NAMES[item.kind]} ·{' '}
+              {ago(item.createdAt)}
+            </span>
+          </div>
+          {itemErrors[item.id] && (
+            <span className={`${styles.failure} ${styles.reason}`} role="alert">
+              {itemErrors[item.id]}
+            </span>
+          )}
+          <div className={styles.actions}>
+            <button
+              type="button"
+              className={styles.confirm}
+              disabled={busy.has(item.id)}
+              onClick={() => void respond([item], true)}
+            >
+              Confirm
+            </button>
+            <button
+              type="button"
+              className={styles.decline}
+              disabled={busy.has(item.id)}
+              onClick={() => void respond([item], false)}
+            >
+              Decline
+            </button>
+          </div>
+        </div>
+      ))}
+
+      <Dialog
+        open={confirmingAll}
+        title="Confirm everything?"
+        onClose={() => setConfirmingAll(false)}
+      >
+        <p className={dialogStyles.text}>
+          {count(items?.length ?? 0, 'operation')} on{' '}
+          {count(
+            new Set(items?.map((item) => item.accountName)).size,
+            'account',
+          )}{' '}
+          will be confirmed. Review them first if you’re not sure what they are.
+        </p>
+        <div className={dialogStyles.actions}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setConfirmingAll(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => {
+              setConfirmingAll(false)
+              void respond(items ?? [], true)
+            }}
+          >
+            Confirm all
+          </Button>
+        </div>
+      </Dialog>
+    </section>
+  )
+}
+
+function count(n: number, noun: string) {
+  return `${n} ${noun}${n === 1 ? '' : 's'}`
+}
+
+function ago(unixSeconds: number) {
+  const minutes = Math.max(
+    0,
+    Math.round((Date.now() / 1000 - unixSeconds) / 60),
+  )
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes} min`
+  const hours = Math.round(minutes / 60)
+  return hours < 24 ? `${hours} h` : `${Math.round(hours / 24)} d`
+}

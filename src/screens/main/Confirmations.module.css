@@ -1,0 +1,146 @@
+.panel {
+  flex: 1 1 420px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.title {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.tools {
+  display: flex;
+  gap: 8px;
+}
+
+.iconButton {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.iconButton:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.note {
+  margin: 0;
+  padding: 28px 0;
+  border-top: 1px solid var(--color-line);
+  color: var(--color-text-faint);
+  font-size: 13px;
+}
+
+.failure {
+  margin: 0;
+  padding: 10px 0;
+  color: var(--color-danger);
+  font-size: 13px;
+}
+
+/* Error messages from Rust start in lower case; account names must stay as they are. */
+.reason {
+  display: inline-block;
+}
+
+.reason::first-letter {
+  text-transform: uppercase;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 0;
+  border-top: 1px solid var(--color-line);
+}
+
+.itemHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.itemWords {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.headline {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.summary {
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.meta {
+  color: var(--color-text-faint);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.confirm,
+.decline {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.confirm {
+  background: var(--color-text);
+  border: 0;
+  color: var(--color-panel);
+  font-weight: 600;
+}
+
+.decline {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.confirm:disabled,
+.decline:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.iconButton:focus-visible,
+.confirm:focus-visible,
+.decline:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}

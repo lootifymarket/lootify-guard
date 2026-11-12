@@ -3,6 +3,7 @@
 
 mod accounts;
 mod biometrics;
+mod confirmations;
 mod proxies;
 mod vault;
 
@@ -38,6 +39,8 @@ fn main() {
             accounts::sign_in,
             accounts::refresh_profile,
             accounts::set_account_proxy,
+            confirmations::list_confirmations,
+            confirmations::respond_to_confirmations,
             proxies::list_proxies,
             proxies::add_proxies,
             proxies::add_proxy,

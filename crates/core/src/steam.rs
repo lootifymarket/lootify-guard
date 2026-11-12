@@ -221,7 +221,7 @@ fn proxy_country(client: &Client) -> Option<String> {
     country_code(&answer.country)
 }
 
-fn client(proxy: Option<&ProxyAddress>) -> Result<Client, SteamError> {
+pub(crate) fn client(proxy: Option<&ProxyAddress>) -> Result<Client, SteamError> {
     let mut builder = Client::builder()
         .connect_timeout(CONNECT_TIMEOUT)
         .timeout(REQUEST_TIMEOUT);
@@ -266,7 +266,7 @@ fn link_details(
         .ok_or_else(|| SteamError::Steam("no profile in the answer".to_owned()))
 }
 
-fn refresh_access_token(
+pub(crate) fn refresh_access_token(
     client: &Client,
     session: &Session,
     steam_id: u64,

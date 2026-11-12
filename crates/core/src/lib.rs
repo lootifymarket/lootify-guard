@@ -1,3 +1,4 @@
+pub mod confirmations;
 pub mod contents;
 pub mod guard;
 pub mod idle;
