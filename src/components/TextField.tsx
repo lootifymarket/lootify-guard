@@ -1,7 +1,7 @@
-import { useId, type InputHTMLAttributes } from 'react'
+import { useId, type ComponentProps } from 'react'
 import styles from './TextField.module.css'
 
-type Props = Omit<InputHTMLAttributes<HTMLInputElement>, 'id'> & {
+type Props = Omit<ComponentProps<'input'>, 'id'> & {
   label: string
   hideLabel?: boolean
   invalid?: boolean

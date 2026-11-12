@@ -13,9 +13,10 @@ import styles from './Accounts.module.css'
 type Props = {
   list: AccountList
   onImported: () => void
+  onOpen: (accountName: string) => void
 }
 
-export default function Accounts({ list, onImported }: Props) {
+export default function Accounts({ list, onImported, onOpen }: Props) {
   const [query, setQuery] = useState('')
   // Logins are the only identifier every account has; Steam IDs can be missing.
   const [selectedName, setSelectedName] = useState<string | null>(null)
@@ -61,23 +62,36 @@ export default function Accounts({ list, onImported }: Props) {
       <div className={styles.body}>
         <div className={styles.list}>
           {shown.map((account) => (
-            <button
+            <div
               key={account.accountName}
-              type="button"
               className={styles.row}
-              aria-pressed={account === selected}
-              onClick={() => setSelectedName(account.accountName)}
+              data-selected={account === selected}
             >
-              <span className={styles.avatar} aria-hidden="true">
-                {account.accountName.slice(0, 2).toUpperCase()}
-              </span>
-              <span className={styles.names}>
-                <span className={styles.login}>{account.accountName}</span>
-                {account.steamId && (
-                  <span className={styles.steamId}>{account.steamId}</span>
-                )}
-              </span>
-            </button>
+              <button
+                type="button"
+                className={styles.select}
+                aria-pressed={account === selected}
+                onClick={() => setSelectedName(account.accountName)}
+              >
+                <span className={styles.avatar} aria-hidden="true">
+                  {account.accountName.slice(0, 2).toUpperCase()}
+                </span>
+                <span className={styles.names}>
+                  <span className={styles.login}>{account.accountName}</span>
+                  {account.steamId && (
+                    <span className={styles.steamId}>{account.steamId}</span>
+                  )}
+                </span>
+              </button>
+              <button
+                type="button"
+                className={styles.view}
+                aria-label={`View ${account.accountName}`}
+                onClick={() => onOpen(account.accountName)}
+              >
+                View
+              </button>
+            </div>
           ))}
           {shown.length === 0 && <p className={layout.note}>Nothing found.</p>}
         </div>
