@@ -12,6 +12,7 @@ tauri-build = { version = "2.7", features = [] }
 lootify-guard-core = { path = "../crates/core" }
 serde = { version = "1", features = ["derive"] }
 tauri = { version = "2.12", features = [] }
+tauri-plugin-dialog = "2.8"
 thiserror = "2"
 zeroize = "1.9"
 
