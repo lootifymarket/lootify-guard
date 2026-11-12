@@ -3,7 +3,7 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use lootify_guard_core::contents::{Account, Contents};
+use lootify_guard_core::contents::{Account, Contents, Session};
 use lootify_guard_core::guard;
 use lootify_guard_core::mafile;
 use lootify_guard_core::proxy::ProxyAddress;
@@ -334,7 +334,7 @@ async fn confirm_owner(
 }
 
 /// A copy of the account and its proxy, to take off to a blocking thread.
-fn account_and_proxy(
+pub(crate) fn account_and_proxy(
     state: &VaultState,
     account_name: &str,
 ) -> Result<(Account, Option<ProxyAddress>), CommandError> {
@@ -374,6 +374,31 @@ pub fn set_account_proxy(
 
 fn find<'a>(contents: &'a Contents, account_name: &str) -> Result<&'a Account, CommandError> {
     contents.account(account_name).ok_or_else(no_such_account)
+}
+
+/// Saves what a Steam call did to the session: a renewed access token, or `None`
+/// when Steam no longer accepts it. Writes only when something changed.
+pub(crate) fn store_session(
+    state: &VaultState,
+    account_name: &str,
+    session: Option<Session>,
+) -> Result<(), CommandError> {
+    let mut unlocked = state.unlocked();
+    let vault = unlocked.as_mut().ok_or(CommandError::Locked)?;
+    let mut contents = Contents::from_bytes(vault.data())?;
+    let account = contents
+        .account_mut(account_name)
+        .ok_or_else(no_such_account)?;
+    let token = |session: &Option<Session>| {
+        session
+            .as_ref()
+            .map(|session| session.access_token.expose().to_owned())
+    };
+    if token(&account.session) != token(&session) {
+        account.session = session;
+        vault.save_data(contents.to_bytes())?;
+    }
+    Ok(())
 }
 
 fn no_such_account() -> CommandError {

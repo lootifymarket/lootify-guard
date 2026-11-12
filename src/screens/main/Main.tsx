@@ -30,7 +30,9 @@ export default function Main({ onLock, onAutoLocked }: Props) {
 
   function content() {
     if (!list) return null
-    if (section === 'guard') return <SteamGuard list={list} />
+    if (section === 'guard') {
+      return <SteamGuard list={list} onChanged={reload} />
+    }
     if (section === 'proxies') return <Proxies />
     if (openAccount) {
       return (
