@@ -4,5 +4,6 @@ pub mod guard;
 pub mod idle;
 pub mod mafile;
 pub mod proxy;
+pub mod sign_ins;
 pub mod steam;
 pub mod vault;

@@ -401,6 +401,18 @@ pub(crate) fn store_session(
     Ok(())
 }
 
+/// Drops a session Steam no longer accepts, so the account page offers to sign in.
+pub(crate) fn settle<T>(
+    state: &VaultState,
+    account_name: &str,
+    result: Result<T, SteamError>,
+) -> Result<T, CommandError> {
+    if let Err(SteamError::SessionExpired) = result {
+        store_session(state, account_name, None)?;
+    }
+    Ok(result?)
+}
+
 fn no_such_account() -> CommandError {
     CommandError::Failed("the account is no longer in the vault".to_owned())
 }

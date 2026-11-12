@@ -1,4 +1,3 @@
-use reqwest::blocking::Client;
 use serde::Serialize;
 use sha1::{Digest, Sha1};
 use steamguard::token::Tokens;
@@ -9,7 +8,7 @@ use steamguard::{
 
 use crate::contents::{Account, Session};
 use crate::proxy::ProxyAddress;
-use crate::steam::{SteamError, client, refresh_access_token};
+use crate::steam::{SteamError, with_session};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -87,39 +86,27 @@ pub fn respond(
     Ok(session)
 }
 
-/// Runs `op` against the account's confirmations, renewing the access token and
-/// trying once more if Steam says it has run out.
 fn with_confirmer<T>(
     account: &Account,
     proxy: Option<&ProxyAddress>,
     op: impl Fn(&Confirmer<WebApiTransport>) -> Result<T, SteamError>,
 ) -> Result<(Session, T), SteamError> {
-    let (Some(session), Some(steam_id)) = (&account.session, account.steam_id) else {
-        return Err(SteamError::SessionExpired);
-    };
-    let client = client(proxy)?;
-    let mut session = session.clone();
-    let run = |session: &Session| {
+    with_session(account, proxy, |client, session, steam_id| {
         let guard_account = guard_account(account, session, steam_id);
-        op(&Confirmer::new(transport(&client), &guard_account))
-    };
-    let result = match run(&session) {
-        Err(SteamError::SessionExpired) => {
-            session.access_token = refresh_access_token(&client, &session, steam_id)?;
-            run(&session)?
-        }
-        result => result?,
-    };
-    Ok((session, result))
+        op(&Confirmer::new(
+            WebApiTransport::new(client.clone()),
+            &guard_account,
+        ))
+    })
 }
 
-fn transport(client: &Client) -> WebApiTransport {
-    WebApiTransport::new(client.clone())
-}
-
-/// The account in the shape steamguard's confirmer takes. Only what confirmations
-/// need is filled in; the Guard code secret stays out.
-fn guard_account(account: &Account, session: &Session, steam_id: u64) -> SteamGuardAccount {
+/// The account in the shape steamguard takes. Only what confirmations need is
+/// filled in; the Guard code secret stays out.
+pub(crate) fn guard_account(
+    account: &Account,
+    session: &Session,
+    steam_id: u64,
+) -> SteamGuardAccount {
     let mut guard_account = SteamGuardAccount::new();
     guard_account.account_name = account.account_name.clone();
     guard_account.steam_id = steam_id;

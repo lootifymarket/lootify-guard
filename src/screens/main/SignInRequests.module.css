@@ -1,0 +1,149 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.title {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.tools {
+  display: flex;
+  gap: 8px;
+}
+
+.iconButton,
+.qrButton {
+  height: 30px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.iconButton {
+  width: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qrButton {
+  padding: 0 12px;
+}
+
+.iconButton:disabled,
+.qrButton:disabled,
+.deny:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.note {
+  margin: 0;
+  padding: 14px 0;
+  border-top: 1px solid var(--color-line);
+  color: var(--color-text-faint);
+  font-size: 13px;
+}
+
+.status {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.failure {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 13px;
+}
+
+/* Error messages from Rust start in lower case; account names must stay as they are. */
+.reason {
+  display: inline-block;
+}
+
+.reason::first-letter {
+  text-transform: uppercase;
+}
+
+.card {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  padding: 18px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  border-radius: 12px;
+}
+
+.words {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.who {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.where {
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.warning {
+  color: var(--color-danger);
+  font-size: 12px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.deny {
+  height: 40px;
+  padding: 0 14px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-danger);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.iconButton:focus-visible,
+.qrButton:focus-visible,
+.deny:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.scanButton {
+  align-self: flex-start;
+}
