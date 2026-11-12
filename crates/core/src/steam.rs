@@ -52,6 +52,8 @@ pub enum SteamError {
     UnsupportedConfirmation,
     #[error("the Steam session has ended, sign in again")]
     SessionExpired,
+    #[error("not a link from a Steam sign-in QR code")]
+    NotQrLink,
     #[error("couldn't reach Steam, check the connection")]
     Network,
     #[error("couldn't reach Steam through the proxy")]
@@ -127,37 +129,45 @@ pub fn sign_in(
     })
 }
 
-/// Asks Steam for the account's nickname and avatar. That only works with a live
-/// session, so it doubles as a check of one. Access tokens last about a day; when
-/// the stored one has run out, a new one is made from the refresh token and
-/// returned alongside the profile so it can be saved.
-pub fn fetch_profile(
+/// Runs `op` with the account's session. Access tokens last about a day: when
+/// Steam says the stored one has run out, a new one is made from the refresh token
+/// and `op` runs once more. Returns the session, renewed or not, so it can be saved.
+pub(crate) fn with_session<T>(
     account: &Account,
     proxy: Option<&ProxyAddress>,
-) -> Result<(Session, Profile), SteamError> {
+    op: impl Fn(&Client, &Session, u64) -> Result<T, SteamError>,
+) -> Result<(Session, T), SteamError> {
     let (Some(session), Some(steam_id)) = (&account.session, account.steam_id) else {
         return Err(SteamError::SessionExpired);
     };
     let client = client(proxy)?;
     let mut session = session.clone();
-    let details = match link_details(&client, &session, steam_id) {
+    let result = match op(&client, &session, steam_id) {
         Err(SteamError::SessionExpired) => {
             session.access_token = refresh_access_token(&client, &session, steam_id)?;
-            link_details(&client, &session, steam_id)?
+            op(&client, &session, steam_id)?
         }
-        details => details?,
+        result => result?,
     };
-    let avatar = details
-        .sha_digest_avatar
-        .map(|digest| download_avatar(&client, &digest))
-        .transpose()?;
-    Ok((
-        session,
-        Profile {
+    Ok((session, result))
+}
+
+/// Asks Steam for the account's nickname and avatar. That only works with a live
+/// session, so it doubles as a check of one.
+pub fn fetch_profile(
+    account: &Account,
+    proxy: Option<&ProxyAddress>,
+) -> Result<(Session, Profile), SteamError> {
+    with_session(account, proxy, |client, session, steam_id| {
+        let details = link_details(client, session, steam_id)?;
+        Ok(Profile {
+            avatar: details
+                .sha_digest_avatar
+                .map(|digest| download_avatar(client, &digest))
+                .transpose()?,
             persona_name: details.persona_name.unwrap_or_default(),
-            avatar,
-        },
-    ))
+        })
+    })
 }
 
 #[derive(Deserialize)]
@@ -221,7 +231,7 @@ fn proxy_country(client: &Client) -> Option<String> {
     country_code(&answer.country)
 }
 
-pub(crate) fn client(proxy: Option<&ProxyAddress>) -> Result<Client, SteamError> {
+fn client(proxy: Option<&ProxyAddress>) -> Result<Client, SteamError> {
     let mut builder = Client::builder()
         .connect_timeout(CONNECT_TIMEOUT)
         .timeout(REQUEST_TIMEOUT);
@@ -266,7 +276,7 @@ fn link_details(
         .ok_or_else(|| SteamError::Steam("no profile in the answer".to_owned()))
 }
 
-pub(crate) fn refresh_access_token(
+fn refresh_access_token(
     client: &Client,
     session: &Session,
     steam_id: u64,

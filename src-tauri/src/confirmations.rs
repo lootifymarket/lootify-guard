@@ -1,10 +1,9 @@
 use lootify_guard_core::confirmations::{self, PendingConfirmation};
-use lootify_guard_core::steam::SteamError;
 use serde::Deserialize;
 use tauri::State;
 use tauri::async_runtime::spawn_blocking;
 
-use crate::accounts::{account_and_proxy, store_session};
+use crate::accounts::{account_and_proxy, settle, store_session};
 use crate::vault::{CommandError, VaultState};
 
 #[derive(Deserialize)]
@@ -42,16 +41,4 @@ pub async fn respond_to_confirmations(
             .await?;
     let session = settle(&state, &account_name, result)?;
     store_session(&state, &account_name, Some(session))
-}
-
-/// Drops a session Steam no longer accepts, so the account page offers to sign in.
-fn settle<T>(
-    state: &VaultState,
-    account_name: &str,
-    result: Result<T, SteamError>,
-) -> Result<T, CommandError> {
-    if let Err(SteamError::SessionExpired) = result {
-        store_session(state, account_name, None)?;
-    }
-    Ok(result?)
 }

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { CODE_PERIOD_SECS, type AccountList } from '../../api/accounts.ts'
 import { useCopy } from '../../lib/useCopy.ts'
 import Confirmations from './Confirmations.tsx'
+import SignInRequests from './SignInRequests.tsx'
 import { matchesQuery, useCodeSecondsLeft } from './useAccounts.ts'
 import layout from './layout.module.css'
 import styles from './SteamGuard.module.css'
@@ -66,7 +67,10 @@ export default function SteamGuard({ list, onChanged }: Props) {
             </p>
           )}
         </section>
-        <Confirmations accounts={list.accounts} onChanged={onChanged} />
+        <div className={styles.side}>
+          <Confirmations accounts={list.accounts} onChanged={onChanged} />
+          <SignInRequests accounts={list.accounts} onChanged={onChanged} />
+        </div>
       </div>
     </>
   )

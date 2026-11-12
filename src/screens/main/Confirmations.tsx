@@ -11,10 +11,10 @@ import Button from '../../components/Button.tsx'
 import Dialog from '../../components/Dialog.tsx'
 import dialogStyles from '../../components/Dialog.module.css'
 import Icon from '../../components/Icon.tsx'
+import { fromAccounts, type AccountFailure } from './fromAccounts.ts'
 import styles from './Confirmations.module.css'
 
 type Item = Confirmation & { accountName: string }
-type Failure = { accountName: string; reason: string }
 
 const KIND_NAMES: Record<ConfirmationKind, string> = {
   trade: 'Trade',
@@ -25,9 +25,6 @@ const KIND_NAMES: Record<ConfirmationKind, string> = {
 
 const REFRESH =
   'M23 4v6h-6M1 20v-6h6M3.5 9a9 9 0 0 1 14.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15'
-
-// Each account is a few requests to Steam, possibly through a slow proxy.
-const PARALLEL_ACCOUNTS = 4
 
 type Props = {
   accounts: Account[]
@@ -41,7 +38,7 @@ export default function Confirmations({ accounts, onChanged }: Props) {
     .map((account) => account.accountName)
   const signedInKey = signedIn.join('\n')
   const [items, setItems] = useState<Item[] | null>(null)
-  const [failures, setFailures] = useState<Failure[]>([])
+  const [failures, setFailures] = useState<AccountFailure[]>([])
   const [revision, setRevision] = useState(0)
   const [busy, setBusy] = useState<Set<string>>(new Set())
   const [itemErrors, setItemErrors] = useState<Record<string, string>>({})
@@ -50,28 +47,14 @@ export default function Confirmations({ accounts, onChanged }: Props) {
 
   useEffect(() => {
     let active = true
-    const queue = signedInKey ? signedInKey.split('\n') : []
-    const found: Item[] = []
-    const failed: Failure[] = []
-    async function worker() {
-      for (let name = queue.shift(); name; name = queue.shift()) {
-        try {
-          const pending = await listConfirmations(name)
-          found.push(...pending.map((item) => ({ ...item, accountName: name })))
-        } catch (err) {
-          failed.push({ accountName: name, reason: errorMessage(err) })
-        }
-      }
-    }
-    void Promise.all(Array.from({ length: PARALLEL_ACCOUNTS }, worker)).then(
-      () => {
-        if (!active) return
-        setItems(found.sort((a, b) => b.createdAt - a.createdAt))
-        setFailures(failed)
-        // A failed account may have lost its session, which the list shows.
-        if (failed.length > 0) changed()
-      },
-    )
+    const names = signedInKey ? signedInKey.split('\n') : []
+    void fromAccounts(names, listConfirmations).then(({ items, failures }) => {
+      if (!active) return
+      setItems(items.sort((a, b) => b.createdAt - a.createdAt))
+      setFailures(failures)
+      // A failed account may have lost its session, which the list shows.
+      if (failures.length > 0) changed()
+    })
     return () => {
       active = false
     }

@@ -5,13 +5,20 @@ mod accounts;
 mod biometrics;
 mod confirmations;
 mod proxies;
+mod sign_ins;
 mod vault;
 
 use tauri::Manager;
+use tauri::webview::{PermissionKind, PermissionResponse};
 
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        // The camera reads sign-in QR codes; nothing else the page might ask for is needed.
+        .on_permission_request(|_, kind| match kind {
+            PermissionKind::Camera => PermissionResponse::Allow,
+            _ => PermissionResponse::Deny,
+        })
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data_dir)?;
@@ -41,6 +48,9 @@ fn main() {
             accounts::set_account_proxy,
             confirmations::list_confirmations,
             confirmations::respond_to_confirmations,
+            sign_ins::list_sign_in_requests,
+            sign_ins::answer_sign_in,
+            sign_ins::allow_qr_sign_in,
             proxies::list_proxies,
             proxies::add_proxies,
             proxies::add_proxy,
