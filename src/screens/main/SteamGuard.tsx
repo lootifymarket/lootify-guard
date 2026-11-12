@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { CODE_PERIOD_SECS, type AccountList } from '../../api/accounts.ts'
 import { useCopy } from '../../lib/useCopy.ts'
-import { matchesQuery, useSecondsLeft } from './useAccounts.ts'
+import { matchesQuery, useCodeSecondsLeft } from './useAccounts.ts'
 import layout from './layout.module.css'
 import styles from './SteamGuard.module.css'
 
@@ -12,7 +12,7 @@ type Props = {
 export default function SteamGuard({ list }: Props) {
   const [query, setQuery] = useState('')
   const { copy, label } = useCopy()
-  const secondsLeft = useSecondsLeft(list.codesExpireAt)
+  const secondsLeft = useCodeSecondsLeft(list.codesExpireAt)
   const shown = list.accounts.filter((account) => matchesQuery(account, query))
 
   return (

@@ -8,6 +8,10 @@ export type Account = {
   code: string
   deviceId: string | null
   hasRevocationCode: boolean
+  signedIn: boolean
+  personaName: string | null
+  /** A data URL, or null before the profile was fetched. */
+  avatar: string | null
 }
 
 export type AccountList = {
@@ -38,3 +42,24 @@ export const exportMaFile = (accountName: string, password: string | null) =>
 
 export const removeAccount = (accountName: string) =>
   invoke<void>('remove_account', { accountName })
+
+/** Signs in to Steam. The password is kept in the vault only if asked to. */
+export const signIn = (
+  accountName: string,
+  password: string,
+  rememberPassword: boolean,
+) => invoke<void>('sign_in', { accountName, password, rememberPassword })
+
+/** Checks the Steam session and updates the nickname and avatar. */
+export const refreshProfile = (accountName: string) =>
+  invoke<void>('refresh_profile', { accountName })
+
+/** The nickname first when Steam gave one, then the login and Steam ID. */
+export function describe(account: Account) {
+  const title = account.personaName || account.accountName
+  const details = [
+    account.personaName ? account.accountName : null,
+    account.steamId,
+  ].filter(Boolean)
+  return { title, details: details.join(' · ') }
+}

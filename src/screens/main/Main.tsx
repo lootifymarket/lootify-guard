@@ -37,6 +37,7 @@ export default function Main({ onLock, onAutoLocked }: Props) {
           account={openAccount}
           codesExpireAt={list.codesExpireAt}
           onBack={() => setOpenName(null)}
+          onChanged={reload}
           onRemoved={() => {
             setOpenName(null)
             reload()

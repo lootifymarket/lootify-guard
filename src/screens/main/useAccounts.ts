@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
+  CODE_PERIOD_SECS,
   listAccounts,
   type Account,
   type AccountList,
@@ -50,6 +51,14 @@ export function useSecondsLeft(expiresAt: number) {
   }, [])
 
   return Math.max(0, Math.ceil(expiresAt - now / 1000))
+}
+
+/**
+ * Seconds until the codes change. The page clock ticks once a second, so right
+ * after new codes arrive it can lag and count more than a full period.
+ */
+export function useCodeSecondsLeft(codesExpireAt: number) {
+  return Math.min(useSecondsLeft(codesExpireAt), CODE_PERIOD_SECS)
 }
 
 export function matchesQuery(account: Account, query: string) {

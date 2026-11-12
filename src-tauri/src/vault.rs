@@ -8,6 +8,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use lootify_guard_core::contents::DamagedContents;
 use lootify_guard_core::guard::InvalidSharedSecret;
 use lootify_guard_core::idle::IdleTimer;
+use lootify_guard_core::steam::SteamError;
 use lootify_guard_core::vault::{KdfParams, Vault, VaultError};
 use serde::Serialize;
 use tauri::async_runtime::spawn_blocking;
@@ -121,6 +122,15 @@ impl From<tauri::Error> for CommandError {
 impl From<DamagedContents> for CommandError {
     fn from(err: DamagedContents) -> Self {
         Self::Failed(err.to_string())
+    }
+}
+
+impl From<SteamError> for CommandError {
+    fn from(err: SteamError) -> Self {
+        match err {
+            SteamError::BadCredentials => Self::WrongPassword,
+            err => Self::Failed(err.to_string()),
+        }
     }
 }
 
