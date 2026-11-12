@@ -1,9 +1,17 @@
-import { useRef, useState, type FormEvent } from 'react'
-import { createVault, errorMessage } from '../api/vault.ts'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import {
+  BIOMETRIC_NAMES,
+  biometricStatus,
+  createVault,
+  enableBiometrics,
+  errorMessage,
+  type BiometricMethod,
+} from '../api/vault.ts'
 import Button from '../components/Button.tsx'
 import Lockup from '../components/Lockup.tsx'
 import LogoMark from '../components/LogoMark.tsx'
 import TextField from '../components/TextField.tsx'
+import Toggle from '../components/Toggle.tsx'
 import { checkPassword } from '../lib/passwordStrength.ts'
 import styles from './Onboarding.module.css'
 
@@ -36,6 +44,11 @@ type Props = {
 
 export default function Onboarding({ onCreated }: Props) {
   const [step, setStep] = useState(0)
+  const [biometric, setBiometric] = useState<BiometricMethod | null>(null)
+
+  useEffect(() => {
+    void biometricStatus().then((status) => setBiometric(status.method))
+  }, [])
 
   return (
     <div className={styles.screen}>
@@ -67,7 +80,11 @@ export default function Onboarding({ onCreated }: Props) {
           {step === 0 ? (
             <Welcome onNext={() => setStep(1)} />
           ) : (
-            <MasterPassword onBack={() => setStep(0)} onCreated={onCreated} />
+            <MasterPassword
+              biometric={biometric}
+              onBack={() => setStep(0)}
+              onCreated={onCreated}
+            />
           )}
         </div>
       </main>
@@ -105,15 +122,19 @@ function Welcome({ onNext }: { onNext: () => void }) {
 }
 
 function MasterPassword({
+  biometric,
   onBack,
   onCreated,
 }: {
+  biometric: BiometricMethod | null
   onBack: () => void
   onCreated: () => void
 }) {
   const [password, setPassword] = useState('')
   const [repeat, setRepeat] = useState('')
+  const [useBiometric, setUseBiometric] = useState(true)
   const [busy, setBusy] = useState(false)
+  const [created, setCreated] = useState(false)
   const [error, setError] = useState('')
   const weakDialog = useRef<HTMLDialogElement>(null)
   const strongerButton = useRef<HTMLButtonElement>(null)
@@ -145,15 +166,33 @@ function MasterPassword({
     setError('')
     try {
       await createVault(password)
-      onCreated()
     } catch (err) {
       setError(errorMessage(err))
       setBusy(false)
+      return
     }
+    setCreated(true)
+    if (biometric && useBiometric) {
+      try {
+        await enableBiometrics()
+      } catch (err) {
+        // The vault itself is fine, so let the user go on without biometrics.
+        setError(
+          `The vault is ready, but ${BIOMETRIC_NAMES[biometric]} couldn’t be turned on: ${errorMessage(err)}`,
+        )
+        setBusy(false)
+        return
+      }
+    }
+    onCreated()
   }
 
   function submit(event: FormEvent) {
     event.preventDefault()
+    if (created) {
+      onCreated()
+      return
+    }
     if (!canCreate || busy) return
     if (strong) {
       void create()
@@ -229,17 +268,35 @@ function MasterPassword({
           </li>
         ))}
       </ul>
+      {biometric && (
+        <div className={styles.option}>
+          <span className={styles.optionWords}>
+            <span>Unlock with {BIOMETRIC_NAMES[biometric]}</span>
+            <span className={styles.optionText}>
+              Also lets you set a new password on this computer if you forget
+              it.
+            </span>
+          </span>
+          <Toggle
+            on={useBiometric}
+            label={`Unlock with ${BIOMETRIC_NAMES[biometric]}`}
+            onChange={setUseBiometric}
+          />
+        </div>
+      )}
       {error && (
         <span className={styles.hint} data-tone="danger" role="alert">
           {error}
         </span>
       )}
       <div className={styles.actions}>
-        <Button variant="secondary" className={styles.back} onClick={onBack}>
-          Back
-        </Button>
-        <Button type="submit" busy={busy} disabled={!canCreate}>
-          {busy ? 'Creating vault…' : 'Create vault'}
+        {!created && (
+          <Button variant="secondary" className={styles.back} onClick={onBack}>
+            Back
+          </Button>
+        )}
+        <Button type="submit" busy={busy} disabled={!canCreate && !created}>
+          {created ? 'Continue' : busy ? 'Creating vault…' : 'Create vault'}
         </Button>
       </div>
 

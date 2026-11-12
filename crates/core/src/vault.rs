@@ -13,7 +13,7 @@ const VERSION: u8 = 1;
 const SALT_LEN: usize = 16;
 const NONCE_LEN: usize = 12;
 const TAG_LEN: usize = 16;
-const KEY_LEN: usize = 32;
+pub const KEY_LEN: usize = 32;
 
 const VERSION_AT: usize = MAGIC.len();
 const PARAMS_AT: usize = VERSION_AT + 1;
@@ -64,9 +64,11 @@ pub struct Vault {
     path: PathBuf,
     params: KdfParams,
     salt: [u8; SALT_LEN],
-    key: Zeroizing<[u8; KEY_LEN]>,
+    key: VaultKey,
     data: Zeroizing<Vec<u8>>,
 }
+
+pub type VaultKey = Zeroizing<[u8; KEY_LEN]>;
 
 impl Vault {
     pub fn create(path: &Path, password: &str, params: KdfParams) -> Result<Self, VaultError> {
@@ -86,9 +88,24 @@ impl Vault {
     }
 
     pub fn open(path: &Path, password: &str) -> Result<Self, VaultError> {
+        Self::open_with(path, |header| {
+            derive_key(password, &header.salt, header.params)
+        })
+    }
+
+    /// Opens the vault with a key taken earlier from [`Vault::key`], so it can be
+    /// unlocked through the OS keychain without the password.
+    pub fn open_with_key(path: &Path, key: &[u8; KEY_LEN]) -> Result<Self, VaultError> {
+        Self::open_with(path, |_| Ok(Zeroizing::new(*key)))
+    }
+
+    fn open_with(
+        path: &Path,
+        key_for: impl FnOnce(&Header) -> Result<VaultKey, VaultError>,
+    ) -> Result<Self, VaultError> {
         let file = fs::read(path)?;
         let (header, ciphertext) = Header::parse(&file)?;
-        let key = derive_key(password, &header.salt, header.params)?;
+        let key = key_for(&header)?;
         let data = cipher(&key)
             .decrypt(
                 &Nonce::<Aes256Gcm>::from(header.nonce),
@@ -105,6 +122,26 @@ impl Vault {
             key,
             data: Zeroizing::new(data),
         })
+    }
+
+    pub fn key(&self) -> &[u8; KEY_LEN] {
+        &self.key
+    }
+
+    /// Re-encrypts the vault for a new password. The salt changes too, so a key
+    /// stored for the old password no longer opens it.
+    pub fn change_password(&mut self, password: &str) -> Result<(), VaultError> {
+        let salt = <[u8; SALT_LEN]>::generate();
+        let key = derive_key(password, &salt, self.params)?;
+        let old_salt = std::mem::replace(&mut self.salt, salt);
+        let old_key = std::mem::replace(&mut self.key, key);
+        if let Err(err) = self.save() {
+            // The file still holds the old encryption, so the key in memory must too.
+            self.salt = old_salt;
+            self.key = old_key;
+            return Err(err);
+        }
+        Ok(())
     }
 
     pub fn data(&self) -> &[u8] {
@@ -195,11 +232,7 @@ impl Header {
     }
 }
 
-fn derive_key(
-    password: &str,
-    salt: &[u8],
-    params: KdfParams,
-) -> Result<Zeroizing<[u8; KEY_LEN]>, VaultError> {
+fn derive_key(password: &str, salt: &[u8], params: KdfParams) -> Result<VaultKey, VaultError> {
     let params = Params::new(
         params.memory_kib,
         params.iterations,
@@ -379,6 +412,45 @@ mod tests {
 
         let err = Vault::open(&path, "correct horse").unwrap_err();
         assert!(matches!(err, VaultError::NotAVault));
+    }
+
+    #[test]
+    fn stored_key_opens_without_password() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = vault_path(&dir);
+        create_with(&path, b"shared_secret");
+        let key = *Vault::open(&path, "correct horse").unwrap().key();
+
+        let vault = Vault::open_with_key(&path, &key).unwrap();
+        assert_eq!(vault.data(), b"shared_secret");
+
+        let mut wrong = key;
+        wrong[0] ^= 0x01;
+        let err = Vault::open_with_key(&path, &wrong).unwrap_err();
+        assert!(matches!(err, VaultError::WrongPassword));
+    }
+
+    #[test]
+    fn changed_password_replaces_the_old_one_and_its_key() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = vault_path(&dir);
+        create_with(&path, b"shared_secret");
+        let mut vault = Vault::open(&path, "correct horse").unwrap();
+        let old_key = *vault.key();
+
+        vault.change_password("battery staple").unwrap();
+
+        assert!(matches!(
+            Vault::open(&path, "correct horse"),
+            Err(VaultError::WrongPassword)
+        ));
+        assert!(matches!(
+            Vault::open_with_key(&path, &old_key),
+            Err(VaultError::WrongPassword)
+        ));
+        let reopened = Vault::open(&path, "battery staple").unwrap();
+        assert_eq!(reopened.data(), b"shared_secret");
+        assert_eq!(reopened.key(), vault.key());
     }
 
     #[test]

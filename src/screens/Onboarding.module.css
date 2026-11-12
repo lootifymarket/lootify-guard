@@ -323,3 +323,23 @@
     transform: none;
   }
 }
+
+.option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.optionWords {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.optionText {
+  color: var(--color-text-faint);
+  font-size: 12px;
+  line-height: 1.5;
+}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { lockVault, vaultStatus, type VaultStatus } from './api/vault.ts'
 import Onboarding from './screens/Onboarding.tsx'
-import Unlock from './screens/Unlock.tsx'
+import Unlock from './screens/unlock/Unlock.tsx'
 import Unlocked from './screens/Unlocked.tsx'
 
 export default function App() {

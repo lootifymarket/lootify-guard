@@ -36,7 +36,7 @@
   width: 100%;
 }
 
-.forgot,
+.link,
 .back {
   padding: 0;
   background: transparent;
@@ -46,17 +46,58 @@
   cursor: pointer;
 }
 
-.forgot:focus-visible,
+.link:focus-visible,
 .back:focus-visible {
   outline: 2px solid var(--color-text);
   outline-offset: 2px;
 }
 
+.link {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .forgot {
   align-self: center;
   margin-top: 8px;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+}
+
+.biometric {
+  color: var(--color-text);
+}
+
+.recover {
+  gap: 14px;
+}
+
+.newPassword {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.verified {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.hint {
+  font-size: 12px;
+}
+
+.hint[data-tone='faint'] {
+  color: var(--color-text-faint);
+}
+
+.hint[data-tone='danger'] {
+  color: var(--color-danger);
+}
+
+.recoverLinks {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
 }
 
 .back {
