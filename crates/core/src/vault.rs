@@ -148,8 +148,15 @@ impl Vault {
         &self.data
     }
 
-    pub fn set_data(&mut self, data: Vec<u8>) {
-        self.data = Zeroizing::new(data);
+    /// Replaces the data and saves it. If saving fails, the old data stays in memory
+    /// too, so the vault never holds changes that aren't on disk.
+    pub fn save_data(&mut self, data: Vec<u8>) -> Result<(), VaultError> {
+        let old_data = std::mem::replace(&mut self.data, Zeroizing::new(data));
+        if let Err(err) = self.save() {
+            self.data = old_data;
+            return Err(err);
+        }
+        Ok(())
     }
 
     pub fn save(&self) -> Result<(), VaultError> {
@@ -285,8 +292,7 @@ mod tests {
 
     fn create_with(path: &Path, data: &[u8]) {
         let mut vault = Vault::create(path, "correct horse", FAST).unwrap();
-        vault.set_data(data.to_vec());
-        vault.save().unwrap();
+        vault.save_data(data.to_vec()).unwrap();
     }
 
     fn flip_byte(path: &Path, at: usize) {
@@ -314,8 +320,7 @@ mod tests {
         let mut vault = Vault::open(&path, "correct horse").unwrap();
         assert_eq!(vault.data(), b"shared_secret");
 
-        vault.set_data(b"identity_secret".to_vec());
-        vault.save().unwrap();
+        vault.save_data(b"identity_secret".to_vec()).unwrap();
         let vault = Vault::open(&path, "correct horse").unwrap();
         assert_eq!(vault.data(), b"identity_secret");
     }
@@ -453,12 +458,34 @@ mod tests {
         assert_eq!(reopened.key(), vault.key());
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn failed_save_keeps_the_old_data() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = vault_path(&dir);
+        create_with(&path, b"shared_secret");
+        let mut vault = Vault::open(&path, "correct horse").unwrap();
+        fs::set_permissions(dir.path(), fs::Permissions::from_mode(0o500)).unwrap();
+
+        let result = vault.save_data(b"identity_secret".to_vec());
+        fs::set_permissions(dir.path(), fs::Permissions::from_mode(0o700)).unwrap();
+
+        assert!(matches!(result, Err(VaultError::Io(_))));
+        assert_eq!(vault.data(), b"shared_secret");
+        assert_eq!(
+            Vault::open(&path, "correct horse").unwrap().data(),
+            b"shared_secret"
+        );
+    }
+
     #[test]
     fn debug_output_has_no_secrets() {
         let dir = tempfile::tempdir().unwrap();
         let path = vault_path(&dir);
         let mut vault = Vault::create(&path, "correct horse", FAST).unwrap();
-        vault.set_data(b"shared_secret".to_vec());
+        vault.save_data(b"shared_secret".to_vec()).unwrap();
 
         let debug = format!("{vault:?}");
         assert!(!debug.contains("shared_secret"));

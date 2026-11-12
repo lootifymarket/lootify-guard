@@ -8,6 +8,7 @@ use tauri::Manager;
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data_dir)?;
@@ -24,6 +25,8 @@ fn main() {
             vault::change_password,
             vault::lock_vault,
             vault::erase_vault,
+            vault::list_accounts,
+            vault::import_mafiles,
         ])
         .run(tauri::generate_context!())
         .expect("failed to run tauri application");

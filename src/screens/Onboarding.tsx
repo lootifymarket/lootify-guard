@@ -8,6 +8,7 @@ import {
   type BiometricMethod,
 } from '../api/vault.ts'
 import Button from '../components/Button.tsx'
+import Icon from '../components/Icon.tsx'
 import Lockup from '../components/Lockup.tsx'
 import LogoMark from '../components/LogoMark.tsx'
 import TextField from '../components/TextField.tsx'
@@ -336,31 +337,5 @@ function MasterPassword({
         </div>
       </dialog>
     </form>
-  )
-}
-
-function Icon({
-  path,
-  size,
-  stroke,
-}: {
-  path: string
-  size: number
-  stroke: number
-}) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={stroke}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d={path} />
-    </svg>
   )
 }
