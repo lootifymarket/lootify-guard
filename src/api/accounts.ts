@@ -12,6 +12,7 @@ export type Account = {
   personaName: string | null
   /** A data URL, or null before the profile was fetched. */
   avatar: string | null
+  proxyId: number | null
 }
 
 export type AccountList = {
@@ -63,3 +64,6 @@ export function describe(account: Account) {
   ].filter(Boolean)
   return { title, details: details.join(' · ') }
 }
+
+export const setAccountProxy = (accountName: string, proxyId: number | null) =>
+  invoke<void>('set_account_proxy', { accountName, proxyId })

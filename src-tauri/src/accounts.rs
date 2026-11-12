@@ -6,6 +6,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use lootify_guard_core::contents::{Account, Contents};
 use lootify_guard_core::guard;
 use lootify_guard_core::mafile;
+use lootify_guard_core::proxy::ProxyAddress;
 use lootify_guard_core::steam::{self, SteamError};
 use serde::Serialize;
 use tauri::async_runtime::spawn_blocking;
@@ -40,6 +41,7 @@ pub struct AccountSummary {
     persona_name: Option<String>,
     /// A data URL, so the page can show it without fetching anything itself.
     avatar: Option<String>,
+    proxy_id: Option<u32>,
 }
 
 #[derive(Default, Serialize)]
@@ -85,6 +87,7 @@ pub fn list_accounts(state: State<'_, VaultState>) -> Result<AccountList, Comman
                     .as_ref()
                     .and_then(|profile| profile.avatar.as_ref())
                     .map(|avatar| format!("data:image/jpeg;base64,{avatar}")),
+                proxy_id: account.proxy,
             })
         })
         .collect::<Result<_, CommandError>>()?;
@@ -242,14 +245,10 @@ pub async fn sign_in(
     remember_password: bool,
 ) -> Result<(), CommandError> {
     let password = Zeroizing::new(password);
-    let account = {
-        let unlocked = state.unlocked();
-        let vault = unlocked.as_ref().ok_or(CommandError::Locked)?;
-        find(&Contents::from_bytes(vault.data())?, &account_name)?.clone()
-    };
+    let (account, proxy) = account_and_proxy(&state, &account_name)?;
     let signed_in = spawn_blocking({
         let password = password.clone();
-        move || steam::sign_in(&account, &password)
+        move || steam::sign_in(&account, proxy.as_ref(), &password)
     })
     .await??;
 
@@ -273,12 +272,8 @@ pub async fn refresh_profile(
     state: State<'_, VaultState>,
     account_name: String,
 ) -> Result<(), CommandError> {
-    let account = {
-        let unlocked = state.unlocked();
-        let vault = unlocked.as_ref().ok_or(CommandError::Locked)?;
-        find(&Contents::from_bytes(vault.data())?, &account_name)?.clone()
-    };
-    let fetched = spawn_blocking(move || steam::fetch_profile(&account)).await?;
+    let (account, proxy) = account_and_proxy(&state, &account_name)?;
+    let fetched = spawn_blocking(move || steam::fetch_profile(&account, proxy.as_ref())).await?;
 
     let mut unlocked = state.unlocked();
     let vault = unlocked.as_mut().ok_or(CommandError::Locked)?;
@@ -335,6 +330,45 @@ async fn confirm_owner(
             }
         }
     }
+    Ok(())
+}
+
+/// A copy of the account and its proxy, to take off to a blocking thread.
+fn account_and_proxy(
+    state: &VaultState,
+    account_name: &str,
+) -> Result<(Account, Option<ProxyAddress>), CommandError> {
+    let unlocked = state.unlocked();
+    let vault = unlocked.as_ref().ok_or(CommandError::Locked)?;
+    let contents = Contents::from_bytes(vault.data())?;
+    let account = find(&contents, account_name)?;
+    let proxy = contents
+        .proxy_of(account)?
+        .map(|proxy| proxy.address.clone());
+    Ok((account.clone(), proxy))
+}
+
+#[tauri::command]
+pub fn set_account_proxy(
+    state: State<'_, VaultState>,
+    account_name: String,
+    proxy_id: Option<u32>,
+) -> Result<(), CommandError> {
+    let mut unlocked = state.unlocked();
+    let vault = unlocked.as_mut().ok_or(CommandError::Locked)?;
+    let mut contents = Contents::from_bytes(vault.data())?;
+    if let Some(id) = proxy_id
+        && contents.proxy(id).is_none()
+    {
+        return Err(CommandError::Failed(
+            "the proxy is no longer in the vault".to_owned(),
+        ));
+    }
+    contents
+        .account_mut(&account_name)
+        .ok_or_else(no_such_account)?
+        .proxy = proxy_id;
+    vault.save_data(contents.to_bytes())?;
     Ok(())
 }
 
