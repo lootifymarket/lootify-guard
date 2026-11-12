@@ -1,0 +1,12 @@
+[package]
+name = "lootify-guard"
+version = "0.1.0"
+description = "Steam account manager for Lootify Market"
+edition = "2024"
+publish = false
+
+[build-dependencies]
+tauri-build = { version = "2.7", features = [] }
+
+[dependencies]
+tauri = { version = "2.12", features = [] }
