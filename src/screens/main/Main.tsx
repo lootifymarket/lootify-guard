@@ -4,16 +4,20 @@ import Accounts from './Accounts.tsx'
 import Sidebar, { type Section } from './Sidebar.tsx'
 import SteamGuard from './SteamGuard.tsx'
 import { useAccounts } from './useAccounts.ts'
+import { useAutoLock } from './useAutoLock.ts'
 import styles from './Main.module.css'
 
 type Props = {
   onLock: () => void
+  /** The backend has already locked the vault; only the screen is left to change. */
+  onAutoLocked: () => void
 }
 
-export default function Main({ onLock }: Props) {
+export default function Main({ onLock, onAutoLocked }: Props) {
   const [section, setSection] = useState<Section>('accounts')
   const [openName, setOpenName] = useState<string | null>(null)
   const { list, error, reload } = useAccounts()
+  const locksAt = useAutoLock(onAutoLocked)
   const openAccount = list?.accounts.find(
     (account) => account.accountName === openName,
   )
@@ -45,7 +49,12 @@ export default function Main({ onLock }: Props) {
 
   return (
     <div className={styles.app}>
-      <Sidebar section={section} onSelect={select} onLock={onLock} />
+      <Sidebar
+        section={section}
+        locksAt={locksAt}
+        onSelect={select}
+        onLock={onLock}
+      />
       <main className={styles.content}>
         {error && (
           <p className={styles.error} role="alert">

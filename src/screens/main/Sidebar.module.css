@@ -85,8 +85,18 @@
 }
 
 .vault {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
   font-size: 12px;
+}
+
+.vaultState {
   font-weight: 500;
+}
+
+.locksIn {
+  color: var(--color-text-muted);
 }
 
 .lock {
