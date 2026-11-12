@@ -15,6 +15,7 @@
   --color-accent: #e5252a;
   --color-on-accent: #ffffff;
   --color-danger: #ff4d4f;
+  --color-danger-muted: #3a1416;
 
   --font-sans: 'Geist Variable', system-ui, sans-serif;
   --font-mono: 'Geist Mono Variable', ui-monospace, monospace;

@@ -1,3 +1,5 @@
+use std::fs;
+use std::io;
 use std::path::PathBuf;
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
@@ -96,4 +98,15 @@ pub async fn unlock_vault(
 #[tauri::command]
 pub fn lock_vault(state: State<'_, VaultState>) {
     *state.unlocked() = None;
+}
+
+#[tauri::command]
+pub fn erase_vault(state: State<'_, VaultState>) -> Result<(), CommandError> {
+    *state.unlocked() = None;
+    match fs::remove_file(&state.path) {
+        Err(err) if err.kind() != io::ErrorKind::NotFound => {
+            Err(CommandError::Failed(err.to_string()))
+        }
+        _ => Ok(()),
+    }
 }

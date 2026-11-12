@@ -18,6 +18,7 @@ fn main() {
             vault::create_vault,
             vault::unlock_vault,
             vault::lock_vault,
+            vault::erase_vault,
         ])
         .run(tauri::generate_context!())
         .expect("failed to run tauri application");

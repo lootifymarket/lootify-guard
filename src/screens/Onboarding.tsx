@@ -3,7 +3,7 @@ import { createVault, errorMessage } from '../api/vault.ts'
 import Button from '../components/Button.tsx'
 import Lockup from '../components/Lockup.tsx'
 import LogoMark from '../components/LogoMark.tsx'
-import PasswordField from '../components/PasswordField.tsx'
+import TextField from '../components/TextField.tsx'
 import { checkPassword } from '../lib/passwordStrength.ts'
 import styles from './Onboarding.module.css'
 
@@ -174,7 +174,8 @@ function MasterPassword({
         </p>
       </div>
       <div className={styles.group}>
-        <PasswordField
+        <TextField
+          type="password"
           label="Master password"
           autoComplete="new-password"
           autoFocus
@@ -205,7 +206,8 @@ function MasterPassword({
         </span>
       </div>
       <div className={styles.group}>
-        <PasswordField
+        <TextField
+          type="password"
           label="Repeat password"
           autoComplete="new-password"
           value={repeat}

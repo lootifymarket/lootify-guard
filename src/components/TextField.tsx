@@ -1,16 +1,17 @@
 import { useId, type InputHTMLAttributes } from 'react'
-import styles from './PasswordField.module.css'
+import styles from './TextField.module.css'
 
-type Props = Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'id'> & {
+type Props = Omit<InputHTMLAttributes<HTMLInputElement>, 'id'> & {
   label: string
   hideLabel?: boolean
   invalid?: boolean
 }
 
-export default function PasswordField({
+export default function TextField({
   label,
   hideLabel = false,
   invalid = false,
+  className,
   ...rest
 }: Props) {
   const id = useId()
@@ -24,8 +25,7 @@ export default function PasswordField({
       </label>
       <input
         id={id}
-        type="password"
-        className={styles.input}
+        className={[styles.input, className].filter(Boolean).join(' ')}
         aria-invalid={invalid || undefined}
         {...rest}
       />

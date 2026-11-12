@@ -15,6 +15,8 @@ export const unlockVault = (password: string) =>
 
 export const lockVault = () => invoke<void>('lock_vault')
 
+export const eraseVault = () => invoke<void>('erase_vault')
+
 export function isWrongPassword(error: unknown) {
   return (error as CommandError | undefined)?.kind === 'wrongPassword'
 }

@@ -21,7 +21,12 @@ export default function App() {
     return <Onboarding onCreated={() => setStatus('unlocked')} />
   }
   if (status === 'locked') {
-    return <Unlock onUnlocked={() => setStatus('unlocked')} />
+    return (
+      <Unlock
+        onUnlocked={() => setStatus('unlocked')}
+        onErased={() => setStatus('missing')}
+      />
+    )
   }
   return <Unlocked onLock={() => void lock()} />
 }

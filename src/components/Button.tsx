@@ -2,7 +2,7 @@ import type { ComponentProps } from 'react'
 import styles from './Button.module.css'
 
 type Props = ComponentProps<'button'> & {
-  variant?: 'primary' | 'secondary'
+  variant?: 'primary' | 'secondary' | 'danger'
   size?: 'md' | 'sm'
   busy?: boolean
 }
