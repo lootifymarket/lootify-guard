@@ -11,7 +11,8 @@ pub struct Contents {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Account {
-    pub steam_id: u64,
+    /// Some `.maFile`s don't carry it, and it can't be derived from the login offline.
+    pub steam_id: Option<u64>,
     pub account_name: String,
     pub authenticator: Authenticator,
 }
@@ -80,9 +81,16 @@ impl Contents {
         serde_json::to_vec(self).expect("contents have only string keys")
     }
 
-    /// Adds the account unless one with the same Steam ID is already there.
+    /// Adds the account unless it's already there. Steam logins are unique and
+    /// case-insensitive, so the login identifies an account even without a Steam ID.
     pub fn add_account(&mut self, account: Account) -> bool {
-        if self.accounts.iter().any(|a| a.steam_id == account.steam_id) {
+        let is_same = |known: &Account| {
+            known
+                .account_name
+                .eq_ignore_ascii_case(&account.account_name)
+                || (known.steam_id.is_some() && known.steam_id == account.steam_id)
+        };
+        if self.accounts.iter().any(is_same) {
             return false;
         }
         self.accounts.push(account);
@@ -96,7 +104,7 @@ mod tests {
 
     fn account() -> Account {
         Account {
-            steam_id: 76561198000000001,
+            steam_id: Some(76561198000000001),
             account_name: "trader_one".to_owned(),
             authenticator: Authenticator {
                 shared_secret: "c2hhcmVkLXNlY3JldC0yMGJ5dGU=".to_owned().into(),
@@ -160,8 +168,26 @@ mod tests {
         let mut renamed = account();
         renamed.account_name = "trader_two".to_owned();
         assert!(!contents.add_account(renamed));
+
+        let mut without_id = account();
+        without_id.steam_id = None;
+        without_id.account_name = "Trader_One".to_owned();
+        assert!(!contents.add_account(without_id));
+
         assert_eq!(contents.accounts.len(), 1);
         assert_eq!(contents.accounts[0].account_name, "trader_one");
+    }
+
+    #[test]
+    fn accounts_without_steam_ids_are_told_apart_by_login() {
+        let mut contents = Contents::default();
+        for name in ["trader_one", "trader_two"] {
+            let mut account = account();
+            account.steam_id = None;
+            account.account_name = name.to_owned();
+            assert!(contents.add_account(account), "{name}");
+        }
+        assert_eq!(contents.accounts.len(), 2);
     }
 
     #[test]

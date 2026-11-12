@@ -68,17 +68,11 @@ pub fn parse(file: &[u8]) -> Result<Account, MaFileError> {
         column: err.column(),
     })?;
 
-    let steam_id = match mafile
+    let steam_id = mafile
         .steam_id
         .or(mafile.session.and_then(|session| session.steam_id))
-        .ok_or(MaFileError::Missing("Steam ID"))?
-    {
-        SteamId::Number(id) => id,
-        SteamId::Text(text) => text.parse().map_err(|_| MaFileError::Invalid("Steam ID"))?,
-    };
-    if steam_id >> 32 != USER_ID_HIGH || steam_id as u32 == 0 {
-        return Err(MaFileError::Invalid("Steam ID"));
-    }
+        .map(user_steam_id)
+        .transpose()?;
 
     Ok(Account {
         steam_id,
@@ -97,6 +91,17 @@ pub fn parse(file: &[u8]) -> Result<Account, MaFileError> {
             device_id: mafile.device_id,
         },
     })
+}
+
+fn user_steam_id(id: SteamId) -> Result<u64, MaFileError> {
+    let id = match id {
+        SteamId::Number(id) => id,
+        SteamId::Text(text) => text.parse().map_err(|_| MaFileError::Invalid("Steam ID"))?,
+    };
+    if id >> 32 != USER_ID_HIGH || id as u32 == 0 {
+        return Err(MaFileError::Invalid("Steam ID"));
+    }
+    Ok(id)
 }
 
 // SDA encrypts a .maFile into a single base64 blob, where JSON would start with `{`.
@@ -157,7 +162,7 @@ mod tests {
     #[test]
     fn reads_an_sda_file() {
         let account = parse_json(&sda()).unwrap();
-        assert_eq!(account.steam_id, 76561198000000001);
+        assert_eq!(account.steam_id, Some(76561198000000001));
         assert_eq!(account.account_name, "trader_one");
         let auth = &account.authenticator;
         assert_eq!(auth.shared_secret.expose(), SHARED);
@@ -175,21 +180,21 @@ mod tests {
         let mut file = sda();
         file.as_object_mut().unwrap().remove("Session");
         file["steam_id"] = 76561198000000002u64.into();
-        assert_eq!(parse_json(&file).unwrap().steam_id, 76561198000000002);
+        assert_eq!(parse_json(&file).unwrap().steam_id, Some(76561198000000002));
 
         file["steam_id"] = "76561198000000003".into();
-        assert_eq!(parse_json(&file).unwrap().steam_id, 76561198000000003);
+        assert_eq!(parse_json(&file).unwrap().steam_id, Some(76561198000000003));
     }
 
     #[test]
-    fn keeps_only_the_required_fields_when_others_are_missing() {
+    fn reads_a_file_with_only_the_required_fields() {
         let file = serde_json::json!({
             "account_name": "trader_one",
             "shared_secret": SHARED,
             "identity_secret": IDENTITY,
-            "Session": { "SteamID": 76561198000000001u64 },
         });
         let account = parse_json(&file).unwrap();
+        assert_eq!(account.steam_id, None);
         assert!(account.authenticator.revocation_code.is_none());
         assert!(account.authenticator.device_id.is_none());
     }
@@ -231,13 +236,6 @@ mod tests {
                 MaFileError::Invalid("Steam ID")
             );
         }
-
-        let mut file = sda();
-        file.as_object_mut().unwrap().remove("Session");
-        assert_eq!(
-            parse_json(&file).unwrap_err(),
-            MaFileError::Missing("Steam ID")
-        );
     }
 
     #[test]

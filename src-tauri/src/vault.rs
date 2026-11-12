@@ -112,7 +112,7 @@ pub struct AccountList {
 #[serde(rename_all = "camelCase")]
 pub struct AccountSummary {
     // A SteamID64 doesn't fit in a JavaScript number without losing digits.
-    steam_id: String,
+    steam_id: Option<String>,
     account_name: String,
     code: String,
 }
@@ -262,7 +262,7 @@ pub fn list_accounts(state: State<'_, VaultState>) -> Result<AccountList, Comman
         .iter()
         .map(|account| {
             Ok(AccountSummary {
-                steam_id: account.steam_id.to_string(),
+                steam_id: account.steam_id.map(|id| id.to_string()),
                 account_name: account.account_name.clone(),
                 code: guard::code(&account.authenticator.shared_secret, now)?,
             })

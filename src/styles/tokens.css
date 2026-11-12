@@ -1,11 +1,16 @@
 :root {
   --color-bg: #050505;
   --color-panel: #0a0a0a;
+  --color-sidebar: #070707;
+  --color-surface: #111111;
+  --color-row-selected: #121212;
+  --color-selected: #141414;
   --color-field: #0f0f0f;
   --color-dialog: #111111;
   --color-dialog-border: #222222;
   --color-line: #161616;
   --color-line-strong: #1f1f1f;
+  --color-divider: #1a1a1a;
   --color-border: #262626;
   --color-disabled: #1a1a1a;
   --color-text: #f2f2f2;
