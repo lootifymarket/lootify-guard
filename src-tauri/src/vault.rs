@@ -1,24 +1,19 @@
 use std::fs;
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::{Mutex, MutexGuard, PoisonError};
-use std::time::{SystemTime, UNIX_EPOCH};
 
-use lootify_guard_core::contents::{Account, Contents, DamagedContents};
-use lootify_guard_core::guard::{self, InvalidSharedSecret};
-use lootify_guard_core::mafile;
+use lootify_guard_core::contents::DamagedContents;
+use lootify_guard_core::guard::InvalidSharedSecret;
 use lootify_guard_core::vault::{KdfParams, Vault, VaultError};
 use serde::Serialize;
+use tauri::State;
 use tauri::async_runtime::spawn_blocking;
-use tauri::{State, Window};
-use tauri_plugin_dialog::DialogExt;
 use zeroize::Zeroizing;
 
 use crate::biometrics::{self, BiometricError};
 
 const UNLOCK_REASON: &str = "unlock your vault";
-// Real .maFiles are a couple of kilobytes; this only stops a wrong pick from being read whole.
-const MAX_MAFILE_LEN: u64 = 64 * 1024;
 
 pub struct VaultState {
     path: PathBuf,
@@ -34,7 +29,7 @@ impl VaultState {
     }
 
     // A panic elsewhere can't leave `Option<Vault>` half-updated, so a poisoned lock is safe to reuse.
-    fn unlocked(&self) -> MutexGuard<'_, Option<Vault>> {
+    pub(crate) fn unlocked(&self) -> MutexGuard<'_, Option<Vault>> {
         self.unlocked.lock().unwrap_or_else(PoisonError::into_inner)
     }
 }
@@ -99,36 +94,6 @@ impl From<InvalidSharedSecret> for CommandError {
     fn from(err: InvalidSharedSecret) -> Self {
         Self::Failed(err.to_string())
     }
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AccountList {
-    codes_expire_at: u64,
-    accounts: Vec<AccountSummary>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AccountSummary {
-    // A SteamID64 doesn't fit in a JavaScript number without losing digits.
-    steam_id: Option<String>,
-    account_name: String,
-    code: String,
-}
-
-#[derive(Default, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ImportReport {
-    added: Vec<String>,
-    already_added: Vec<String>,
-    failed: Vec<FailedFile>,
-}
-
-#[derive(Serialize)]
-pub struct FailedFile {
-    file: String,
-    reason: String,
 }
 
 #[tauri::command]
@@ -246,103 +211,4 @@ pub fn erase_vault(state: State<'_, VaultState>) -> Result<(), CommandError> {
         }
         _ => Ok(()),
     }
-}
-
-#[tauri::command]
-pub fn list_accounts(state: State<'_, VaultState>) -> Result<AccountList, CommandError> {
-    let unlocked = state.unlocked();
-    let vault = unlocked.as_ref().ok_or(CommandError::Locked)?;
-    let contents = Contents::from_bytes(vault.data())?;
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_err(|_| CommandError::Failed("the system clock is set before 1970".to_owned()))?
-        .as_secs();
-    let accounts = contents
-        .accounts
-        .iter()
-        .map(|account| {
-            Ok(AccountSummary {
-                steam_id: account.steam_id.map(|id| id.to_string()),
-                account_name: account.account_name.clone(),
-                code: guard::code(&account.authenticator.shared_secret, now)?,
-            })
-        })
-        .collect::<Result<_, CommandError>>()?;
-    Ok(AccountList {
-        codes_expire_at: guard::code_expires_at(now),
-        accounts,
-    })
-}
-
-/// Lets the user pick `.maFile`s and adds their accounts. The picker runs here rather
-/// than in the UI so that file paths and secrets never pass through the webview.
-/// Returns `None` when the picker is closed without choosing anything.
-#[tauri::command]
-pub async fn import_mafiles(
-    window: Window,
-    state: State<'_, VaultState>,
-) -> Result<Option<ImportReport>, CommandError> {
-    if state.unlocked().is_none() {
-        return Err(CommandError::Locked);
-    }
-    let picker = window
-        .dialog()
-        .file()
-        .set_parent(&window)
-        .add_filter("Steam Guard files", &["maFile"]);
-    let Some(picked) = spawn_blocking(move || picker.blocking_pick_files()).await? else {
-        return Ok(None);
-    };
-    let files = spawn_blocking(move || {
-        picked
-            .into_iter()
-            .map(|file| {
-                let name = file.as_path().map_or_else(|| file.to_string(), file_name);
-                let account = file
-                    .into_path()
-                    .map_err(|err| err.to_string())
-                    .and_then(|path| read_mafile(&path));
-                (name, account)
-            })
-            .collect::<Vec<_>>()
-    })
-    .await?;
-
-    // The vault may have been locked while the picker was open.
-    let mut unlocked = state.unlocked();
-    let vault = unlocked.as_mut().ok_or(CommandError::Locked)?;
-    let mut contents = Contents::from_bytes(vault.data())?;
-    let mut report = ImportReport::default();
-    for (file, account) in files {
-        match account {
-            Ok(account) => {
-                let name = account.account_name.clone();
-                if contents.add_account(account) {
-                    report.added.push(name);
-                } else {
-                    report.already_added.push(name);
-                }
-            }
-            Err(reason) => report.failed.push(FailedFile { file, reason }),
-        }
-    }
-    if !report.added.is_empty() {
-        vault.save_data(contents.to_bytes())?;
-    }
-    Ok(Some(report))
-}
-
-fn read_mafile(path: &Path) -> Result<Account, String> {
-    if fs::metadata(path).map_err(|err| err.to_string())?.len() > MAX_MAFILE_LEN {
-        return Err("the file is too large to be a .maFile".to_owned());
-    }
-    let file = Zeroizing::new(fs::read(path).map_err(|err| err.to_string())?);
-    mafile::parse(&file).map_err(|err| err.to_string())
-}
-
-fn file_name(path: &Path) -> String {
-    path.file_name()
-        .unwrap_or(path.as_os_str())
-        .to_string_lossy()
-        .into_owned()
 }

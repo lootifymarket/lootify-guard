@@ -81,6 +81,19 @@ impl Contents {
         serde_json::to_vec(self).expect("contents have only string keys")
     }
 
+    pub fn account(&self, account_name: &str) -> Option<&Account> {
+        self.accounts
+            .iter()
+            .find(|account| account.account_name == account_name)
+    }
+
+    pub fn remove_account(&mut self, account_name: &str) -> bool {
+        let count = self.accounts.len();
+        self.accounts
+            .retain(|account| account.account_name != account_name);
+        self.accounts.len() < count
+    }
+
     /// Adds the account unless it's already there. Steam logins are unique and
     /// case-insensitive, so the login identifies an account even without a Steam ID.
     pub fn add_account(&mut self, account: Account) -> bool {
@@ -176,6 +189,21 @@ mod tests {
 
         assert_eq!(contents.accounts.len(), 1);
         assert_eq!(contents.accounts[0].account_name, "trader_one");
+    }
+
+    #[test]
+    fn removes_only_the_named_account() {
+        let mut contents = Contents::default();
+        let mut other = account();
+        other.steam_id = None;
+        other.account_name = "trader_two".to_owned();
+        contents.add_account(account());
+        contents.add_account(other);
+
+        assert!(contents.remove_account("trader_one"));
+        assert!(!contents.remove_account("trader_one"));
+        assert!(contents.account("trader_one").is_none());
+        assert!(contents.account("trader_two").is_some());
     }
 
     #[test]

@@ -28,20 +28,46 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  padding-right: 12px;
+  border-top: 1px solid var(--color-line);
+}
+
+.row[data-selected='true'] {
+  background: var(--color-row-selected);
+}
+
+.select {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   padding: 14px 12px;
   background: transparent;
   border: 0;
-  border-top: 1px solid var(--color-line);
   font-size: 13px;
   text-align: left;
   cursor: pointer;
 }
 
-.row[aria-pressed='true'] {
-  background: var(--color-row-selected);
+.view,
+.copy {
+  height: 28px;
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
 }
 
-.row:focus-visible,
+.select:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: -2px;
+}
+
+.view:focus-visible,
 .copy:focus-visible {
   outline: 2px solid var(--color-text);
   outline-offset: -2px;
@@ -121,17 +147,6 @@
 .guardLabel {
   color: var(--color-text-muted);
   font-size: 12px;
-}
-
-.copy {
-  height: 28px;
-  padding: 0 10px;
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  cursor: pointer;
 }
 
 .code {
