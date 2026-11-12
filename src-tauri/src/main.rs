@@ -14,6 +14,7 @@ fn main() {
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data_dir)?;
             app.manage(vault::VaultState::new(data_dir.join("vault.lgv")));
+            vault::watch_idle(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -26,6 +27,8 @@ fn main() {
             vault::change_password,
             vault::lock_vault,
             vault::erase_vault,
+            vault::report_activity,
+            vault::auto_lock_deadline,
             accounts::list_accounts,
             accounts::import_mafiles,
             accounts::reveal_revocation_code,

@@ -1,5 +1,6 @@
 import Icon from '../../components/Icon.tsx'
 import LogoMark from '../../components/LogoMark.tsx'
+import { useSecondsLeft } from './useAccounts.ts'
 import styles from './Sidebar.module.css'
 
 export type Section = 'accounts' | 'guard'
@@ -21,11 +22,12 @@ const LOCK = 'M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4'
 
 type Props = {
   section: Section
+  locksAt: number | null
   onSelect: (section: Section) => void
   onLock: () => void
 }
 
-export default function Sidebar({ section, onSelect, onLock }: Props) {
+export default function Sidebar({ section, locksAt, onSelect, onLock }: Props) {
   return (
     <nav aria-label="Main menu" className={styles.sidebar}>
       <button
@@ -52,7 +54,10 @@ export default function Sidebar({ section, onSelect, onLock }: Props) {
         ))}
       </div>
       <div className={styles.footer}>
-        <span className={styles.vault}>Vault unlocked</span>
+        <span className={styles.vault}>
+          <span className={styles.vaultState}>Vault unlocked</span>
+          {locksAt !== null && <LocksIn deadline={locksAt} />}
+        </span>
         <button
           type="button"
           className={styles.lock}
@@ -64,4 +69,9 @@ export default function Sidebar({ section, onSelect, onLock }: Props) {
       </div>
     </nav>
   )
+}
+
+function LocksIn({ deadline }: { deadline: number }) {
+  const minutes = Math.max(1, Math.ceil(useSecondsLeft(deadline) / 60))
+  return <span className={styles.locksIn}>Locks in {minutes} min</span>
 }

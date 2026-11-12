@@ -28,5 +28,7 @@ export default function App() {
       />
     )
   }
-  return <Main onLock={() => void lock()} />
+  return (
+    <Main onLock={() => void lock()} onAutoLocked={() => setStatus('locked')} />
+  )
 }

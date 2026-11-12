@@ -41,6 +41,12 @@ export const lockVault = () => invoke<void>('lock_vault')
 
 export const eraseVault = () => invoke<void>('erase_vault')
 
+/** Counts as user activity. Resolves to when the vault locks, in Unix seconds. */
+export const reportActivity = () => invoke<number>('report_activity')
+
+/** When the vault locks, in Unix seconds, without counting as activity. */
+export const autoLockDeadline = () => invoke<number>('auto_lock_deadline')
+
 function errorKind(error: unknown) {
   return (error as CommandError | undefined)?.kind
 }
@@ -49,6 +55,8 @@ export const isWrongPassword = (error: unknown) =>
   errorKind(error) === 'wrongPassword'
 
 export const isCancelled = (error: unknown) => errorKind(error) === 'cancelled'
+
+export const isLocked = (error: unknown) => errorKind(error) === 'locked'
 
 export const isBiometricsOutdated = (error: unknown) =>
   errorKind(error) === 'biometricsOutdated'
