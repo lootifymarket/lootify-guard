@@ -5,7 +5,7 @@ use std::sync::{Mutex, MutexGuard, PoisonError};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use lootify_guard_core::contents::DamagedContents;
+use lootify_guard_core::contents::{DamagedContents, MissingProxy};
 use lootify_guard_core::guard::InvalidSharedSecret;
 use lootify_guard_core::idle::IdleTimer;
 use lootify_guard_core::steam::SteamError;
@@ -131,6 +131,12 @@ impl From<SteamError> for CommandError {
             SteamError::BadCredentials => Self::WrongPassword,
             err => Self::Failed(err.to_string()),
         }
+    }
+}
+
+impl From<MissingProxy> for CommandError {
+    fn from(err: MissingProxy) -> Self {
+        Self::Failed(err.to_string())
     }
 }
 

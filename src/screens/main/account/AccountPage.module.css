@@ -202,3 +202,7 @@
 .error::first-letter {
   text-transform: uppercase;
 }
+
+.proxyPicker {
+  width: 260px;
+}

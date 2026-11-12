@@ -3,10 +3,18 @@ use std::fmt;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroizing;
 
+use crate::proxy::{Proxy, ProxyAddress};
+
 /// What the vault holds once decrypted.
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Contents {
     pub accounts: Vec<Account>,
+    #[serde(default)]
+    pub proxies: Vec<Proxy>,
+    /// Ids are never reused: an account still pointing at a deleted proxy must not
+    /// end up on a new one by accident.
+    #[serde(default)]
+    last_proxy_id: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -19,6 +27,8 @@ pub struct Account {
     /// Kept only when the user asks, so the app can sign in again by itself.
     pub password: Option<Secret>,
     pub profile: Option<Profile>,
+    /// The id of the proxy every request for this account goes through.
+    pub proxy: Option<u32>,
 }
 
 /// What Steam shows for the account, kept so the list doesn't ask Steam each time.
@@ -75,6 +85,10 @@ impl fmt::Debug for Secret {
     }
 }
 
+#[derive(Debug, thiserror::Error)]
+#[error("the account's proxy is no longer in the vault")]
+pub struct MissingProxy;
+
 /// serde_json errors can quote the offending value, which here may be a secret,
 /// so only the position is kept.
 #[derive(Debug, thiserror::Error)]
@@ -119,6 +133,51 @@ impl Contents {
         self.accounts.len() < count
     }
 
+    /// The proxy assigned to the account. An id that points nowhere is an error
+    /// rather than `None`, so a broken assignment never sends requests directly.
+    pub fn proxy_of(&self, account: &Account) -> Result<Option<&Proxy>, MissingProxy> {
+        account
+            .proxy
+            .map(|id| self.proxy(id).ok_or(MissingProxy))
+            .transpose()
+    }
+
+    pub fn proxy(&self, id: u32) -> Option<&Proxy> {
+        self.proxies.iter().find(|proxy| proxy.id == id)
+    }
+
+    /// Adds the proxy unless the same one is already there, and returns it to fill in
+    /// the rest.
+    pub fn add_proxy(&mut self, address: ProxyAddress) -> Option<&mut Proxy> {
+        if self
+            .proxies
+            .iter()
+            .any(|known| known.address.same_as(&address))
+        {
+            return None;
+        }
+        self.last_proxy_id += 1;
+        self.proxies.push(Proxy {
+            id: self.last_proxy_id,
+            name: None,
+            country: None,
+            address,
+        });
+        self.proxies.last_mut()
+    }
+
+    pub fn proxy_mut(&mut self, id: u32) -> Option<&mut Proxy> {
+        self.proxies.iter_mut().find(|proxy| proxy.id == id)
+    }
+
+    /// Removes the proxy but leaves it assigned to its accounts. Their requests fail
+    /// until they get another one, instead of quietly going out from the real IP.
+    pub fn remove_proxy(&mut self, id: u32) -> bool {
+        let count = self.proxies.len();
+        self.proxies.retain(|proxy| proxy.id != id);
+        self.proxies.len() < count
+    }
+
     /// Adds the account unless it's already there. Steam logins are unique and
     /// case-insensitive, so the login identifies an account even without a Steam ID.
     pub fn add_account(&mut self, account: Account) -> bool {
@@ -160,6 +219,7 @@ mod tests {
             }),
             password: Some("steam-password-1".to_owned().into()),
             profile: None,
+            proxy: None,
         }
     }
 
@@ -191,6 +251,7 @@ mod tests {
     fn accounts_survive_a_round_trip() {
         let contents = Contents {
             accounts: vec![account()],
+            ..Contents::default()
         };
 
         let restored = Contents::from_bytes(&contents.to_bytes()).unwrap();
@@ -253,6 +314,48 @@ mod tests {
     }
 
     #[test]
+    fn a_deleted_proxy_blocks_its_accounts_and_its_id_is_not_reused() {
+        let mut contents = Contents::default();
+        assert!(
+            contents
+                .add_proxy(ProxyAddress::parse("socks5://host.one:1080").unwrap())
+                .is_some()
+        );
+        assert!(
+            contents
+                .add_proxy(ProxyAddress::parse("socks5://HOST.one:1080").unwrap())
+                .is_none()
+        );
+        let mut account = account();
+        account.proxy = Some(1);
+        contents.add_account(account);
+
+        let account = &contents.accounts[0];
+        assert_eq!(contents.proxy_of(account).unwrap().unwrap().id, 1);
+
+        assert!(contents.remove_proxy(1));
+        assert!(contents.proxy_of(&contents.accounts[0]).is_err());
+
+        contents.add_proxy(ProxyAddress::parse("http://host.two:8080").unwrap());
+        assert_eq!(contents.proxies[0].id, 2);
+        assert!(contents.proxy_of(&contents.accounts[0]).is_err());
+    }
+
+    #[test]
+    fn proxies_and_their_ids_survive_a_round_trip() {
+        let mut contents = Contents::default();
+        contents.add_proxy(ProxyAddress::parse("socks5://user:secret@host.one:1080").unwrap());
+        contents.remove_proxy(1);
+        contents.add_proxy(ProxyAddress::parse("http://host.two:8080").unwrap());
+
+        let mut restored = Contents::from_bytes(&contents.to_bytes()).unwrap();
+        assert_eq!(restored.proxies.len(), 1);
+        assert_eq!(restored.proxies[0].address.label(), "host.two:8080");
+        restored.add_proxy(ProxyAddress::parse("http://host.three:8080").unwrap());
+        assert_eq!(restored.proxies[1].id, 3);
+    }
+
+    #[test]
     fn debug_output_has_no_secrets() {
         let account = account();
         let debug = format!("{account:?}");
@@ -266,6 +369,7 @@ mod tests {
         let mut json = String::from_utf8(
             Contents {
                 accounts: vec![account()],
+                ..Contents::default()
             }
             .to_bytes(),
         )

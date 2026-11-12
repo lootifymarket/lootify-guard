@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import AccountPage from './account/AccountPage.tsx'
 import Accounts from './Accounts.tsx'
+import Proxies from './proxies/Proxies.tsx'
 import Sidebar, { type Section } from './Sidebar.tsx'
 import SteamGuard from './SteamGuard.tsx'
 import { useAccounts } from './useAccounts.ts'
@@ -30,6 +31,7 @@ export default function Main({ onLock, onAutoLocked }: Props) {
   function content() {
     if (!list) return null
     if (section === 'guard') return <SteamGuard list={list} />
+    if (section === 'proxies') return <Proxies />
     if (openAccount) {
       return (
         <AccountPage

@@ -1,0 +1,152 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.label {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.hiddenLabel {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.anchor {
+  position: relative;
+}
+
+.trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 12px 0 14px;
+  background: var(--color-field);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.trigger svg {
+  flex: none;
+  color: var(--color-text-muted);
+  transition: transform 0.15s;
+}
+
+.trigger[aria-expanded='true'] {
+  border-color: var(--color-text-muted);
+}
+
+.trigger[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+
+.trigger:focus-visible {
+  outline: none;
+  border-color: var(--color-text-muted);
+}
+
+.md {
+  height: 48px;
+  border-radius: var(--radius-control);
+  font-size: 15px;
+}
+
+.sm {
+  height: 34px;
+  padding-left: 12px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.current {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hint {
+  color: var(--color-text-faint);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.list {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 100%;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--color-selected);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  box-shadow: 0 18px 40px rgb(0 0 0 / 0.6);
+}
+
+.option {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  font-size: 13px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.optionText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* The tick marks the chosen option; the background marks the focused one, which
+   the pointer moves too, so the two never look the same. */
+.option:focus {
+  outline: none;
+  background: var(--color-option-hover);
+}
+
+.option:disabled {
+  color: var(--color-text-faint);
+  cursor: default;
+}
+
+.check {
+  display: flex;
+  visibility: hidden;
+}
+
+.option[aria-selected='true'] .check {
+  visibility: visible;
+}

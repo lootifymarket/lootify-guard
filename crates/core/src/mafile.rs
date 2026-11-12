@@ -93,6 +93,7 @@ pub fn parse(file: &[u8]) -> Result<Account, MaFileError> {
         session: None,
         password: None,
         profile: None,
+        proxy: None,
     })
 }
 

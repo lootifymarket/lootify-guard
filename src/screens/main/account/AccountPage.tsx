@@ -5,8 +5,15 @@ import {
   exportMaFile,
   refreshProfile,
   revealRevocationCode,
+  setAccountProxy,
   type Account,
 } from '../../../api/accounts.ts'
+import {
+  listProxies,
+  PROXY_KIND_NAMES,
+  proxyTitle,
+  type Proxy,
+} from '../../../api/proxies.ts'
 import {
   biometricStatus,
   errorMessage,
@@ -14,6 +21,8 @@ import {
 } from '../../../api/vault.ts'
 import Avatar from '../../../components/Avatar.tsx'
 import Button from '../../../components/Button.tsx'
+import Dropdown, { type DropdownOption } from '../../../components/Dropdown.tsx'
+import Flag from '../../../components/Flag.tsx'
 import { useCopy } from '../../../lib/useCopy.ts'
 import { useCodeSecondsLeft } from '../useAccounts.ts'
 import layout from '../layout.module.css'
@@ -43,6 +52,8 @@ export default function AccountPage({
   const [revocationCode, setRevocationCode] = useState<string | null>(null)
   const [exported, setExported] = useState<string | null>(null)
   const [biometric, setBiometric] = useState<BiometricMethod | null>(null)
+  const [proxies, setProxies] = useState<Proxy[]>([])
+  const [proxyError, setProxyError] = useState('')
   const [checking, setChecking] = useState(false)
   const [checked, setChecked] = useState<{ ok: boolean; text: string } | null>(
     null,
@@ -55,7 +66,42 @@ export default function AccountPage({
     void biometricStatus().then((status) =>
       setBiometric(status.enrolled ? status.method : null),
     )
+    void listProxies().then(setProxies)
   }, [])
+
+  const proxyMissing =
+    account.proxyId !== null &&
+    !proxies.some((proxy) => proxy.id === account.proxyId)
+  const proxyOptions: DropdownOption[] = [
+    { value: '', label: 'No proxy' },
+    ...(proxyMissing
+      ? [
+          {
+            value: String(account.proxyId),
+            label: 'Deleted proxy',
+            disabled: true,
+          },
+        ]
+      : []),
+    ...proxies.map((proxy) => ({
+      value: String(proxy.id),
+      label: proxyTitle(proxy),
+      hint: proxy.name
+        ? `${proxy.address} · ${PROXY_KIND_NAMES[proxy.kind]}`
+        : PROXY_KIND_NAMES[proxy.kind],
+      icon: proxy.country ? <Flag code={proxy.country} /> : undefined,
+    })),
+  ]
+
+  async function changeProxy(value: string) {
+    setProxyError('')
+    try {
+      await setAccountProxy(name, value === '' ? null : Number(value))
+    } catch (err) {
+      setProxyError(errorMessage(err))
+    }
+    onChanged()
+  }
 
   async function checkSession() {
     setChecking(true)
@@ -92,9 +138,13 @@ export default function AccountPage({
           <Avatar name={name} src={account.avatar} size="lg" />
           <div className={styles.names}>
             <h1 className={layout.title}>{describe(account).title}</h1>
-            <span className={styles.steamId}>
-              {describe(account).details || 'Imported from .maFile'}
-            </span>
+            {describe(account).details ? (
+              <span className={styles.steamId}>
+                {describe(account).details}
+              </span>
+            ) : (
+              <span className={styles.muted}>Imported from .maFile</span>
+            )}
           </div>
         </div>
       </div>
@@ -154,6 +204,23 @@ export default function AccountPage({
             </dd>
           </div>
           <div className={styles.fact}>
+            <dt>Proxy</dt>
+            <dd>
+              <div className={styles.proxyPicker}>
+                <Dropdown
+                  label="Proxy"
+                  hideLabel
+                  size="sm"
+                  value={
+                    account.proxyId === null ? '' : String(account.proxyId)
+                  }
+                  options={proxyOptions}
+                  onChange={(value) => void changeProxy(value)}
+                />
+              </div>
+            </dd>
+          </div>
+          <div className={styles.fact}>
             <dt>Steam ID</dt>
             <dd className={account.steamId ? styles.mono : styles.muted}>
               {account.steamId ?? 'Appears after you sign in'}
@@ -189,6 +256,17 @@ export default function AccountPage({
             </dd>
           </div>
         </dl>
+        {proxyMissing && (
+          <p className={styles.error} role="alert">
+            This account’s proxy was deleted. It can’t reach Steam until you
+            pick another proxy or No proxy.
+          </p>
+        )}
+        {proxyError && (
+          <p className={styles.error} role="alert">
+            {proxyError}
+          </p>
+        )}
         {checked && (
           <p
             className={checked.ok ? styles.muted : styles.error}

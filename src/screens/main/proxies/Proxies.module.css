@@ -1,0 +1,279 @@
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.summary,
+.muted {
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 40px;
+}
+
+.table {
+  flex: 999 1 560px;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.row {
+  min-width: 600px;
+  display: grid;
+  grid-template-columns: minmax(140px, 2fr) 64px 72px 64px 64px 150px;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 4px;
+  border-top: 1px solid var(--color-line);
+  font-size: 13px;
+}
+
+.row:hover {
+  background: var(--color-row-selected);
+}
+
+.head,
+.head:hover {
+  background: transparent;
+  border-top: 0;
+  color: var(--color-text-faint);
+  font-size: 12px;
+}
+
+.open {
+  min-width: 0;
+  min-height: 34px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.open:hover .title {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.title {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.open:focus-visible,
+.refresh:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+.country {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.statusCell {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.refresh {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.refresh:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.address {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mono {
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-muted);
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-border);
+}
+
+.status[data-tone='ok'] {
+  color: var(--color-text);
+}
+
+.status[data-tone='ok'] .dot {
+  background: var(--color-text);
+}
+
+.status[data-tone='failed'] {
+  color: var(--color-danger);
+}
+
+.status[data-tone='failed'] .dot {
+  background: var(--color-danger);
+}
+
+.bulk {
+  flex: 1 1 240px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bulkLabel {
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.textarea {
+  padding: 12px 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-line-strong);
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.textarea::placeholder {
+  color: var(--color-text-faint);
+}
+
+.textarea:focus-visible {
+  outline: none;
+  border-color: var(--color-text-muted);
+}
+
+.bulkButton {
+  align-self: flex-start;
+}
+
+.bulkReport {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.error {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 13px;
+}
+
+/* Error messages from Rust start in lower case. */
+.error::first-letter {
+  text-transform: uppercase;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.addressFields {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr) 96px;
+  gap: 10px;
+}
+
+.credentialFields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.accounts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  border-top: 1px solid var(--color-line-strong);
+}
+
+.accounts li {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-line-strong);
+  font-size: 13px;
+}
+
+.linkField {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hint {
+  color: var(--color-text-faint);
+  font-size: 12px;
+}
+
+.test {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.testOk {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}

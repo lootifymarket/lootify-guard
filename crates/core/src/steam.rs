@@ -1,3 +1,5 @@
+use std::time::{Duration, Instant};
+
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use reqwest::StatusCode;
@@ -15,6 +17,7 @@ use steamguard::{DeviceDetails, LoginError, UserLogin};
 
 use crate::contents::{Account, Profile, Secret, Session};
 use crate::guard;
+use crate::proxy::{ProxyAddress, country_code};
 
 // What the Steam mobile app reports for itself. Signing in as it is what makes the
 // tokens good for trade confirmations later.
@@ -26,6 +29,12 @@ const LINK_DETAILS_URL: &str =
 const AVATAR_URL: &str = "https://avatars.steamstatic.com";
 // A 64×64 JPEG is a few kilobytes; anything far bigger isn't an avatar.
 const MAX_AVATAR_LEN: usize = 256 * 1024;
+const SERVER_INFO_URL: &str = "https://api.steampowered.com/ISteamWebAPIUtil/GetServerInfo/v1/";
+// Open-source and keyless. It sees only the proxy's IP, since the lookup goes through it.
+const COUNTRY_URL: &str = "https://api.country.is/";
+// A dead proxy should fail the request, not hang it.
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Errors from steamguard and reqwest print their requests, URLs and access tokens
 /// included, so none of their text is passed on.
@@ -45,6 +54,8 @@ pub enum SteamError {
     SessionExpired,
     #[error("couldn't reach Steam, check the connection")]
     Network,
+    #[error("couldn't reach Steam through the proxy")]
+    Proxy,
     #[error("Steam answered with something unexpected ({0})")]
     Steam(String),
 }
@@ -56,8 +67,13 @@ pub struct SignedIn {
 
 /// Signs in with the account's password, confirming with its own Guard code. Like
 /// everything here, it blocks on the network, so call it off the async runtime.
-pub fn sign_in(account: &Account, password: &str) -> Result<SignedIn, SteamError> {
-    let transport = WebApiTransport::new(client()?);
+/// Every request goes through `proxy` when there is one.
+pub fn sign_in(
+    account: &Account,
+    proxy: Option<&ProxyAddress>,
+    password: &str,
+) -> Result<SignedIn, SteamError> {
+    let transport = WebApiTransport::new(client(proxy)?);
     // Steam checks the code against its own clock, which the computer's may be off from.
     let server_time = get_server_time(transport.clone())
         .map_err(|_| SteamError::Network)?
@@ -115,11 +131,14 @@ pub fn sign_in(account: &Account, password: &str) -> Result<SignedIn, SteamError
 /// session, so it doubles as a check of one. Access tokens last about a day; when
 /// the stored one has run out, a new one is made from the refresh token and
 /// returned alongside the profile so it can be saved.
-pub fn fetch_profile(account: &Account) -> Result<(Session, Profile), SteamError> {
+pub fn fetch_profile(
+    account: &Account,
+    proxy: Option<&ProxyAddress>,
+) -> Result<(Session, Profile), SteamError> {
     let (Some(session), Some(steam_id)) = (&account.session, account.steam_id) else {
         return Err(SteamError::SessionExpired);
     };
-    let client = client()?;
+    let client = client(proxy)?;
     let mut session = session.clone();
     let details = match link_details(&client, &session, steam_id) {
         Err(SteamError::SessionExpired) => {
@@ -164,8 +183,53 @@ struct PublicData {
     sha_digest_avatar: Option<String>,
 }
 
-fn client() -> Result<Client, SteamError> {
-    Client::builder().build().map_err(|_| SteamError::Network)
+pub struct ProxyCheck {
+    pub latency: Duration,
+    /// `None` when the lookup failed: the proxy still works for Steam.
+    pub country: Option<String>,
+}
+
+/// Times a request to Steam through the proxy, which is the one thing it is for,
+/// then asks where the proxy comes out.
+pub fn check_proxy(proxy: &ProxyAddress) -> Result<ProxyCheck, SteamError> {
+    let client = client(Some(proxy))?;
+    let started = Instant::now();
+    client
+        .get(SERVER_INFO_URL)
+        .send()
+        .and_then(|response| response.error_for_status())
+        .map_err(|_| SteamError::Proxy)?;
+    let latency = started.elapsed();
+    Ok(ProxyCheck {
+        latency,
+        country: proxy_country(&client),
+    })
+}
+
+#[derive(Deserialize)]
+struct CountryAnswer {
+    country: String,
+}
+
+fn proxy_country(client: &Client) -> Option<String> {
+    let answer: CountryAnswer = client
+        .get(COUNTRY_URL)
+        .send()
+        .and_then(|response| response.error_for_status())
+        .and_then(|response| response.json())
+        .ok()?;
+    country_code(&answer.country)
+}
+
+fn client(proxy: Option<&ProxyAddress>) -> Result<Client, SteamError> {
+    let mut builder = Client::builder()
+        .connect_timeout(CONNECT_TIMEOUT)
+        .timeout(REQUEST_TIMEOUT);
+    if let Some(proxy) = proxy {
+        // An explicit proxy also turns off the system one, so nothing goes around it.
+        builder = builder.proxy(proxy.to_reqwest().map_err(|_| SteamError::Proxy)?);
+    }
+    builder.build().map_err(|_| SteamError::Network)
 }
 
 fn link_details(
@@ -277,7 +341,62 @@ fn guard_code_error(err: UpdateAuthSessionError) -> SteamError {
 
 #[cfg(test)]
 mod tests {
+    use std::io::{BufRead, BufReader, ErrorKind, Write};
+    use std::net::TcpListener;
+    use std::thread;
+
     use super::*;
+    use crate::proxy::ProxyKind;
+
+    fn http_proxy(port: u16) -> ProxyAddress {
+        ProxyAddress::new(ProxyKind::Http, "127.0.0.1", port, None, None).unwrap()
+    }
+
+    #[test]
+    fn requests_go_through_the_proxy() {
+        let proxy = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = proxy.local_addr().unwrap().port();
+        let seen = thread::spawn(move || {
+            let (mut stream, _) = proxy.accept().unwrap();
+            let mut line = String::new();
+            BufReader::new(&stream).read_line(&mut line).unwrap();
+            stream
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n")
+                .unwrap();
+            line
+        });
+
+        client(Some(&http_proxy(port)))
+            .unwrap()
+            .get("http://steam.invalid/")
+            .send()
+            .unwrap();
+        assert!(
+            seen.join()
+                .unwrap()
+                .starts_with("GET http://steam.invalid/")
+        );
+    }
+
+    #[test]
+    fn a_dead_proxy_fails_instead_of_going_direct() {
+        let target = TcpListener::bind("127.0.0.1:0").unwrap();
+        target.set_nonblocking(true).unwrap();
+        let target_port = target.local_addr().unwrap().port();
+        // Bound and dropped, so nothing listens on this port.
+        let dead_port = TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port();
+
+        let result = client(Some(&http_proxy(dead_port)))
+            .unwrap()
+            .get(format!("http://127.0.0.1:{target_port}/"))
+            .send();
+        assert!(result.is_err());
+        assert_eq!(target.accept().unwrap_err().kind(), ErrorKind::WouldBlock);
+    }
 
     #[test]
     fn avatar_url_uses_the_hex_digest() {

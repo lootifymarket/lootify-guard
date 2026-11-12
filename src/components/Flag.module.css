@@ -1,0 +1,12 @@
+.flag {
+  width: 18px;
+  height: 12px;
+  flex: none;
+  border-radius: 2px;
+}
+
+.code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-muted);
+}

@@ -3,6 +3,7 @@
 
 mod accounts;
 mod biometrics;
+mod proxies;
 mod vault;
 
 use tauri::Manager;
@@ -36,6 +37,14 @@ fn main() {
             accounts::remove_account,
             accounts::sign_in,
             accounts::refresh_profile,
+            accounts::set_account_proxy,
+            proxies::list_proxies,
+            proxies::add_proxies,
+            proxies::add_proxy,
+            proxies::parse_proxy,
+            proxies::test_proxy,
+            proxies::remove_proxy,
+            proxies::check_proxy,
         ])
         .run(tauri::generate_context!())
         .expect("failed to run tauri application");
