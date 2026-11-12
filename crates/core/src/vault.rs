@@ -128,6 +128,14 @@ impl Vault {
         &self.key
     }
 
+    pub fn password_check(&self) -> PasswordCheck {
+        PasswordCheck {
+            params: self.params,
+            salt: self.salt,
+            key: self.key.clone(),
+        }
+    }
+
     /// Re-encrypts the vault for a new password. The salt changes too, so a key
     /// stored for the old password no longer opens it.
     pub fn change_password(&mut self, password: &str) -> Result<(), VaultError> {
@@ -187,6 +195,20 @@ impl fmt::Debug for Vault {
             .field("path", &self.path)
             .field("params", &self.params)
             .finish_non_exhaustive()
+    }
+}
+
+/// What it takes to check a password against an unlocked vault, copied out of it so
+/// the slow key derivation doesn't have to hold on to the vault while it runs.
+pub struct PasswordCheck {
+    params: KdfParams,
+    salt: [u8; SALT_LEN],
+    key: VaultKey,
+}
+
+impl PasswordCheck {
+    pub fn matches(&self, password: &str) -> Result<bool, VaultError> {
+        Ok(*derive_key(password, &self.salt, self.params)? == *self.key)
     }
 }
 
@@ -478,6 +500,23 @@ mod tests {
             Vault::open(&path, "correct horse").unwrap().data(),
             b"shared_secret"
         );
+    }
+
+    #[test]
+    fn password_check_accepts_only_the_current_password() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = vault_path(&dir);
+        create_with(&path, b"shared_secret");
+        let mut vault = Vault::open(&path, "correct horse").unwrap();
+
+        let check = vault.password_check();
+        assert!(check.matches("correct horse").unwrap());
+        assert!(!check.matches("battery staple").unwrap());
+
+        vault.change_password("battery staple").unwrap();
+        let check = vault.password_check();
+        assert!(check.matches("battery staple").unwrap());
+        assert!(!check.matches("correct horse").unwrap());
     }
 
     #[test]

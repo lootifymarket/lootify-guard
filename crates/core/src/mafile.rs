@@ -1,6 +1,6 @@
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use zeroize::Zeroizing;
 
 use crate::contents::{Account, Authenticator, Secret};
@@ -91,6 +91,51 @@ pub fn parse(file: &[u8]) -> Result<Account, MaFileError> {
             device_id: mafile.device_id,
         },
     })
+}
+
+#[derive(Serialize)]
+struct SdaFile<'a> {
+    account_name: &'a str,
+    shared_secret: &'a Secret,
+    identity_secret: &'a Secret,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    revocation_code: Option<&'a Secret>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    secret_1: Option<&'a Secret>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    uri: Option<&'a Secret>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    serial_number: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    token_gid: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    device_id: Option<&'a str>,
+    #[serde(rename = "Session", skip_serializing_if = "Option::is_none")]
+    session: Option<SdaSession>,
+}
+
+#[derive(Serialize)]
+struct SdaSession {
+    #[serde(rename = "SteamID")]
+    steam_id: u64,
+}
+
+/// Writes the account as an SDA `.maFile`, the format other managers read too.
+pub fn export(account: &Account) -> Zeroizing<Vec<u8>> {
+    let auth = &account.authenticator;
+    let file = SdaFile {
+        account_name: &account.account_name,
+        shared_secret: &auth.shared_secret,
+        identity_secret: &auth.identity_secret,
+        revocation_code: auth.revocation_code.as_ref(),
+        secret_1: auth.secret_1.as_ref(),
+        uri: auth.uri.as_ref(),
+        serial_number: auth.serial_number.as_deref(),
+        token_gid: auth.token_gid.as_deref(),
+        device_id: auth.device_id.as_deref(),
+        session: account.steam_id.map(|steam_id| SdaSession { steam_id }),
+    };
+    Zeroizing::new(serde_json::to_vec(&file).expect("a .maFile has only string keys"))
 }
 
 fn user_steam_id(id: SteamId) -> Result<u64, MaFileError> {
@@ -236,6 +281,41 @@ mod tests {
                 MaFileError::Invalid("Steam ID")
             );
         }
+    }
+
+    #[test]
+    fn exported_file_reads_back_the_same() {
+        let original = parse_json(&sda()).unwrap();
+        let restored = parse(&export(&original)).unwrap();
+
+        assert_eq!(restored.steam_id, original.steam_id);
+        assert_eq!(restored.account_name, original.account_name);
+        let secrets = |account: &Account| {
+            let auth = &account.authenticator;
+            [
+                Some(auth.shared_secret.expose().to_owned()),
+                Some(auth.identity_secret.expose().to_owned()),
+                auth.revocation_code.as_ref().map(|s| s.expose().to_owned()),
+                auth.secret_1.as_ref().map(|s| s.expose().to_owned()),
+                auth.uri.as_ref().map(|s| s.expose().to_owned()),
+                auth.serial_number.clone(),
+                auth.token_gid.clone(),
+                auth.device_id.clone(),
+            ]
+        };
+        assert_eq!(secrets(&restored), secrets(&original));
+    }
+
+    #[test]
+    fn export_leaves_out_what_the_account_lacks() {
+        let file = serde_json::json!({
+            "account_name": "trader_one",
+            "shared_secret": SHARED,
+            "identity_secret": IDENTITY,
+        });
+        let exported: serde_json::Value =
+            serde_json::from_slice(&export(&parse_json(&file).unwrap())).unwrap();
+        assert_eq!(exported, file);
     }
 
     #[test]

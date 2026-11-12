@@ -1,6 +1,7 @@
 // Keeps Windows release builds from opening a console window next to the app.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod accounts;
 mod biometrics;
 mod vault;
 
@@ -25,8 +26,11 @@ fn main() {
             vault::change_password,
             vault::lock_vault,
             vault::erase_vault,
-            vault::list_accounts,
-            vault::import_mafiles,
+            accounts::list_accounts,
+            accounts::import_mafiles,
+            accounts::reveal_revocation_code,
+            accounts::export_mafile,
+            accounts::remove_account,
         ])
         .run(tauri::generate_context!())
         .expect("failed to run tauri application");
