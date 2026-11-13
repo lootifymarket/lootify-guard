@@ -6,6 +6,7 @@ import Inventory from './inventory/Inventory.tsx'
 import Proxies from './proxies/Proxies.tsx'
 import Sidebar, { type Section } from './Sidebar.tsx'
 import SteamGuard from './SteamGuard.tsx'
+import Tasks from './tasks/Tasks.tsx'
 import Trades from './trades/Trades.tsx'
 import { useAccounts } from './useAccounts.ts'
 import { useAutoLock } from './useAutoLock.ts'
@@ -47,6 +48,9 @@ export default function Main({ onLock, onAutoLocked }: Props) {
           onChanged={reload}
         />
       )
+    }
+    if (section === 'tasks') {
+      return <Tasks accounts={list.accounts} groups={list.groups} />
     }
     if (section === 'proxies') return <Proxies />
     if (section === 'add') {

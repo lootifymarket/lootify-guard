@@ -12,6 +12,7 @@ mod profile;
 mod proxies;
 mod security;
 mod sign_ins;
+mod tasks;
 mod trades;
 mod vault;
 
@@ -34,6 +35,7 @@ fn main() {
             app.manage(add_account::AddAccountState::default());
             app.manage(inventory::InventoryCache::default());
             app.manage(inventory::IconCache::default());
+            app.manage(tasks::Tasks::default());
             vault::watch_idle(app.handle().clone());
             auto_confirm::watch(app.handle().clone());
             Ok(())
@@ -91,6 +93,10 @@ fn main() {
             profile::save_profile,
             profile::clear_name_history,
             profile::change_avatar,
+            tasks::start_task,
+            tasks::task_queue,
+            tasks::cancel_task,
+            tasks::clear_finished_tasks,
             trades::list_trade_offers,
             trades::accept_trade_offer,
             trades::decline_trade_offer,

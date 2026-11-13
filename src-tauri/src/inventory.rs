@@ -35,6 +35,17 @@ pub struct IconCache(Mutex<HashMap<String, String>>);
 
 const MAX_CACHED_ICONS: usize = 5000;
 
+impl InventoryCache {
+    /// Drops what's known of the accounts' inventories, for when their items
+    /// moved outside these commands. Waits for a fetch under way, so it's for
+    /// threads off the async runtime.
+    pub fn forget_blocking(&self, account_names: &[&str]) {
+        self.one_at_a_time
+            .blocking_lock()
+            .retain(|(account, _), _| !account_names.contains(&account.as_str()));
+    }
+}
+
 const INVENTORY_FRESH_FOR: Duration = Duration::from_secs(60);
 
 /// Everything in the account's inventory for the game.

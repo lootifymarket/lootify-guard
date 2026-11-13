@@ -4,7 +4,7 @@ import { useSecondsLeft } from './useAccounts.ts'
 import styles from './Sidebar.module.css'
 
 export type Section =
-  'accounts' | 'guard' | 'trades' | 'inventory' | 'proxies' | 'add'
+  'accounts' | 'guard' | 'trades' | 'inventory' | 'tasks' | 'proxies' | 'add'
 
 const SECTIONS: { id: Section; label: string; icon: string }[] = [
   {
@@ -26,6 +26,11 @@ const SECTIONS: { id: Section; label: string; icon: string }[] = [
     id: 'inventory',
     label: 'Inventory',
     icon: 'M21 8l-9-5-9 5v8l9 5 9-5V8zM3 8l9 5 9-5M12 13v8',
+  },
+  {
+    id: 'tasks',
+    label: 'Tasks',
+    icon: 'M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2',
   },
   {
     id: 'proxies',
