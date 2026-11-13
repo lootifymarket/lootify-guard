@@ -21,7 +21,9 @@ import { useT } from '../../../i18n/index.ts'
 import Dialog from '../../../components/Dialog.tsx'
 import dialogStyles from '../../../components/Dialog.module.css'
 import Dropdown from '../../../components/Dropdown.tsx'
+import Skeleton from '../../../components/Skeleton.tsx'
 import TextField from '../../../components/TextField.tsx'
+import { useToast } from '../../../lib/toast.ts'
 import styles from './AccountPage.module.css'
 import Private from '../../../components/Private.tsx'
 import { MASK } from '../../../lib/streamer.ts'
@@ -46,15 +48,14 @@ export default function ProfileForm({
   const t = words.account.profile
   const [saved, setSaved] = useState<ProfileSettings | null>(null)
   const [draft, setDraft] = useState<ProfileSettings | null>(null)
+  const toast = useToast()
   const [busy, setBusy] = useState(false)
-  const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(
-    null,
-  )
+  const [error, setError] = useState('')
   const [clearing, setClearing] = useState(false)
   const summaryId = useId()
 
   const failed = useEffectEvent((err: unknown) => {
-    setStatus({ ok: false, text: errorMessage(err) })
+    setError(errorMessage(err))
     onChanged()
   })
   useEffect(() => {
@@ -65,13 +66,19 @@ export default function ProfileForm({
   }, [accountName])
 
   if (!draft || !saved) {
-    return (
-      <p
-        className={status ? styles.error : styles.muted}
-        role={status ? 'alert' : undefined}
-      >
-        {status?.text ?? t.loading}
+    return error ? (
+      <p className={styles.error} role="alert">
+        {error}
       </p>
+    ) : (
+      <div className={styles.section} aria-label={t.loading}>
+        <div className={styles.profileGrid}>
+          <Skeleton height={42} />
+          <Skeleton height={42} />
+        </div>
+        <Skeleton height={84} />
+        <Skeleton width="60%" height={42} />
+      </div>
     )
   }
 
@@ -83,24 +90,24 @@ export default function ProfileForm({
 
   function edit(next: Partial<ProfileSettings>) {
     setDraft((current) => current && { ...current, ...next })
-    setStatus(null)
+    setError('')
   }
 
   async function save(event: FormEvent) {
     event.preventDefault()
     if (!dirty || busy || !draft) return
     setBusy(true)
-    setStatus(null)
+    setError('')
     try {
       await saveProfile(accountName, changes)
       // The nickname list isn't edited here, so the saved one is kept.
       setSaved(
         (current) => current && { ...draft, pastNames: current.pastNames },
       )
-      setStatus({ ok: true, text: t.saved })
+      toast(t.saved)
       if (changes.personaName !== undefined) onChanged()
     } catch (err) {
-      setStatus({ ok: false, text: errorMessage(err) })
+      setError(errorMessage(err))
     }
     setBusy(false)
   }
@@ -110,12 +117,14 @@ export default function ProfileForm({
       <div className={styles.profileGrid}>
         <TextField
           label={t.nickname}
+          className={styles.input}
           value={draft.personaName}
           onChange={(event) => edit({ personaName: event.target.value })}
         />
         <div className={styles.field}>
           <TextField
             label={t.url}
+            className={styles.input}
             placeholder={t.notSet}
             autoCapitalize="off"
             spellCheck={false}
@@ -174,12 +183,9 @@ export default function ProfileForm({
           </ul>
         </div>
       )}
-      {status && (
-        <p
-          className={status.ok ? styles.muted : styles.error}
-          role={status.ok ? 'status' : 'alert'}
-        >
-          {status.text}
+      {error && (
+        <p className={styles.error} role="alert">
+          {error}
         </p>
       )}
       <div className={styles.formActions}>
@@ -204,6 +210,7 @@ export default function ProfileForm({
           onCancel={() => setClearing(false)}
           onCleared={() => {
             setClearing(false)
+            toast(t.historyCleared)
             setSaved((current) => current && { ...current, pastNames: [] })
           }}
         />

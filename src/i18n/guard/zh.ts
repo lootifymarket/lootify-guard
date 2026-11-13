@@ -6,9 +6,9 @@ export const guard: typeof en = {
   codes: '代码',
   findAccount: '查找账户',
   clickToCopy: '点击复制',
+  hiddenClickToCopy: '已隐藏 · 点击复制',
   noAccounts: '还没有账户。请在“账户”页面导入 .maFile 文件。',
   nothingFound: '没有找到结果。',
-  loading: '加载中…',
   refresh: '刷新',
 
   confirmations: {
@@ -19,6 +19,10 @@ export const guard: typeof en = {
     nothing: '没有需要确认的内容。',
     confirm: '确认',
     decline: '拒绝',
+    refreshed: '确认列表已刷新',
+    confirmed: '已确认',
+    declined: '已拒绝',
+    confirmedCount: (n) => `已确认：${n}`,
     confirmAllTitle: '全部确认？',
     confirmAllText: (operations, accounts) =>
       `将确认 ${accounts} 个账户上的 ${operations} 项操作。如果不确定它们是什么，请先查看。`,
@@ -62,6 +66,8 @@ export const guard: typeof en = {
       `已为 ${total} 个账户中的 ${on} 个开启：${names}`,
     offForAll: '所有账户均已关闭。请在“规则”中选择要确认的内容。',
     pausedNote: '已暂停。在你继续之前，不会自动确认任何内容。',
+    pausedToast: '自动确认已暂停',
+    resumedToast: '自动确认已恢复',
     confirmedLog: '已自动确认',
     nothingYet: '自保险库解锁以来，还没有自动确认任何内容。',
     footnote:
@@ -77,6 +83,8 @@ export const guard: typeof en = {
     account: '账户',
     all: (n) => `全部 ${n} 个`,
     forEvery: (rule) => `为所有账户开启“${rule}”`,
+    toggledForAll: (rule, on, n) =>
+      `已为 ${n} 个账户${on ? '开启' : '关闭'}“${rule}”`,
     notSignedIn: '未登录',
     risky: (names) =>
       `已为 ${names} 开启“任意市场上架”。任何进入这些 Steam 会话的人发布的上架也会被确认。`,

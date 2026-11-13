@@ -79,6 +79,10 @@
   font-size: 12px;
 }
 
+.hint[data-copied='true'] {
+  color: var(--color-text);
+}
+
 .value {
   font-family: var(--font-mono);
   font-size: 26px;

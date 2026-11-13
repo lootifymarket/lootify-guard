@@ -6,10 +6,11 @@ import Button from '../../../components/Button.tsx'
 import { useT } from '../../../i18n/index.ts'
 import Dialog from '../../../components/Dialog.tsx'
 import dialogStyles from '../../../components/Dialog.module.css'
-import { useCopy } from '../../../lib/useCopy.ts'
+import { useToast } from '../../../lib/toast.ts'
 import ProfileForm from './ProfileForm.tsx'
 import styles from './AccountPage.module.css'
 import Private from '../../../components/Private.tsx'
+import Skeleton from '../../../components/Skeleton.tsx'
 
 type Props = {
   accountName: string
@@ -28,11 +29,12 @@ export default function ProfileTab({
   signedIn,
   onChanged,
 }: Props) {
-  const t = useT().account
+  const words = useT()
+  const t = words.account
+  const toast = useToast()
   const [url, setUrl] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [confirming, setConfirming] = useState(false)
-  const { copy, label } = useCopy()
 
   const failed = useEffectEvent((err: unknown) => {
     setError(errorMessage(err))
@@ -58,30 +60,40 @@ export default function ProfileTab({
         steamId={steamId}
         onChanged={onChanged}
       />
-      <section className={styles.section} aria-labelledby="trade-url-title">
-        <h2 id="trade-url-title" className={styles.sectionTitle}>
+      <section className={styles.field} aria-labelledby="trade-url-title">
+        <span id="trade-url-title" className={styles.fieldLabel}>
           {t.profile.tradeUrl}
-        </h2>
+        </span>
         <div className={styles.tradeUrl}>
           <span className={styles.tradeUrlText}>
-            {url ? <Private>{url}</Private> : t.profile.loadingUrl}
+            {url ? (
+              <Private>{url}</Private>
+            ) : (
+              <Skeleton width="70%" height={12} />
+            )}
           </span>
-          <Button
-            variant="secondary"
-            size="sm"
+          <button
+            type="button"
+            className={styles.urlButton}
             disabled={!url}
-            onClick={() => url && copy('url', url)}
+            onClick={() =>
+              url &&
+              void navigator.clipboard.writeText(url).then(
+                () => toast(t.profile.urlCopied),
+                () => toast(words.common.copyFailed),
+              )
+            }
           >
-            {label('url', t.copy)}
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
+            {t.copy}
+          </button>
+          <button
+            type="button"
+            className={styles.urlButton}
             disabled={!url}
             onClick={() => setConfirming(true)}
           >
             {t.profile.refresh}
-          </Button>
+          </button>
         </div>
         <span className={styles.muted}>{t.profile.tradeUrlHint}</span>
         {error && (
@@ -100,6 +112,7 @@ export default function ProfileTab({
             onMade={(next) => {
               setUrl(next)
               setConfirming(false)
+              toast(t.profile.urlMade)
             }}
           />
         </Dialog>
@@ -168,6 +181,7 @@ function AvatarPicker({
   onChanged: () => void
 }) {
   const t = useT().account.profile
+  const toast = useToast()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -175,7 +189,10 @@ function AvatarPicker({
     setBusy(true)
     setError('')
     try {
-      if (await changeAvatar(accountName)) onChanged()
+      if (await changeAvatar(accountName)) {
+        toast(t.avatarUpdated)
+        onChanged()
+      }
     } catch (err) {
       setError(errorMessage(err))
     }

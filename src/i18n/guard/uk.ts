@@ -7,10 +7,10 @@ export const guard: typeof en = {
   codes: 'Коди',
   findAccount: 'Знайти акаунт',
   clickToCopy: 'Натисніть, щоб скопіювати',
+  hiddenClickToCopy: 'Приховано · натисніть, щоб скопіювати',
   noAccounts:
     'Акаунтів поки немає. Імпортуйте файли .maFile на екрані «Акаунти».',
   nothingFound: 'Нічого не знайдено.',
-  loading: 'Завантаження…',
   refresh: 'Оновити',
 
   confirmations: {
@@ -22,6 +22,10 @@ export const guard: typeof en = {
     nothing: 'Підтверджувати нічого.',
     confirm: 'Підтвердити',
     decline: 'Відхилити',
+    refreshed: 'Підтвердження оновлено',
+    confirmed: 'Підтверджено',
+    declined: 'Відхилено',
+    confirmedCount: (n) => `Підтверджено: ${n}`,
     confirmAllTitle: 'Підтвердити все?',
     confirmAllText: (operations, accounts) =>
       `Операцій до підтвердження: ${operations}, акаунтів: ${accounts}. Якщо не впевнені, що це за операції, спершу перегляньте їх.`,
@@ -67,6 +71,8 @@ export const guard: typeof en = {
       'Вимкнено для всіх акаунтів. Виберіть, що підтверджувати, у «Правилах».',
     pausedNote:
       'На паузі. Поки ви не продовжите, нічого не підтверджується автоматично.',
+    pausedToast: 'Автопідтвердження на паузі',
+    resumedToast: 'Автопідтвердження знову працює',
     confirmedLog: 'Підтверджено автоматично',
     nothingYet:
       'Відколи сховище розблоковано, нічого не підтверджено автоматично.',
@@ -85,6 +91,8 @@ export const guard: typeof en = {
     account: 'Акаунт',
     all: (n) => `Усі ${n}`,
     forEvery: (rule) => `${rule} для всіх акаунтів`,
+    toggledForAll: (rule, on, n) =>
+      `${rule}: ${on ? 'увімкнено' : 'вимкнено'} для ${n} ${plural('uk', n, { one: 'акаунта', other: 'акаунтів' })}`,
     notSignedIn: 'Вхід не виконано',
     risky: (names, n) =>
       `«Будь-які лоти на маркеті» увімкнено для ${names}. Лоти, виставлені будь-ким, хто потрапить у ${n === 1 ? 'цю сесію' : 'ці сесії'} Steam, теж підтверджуються.`,

@@ -8,9 +8,9 @@ import {
 import { errorMessage } from '../../api/vault.ts'
 import Button from '../../components/Button.tsx'
 import Dialog from '../../components/Dialog.tsx'
-import Dropdown from '../../components/Dropdown.tsx'
 import dialogStyles from '../../components/Dialog.module.css'
 import { useT } from '../../i18n/index.ts'
+import { useToast } from '../../lib/toast.ts'
 import { groupOptions, inGroup } from './groups/groupFilter.ts'
 import styles from './AutoConfirmRules.module.css'
 
@@ -41,15 +41,19 @@ export default function AutoConfirmRules({
   return (
     <Dialog open={open} title={t.title} wide onClose={onClose}>
       {groups.length > 0 && (
-        <div className={styles.groupFilter}>
-          <Dropdown
-            label={t.group}
-            hideLabel
-            size="sm"
-            value={groupFilter}
-            options={groupOptions(groups)}
-            onChange={setGroupFilter}
-          />
+        <div className={styles.tabs} role="tablist" aria-label={t.group}>
+          {groupOptions(groups).map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              role="tab"
+              aria-selected={groupFilter === option.value}
+              className={styles.tab}
+              onClick={() => setGroupFilter(option.value)}
+            >
+              {option.label}
+            </button>
+          ))}
         </div>
       )}
       <Table accounts={shown} onChanged={onChanged} />
@@ -74,12 +78,20 @@ function Table({
   const t = words.guard.rulesDialog
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const toast = useToast()
 
-  async function set(names: string[], rule: AutoConfirmRule, on: boolean) {
+  /** `announce` names the rule when it's set for every account shown. */
+  async function set(
+    names: string[],
+    rule: AutoConfirmRule,
+    on: boolean,
+    announce?: string,
+  ) {
     setBusy(true)
     setError('')
     try {
       await setAutoConfirmRule(names, rule, on)
+      if (announce) toast(t.toggledForAll(announce, on, names.length))
     } catch (err) {
       setError(errorMessage(err))
     }
@@ -133,7 +145,7 @@ function Table({
                       checked={all ? true : on > 0 ? 'mixed' : false}
                       label={t.forEvery(label)}
                       disabled={busy}
-                      onClick={() => void set(names, rule, !all)}
+                      onClick={() => void set(names, rule, !all, label)}
                     />
                   </td>
                 )

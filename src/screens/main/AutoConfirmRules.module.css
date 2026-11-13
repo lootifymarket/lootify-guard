@@ -165,6 +165,32 @@
   line-height: 1.5;
 }
 
-.groupFilter {
-  width: 220px;
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.tab {
+  height: 38px;
+  margin-bottom: -1px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  color: var(--color-text-faint);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.tab[aria-selected='true'] {
+  border-bottom-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
 }

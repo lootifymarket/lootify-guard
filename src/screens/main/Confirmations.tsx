@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useState } from 'react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import type { Account } from '../../api/accounts.ts'
 import {
   confirmationKindName,
@@ -12,11 +12,15 @@ import Button from '../../components/Button.tsx'
 import Dialog from '../../components/Dialog.tsx'
 import dialogStyles from '../../components/Dialog.module.css'
 import Icon from '../../components/Icon.tsx'
+import Skeleton from '../../components/Skeleton.tsx'
 import { useT } from '../../i18n/index.ts'
+import { useToast } from '../../lib/toast.ts'
 import { fromAccounts, type AccountFailure } from './fromAccounts.ts'
 import styles from './Confirmations.module.css'
 
 type Item = Confirmation & { accountName: string }
+
+const SKELETON_ROWS = 3
 
 const REFRESH =
   'M23 4v6h-6M1 20v-6h6M3.5 9a9 9 0 0 1 14.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15'
@@ -46,7 +50,11 @@ export default function Confirmations({
   const [busy, setBusy] = useState<Set<string>>(new Set())
   const [itemErrors, setItemErrors] = useState<Record<string, string>>({})
   const [confirmingAll, setConfirmingAll] = useState(false)
+  // Set by the refresh button, so only a refresh the user asked for is announced.
+  const announce = useRef(false)
+  const toast = useToast()
   const changed = useEffectEvent(onChanged)
+  const refreshed = useEffectEvent(() => toast(t.refreshed))
 
   useEffect(() => {
     let active = true
@@ -55,6 +63,10 @@ export default function Confirmations({
       if (!active) return
       setItems(items.sort((a, b) => b.createdAt - a.createdAt))
       setFailures(failures)
+      if (announce.current) {
+        announce.current = false
+        refreshed()
+      }
       // A failed account may have lost its session, which the list shows.
       if (failures.length > 0) changed()
     })
@@ -89,6 +101,15 @@ export default function Confirmations({
     setItemErrors((all) => ({ ...all, ...errors }))
     setBusy((all) => new Set([...all].filter((id) => !ids.includes(id))))
     if (Object.keys(errors).length > 0) onChanged()
+    if (done.size > 0) {
+      toast(
+        !accept
+          ? t.declined
+          : done.size === 1
+            ? t.confirmed
+            : t.confirmedCount(done.size),
+      )
+    }
   }
 
   const loading = items === null && signedIn.length > 0
@@ -108,24 +129,36 @@ export default function Confirmations({
             title={words.guard.refresh}
             disabled={loading}
             onClick={() => {
+              announce.current = true
               setItems(null)
               setRevision((r) => r + 1)
             }}
           >
             <Icon path={REFRESH} size={14} stroke={2} />
           </button>
-          <Button
-            size="sm"
+          <button
+            type="button"
+            className={styles.confirmAll}
             disabled={!items?.length || busy.size > 0}
             onClick={() => setConfirmingAll(true)}
           >
             {t.confirmAll}
-          </Button>
+          </button>
         </div>
       </div>
 
       {signedIn.length === 0 && <p className={styles.note}>{t.signInFirst}</p>}
-      {loading && <p className={styles.note}>{words.guard.loading}</p>}
+      {loading &&
+        Array.from({ length: SKELETON_ROWS }, (_, i) => (
+          <div key={i} className={styles.skeleton}>
+            <Skeleton width="60%" height={14} />
+            <Skeleton width="40%" height={12} />
+            <span className={styles.actions}>
+              <Skeleton width={100} height={32} />
+              <Skeleton width={90} height={32} />
+            </span>
+          </div>
+        ))}
       {items?.length === 0 && failures.length === 0 && (
         <p className={styles.note}>{t.nothing}</p>
       )}
@@ -138,7 +171,7 @@ export default function Confirmations({
       ))}
 
       {items?.map((item) => (
-        <div key={item.id} className={styles.item}>
+        <div key={item.id} className={`${styles.item} rise`}>
           <div className={styles.itemHead}>
             <span className={styles.itemWords}>
               <span className={styles.headline}>{item.headline}</span>

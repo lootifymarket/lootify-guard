@@ -13,6 +13,12 @@ export const account: typeof en = {
     security: '安全',
   },
 
+  status: {
+    playing: '游戏中',
+    signedIn: '已登录',
+    notSignedIn: '未登录',
+  },
+
   security: {
     title: '安全',
     steamSession: 'Steam 会话',
@@ -60,6 +66,8 @@ export const account: typeof en = {
   },
 
   autoConfirm: {
+    ruleOn: (label) => `${label}：开`,
+    ruleOff: (label) => `${label}：关`,
     title: '自动确认',
     setForMany: '为多个账户设置',
     notUntilSignedIn: '账户登录 Steam 之前不会确认任何内容。',
@@ -164,9 +172,13 @@ export const account: typeof en = {
   },
 
   profile: {
+    urlCopied: '交易链接已复制',
+    urlMade: '已创建新的交易链接',
+    historyCleared: '昵称历史已清除',
+    avatarUpdated: '头像已更新',
     signInFirst: '请在“安全”选项卡中登录 Steam 以查看个人资料。',
     loading: '正在加载个人资料…',
-    saved: '已在 Steam 中保存。',
+    saved: '已在 Steam 上更新个人资料',
     nickname: '昵称',
     url: '个人资料链接',
     notSet: '未设置',
@@ -201,6 +213,7 @@ export const account: typeof en = {
   },
 
   playing: {
+    applied: '游戏已更新',
     label: '游戏',
     signInFirst: '请在“安全”选项卡中登录 Steam 以运行游戏。',
     applyChanges: '应用更改',

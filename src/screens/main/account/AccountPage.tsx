@@ -43,8 +43,10 @@ import Avatar from '../../../components/Avatar.tsx'
 import Button from '../../../components/Button.tsx'
 import Dropdown, { type DropdownOption } from '../../../components/Dropdown.tsx'
 import Flag from '../../../components/Flag.tsx'
+import Skeleton from '../../../components/Skeleton.tsx'
 import Toggle from '../../../components/Toggle.tsx'
 import { useT, type Dictionary } from '../../../i18n/index.ts'
+import { useToast } from '../../../lib/toast.ts'
 import { useCopy } from '../../../lib/useCopy.ts'
 import { useCodeSecondsLeft } from '../useAccounts.ts'
 import AutoConfirmRules from '../AutoConfirmRules.tsx'
@@ -96,7 +98,6 @@ export default function AccountPage({
   const [tab, setTab] = useState<Tab>('profile')
   const [dialog, setDialog] = useState<OpenDialog>(null)
   const [revocationCode, setRevocationCode] = useState<string | null>(null)
-  const [exported, setExported] = useState<string | null>(null)
   const [biometric, setBiometric] = useState<BiometricMethod | null>(null)
   const [proxies, setProxies] = useState<Proxy[]>([])
   const [proxyError, setProxyError] = useState('')
@@ -110,16 +111,14 @@ export default function AccountPage({
   const [devices, setDevices] = useState<Device[] | undefined>(undefined)
   const [devicesShown, setDevicesShown] = useState(false)
   const [devicesError, setDevicesError] = useState('')
-  const [signedOut, setSignedOut] = useState<number | null>(null)
   const [standing, setStanding] = useState<Standing | undefined>(undefined)
   const [standingError, setStandingError] = useState('')
   // `undefined` until Steam was asked, `null` when the account has no wallet.
   const [wallet, setWallet] = useState<Wallet | null | undefined>(undefined)
   const [walletError, setWalletError] = useState('')
-  const [checked, setChecked] = useState<{ ok: boolean; text: string } | null>(
-    null,
-  )
+  const [sessionError, setSessionError] = useState('')
   const { copy, label } = useCopy()
+  const toast = useToast()
   const secondsLeft = useCodeSecondsLeft(codesExpireAt)
   const name = account.accountName
 
@@ -187,6 +186,12 @@ export default function AccountPage({
     setRuleError('')
     try {
       await setAutoConfirmRule([name], rule, on)
+      const { label: ruleLabel } = AUTO_CONFIRM_RULES.find(
+        (item) => item.rule === rule,
+      )!
+      toast(
+        on ? t.autoConfirm.ruleOn(ruleLabel) : t.autoConfirm.ruleOff(ruleLabel),
+      )
     } catch (err) {
       setRuleError(errorMessage(err))
     }
@@ -195,12 +200,12 @@ export default function AccountPage({
 
   async function checkSession() {
     setChecking(true)
-    setChecked(null)
+    setSessionError('')
     try {
       await refreshProfile(name)
-      setChecked({ ok: true, text: t.security.sessionAccepted })
+      toast(t.security.sessionAccepted)
     } catch (err) {
-      setChecked({ ok: false, text: errorMessage(err) })
+      setSessionError(errorMessage(err))
     } finally {
       setChecking(false)
       onChanged()
@@ -259,7 +264,7 @@ export default function AccountPage({
   async function exportFile(password: string | null) {
     const saved = await exportMaFile(name, password)
     setDialog(null)
-    if (saved) setExported(saved)
+    if (saved) toast(t.security.saved(saved))
   }
 
   return (
@@ -268,17 +273,52 @@ export default function AccountPage({
         <button type="button" className={styles.back} onClick={onBack}>
           {t.back}
         </button>
-        <div className={styles.identity}>
-          <Avatar name={name} src={account.avatar} size="lg" />
-          <div className={styles.names}>
-            <h1 className={layout.title}>{describe(account).title}</h1>
-            {describe(account).details ? (
-              <span className={styles.steamId}>
-                <SteamIdLine account={account} />
+        <div className={styles.head}>
+          <div className={styles.identity}>
+            <Avatar name={name} src={account.avatar} size="lg" />
+            <div className={styles.names}>
+              <h1 className={layout.title}>{describe(account).title}</h1>
+              <span className={styles.subtitle}>
+                {describe(account).details ? (
+                  <SteamIdLine account={account} />
+                ) : (
+                  t.importedFromMaFile
+                )}
+                {' · '}
+                <span
+                  className={account.signedIn ? undefined : styles.dangerText}
+                >
+                  {account.playing
+                    ? t.status.playing
+                    : account.signedIn
+                      ? t.status.signedIn
+                      : t.status.notSignedIn}
+                </span>
               </span>
-            ) : (
-              <span className={styles.muted}>{t.importedFromMaFile}</span>
-            )}
+            </div>
+          </div>
+          <div className={styles.guard} aria-label={t.guardTitle}>
+            <div className={styles.guardRow}>
+              <span className={styles.code}>
+                <Private mask={MASK.code}>{account.code}</Private>
+              </span>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => copy(name, account.code)}
+              >
+                {label(name, t.copy)}
+              </Button>
+            </div>
+            <span className={layout.bar}>
+              <span
+                className={layout.barFill}
+                style={{ width: `${(secondsLeft / CODE_PERIOD_SECS) * 100}%` }}
+              />
+            </span>
+            <span className={styles.refresh}>
+              {t.guardTitle} · {t.refreshesIn(secondsLeft)}
+            </span>
           </div>
         </div>
       </div>
@@ -290,31 +330,6 @@ export default function AccountPage({
           onChanged={() => void checkKey()}
         />
       )}
-
-      <section className={styles.section} aria-labelledby="guard-title">
-        <h2 id="guard-title" className={styles.sectionTitle}>
-          {t.guardTitle}
-        </h2>
-        <div className={styles.guard}>
-          <span className={styles.code}>
-            <Private mask={MASK.code}>{account.code}</Private>
-          </span>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => copy(name, account.code)}
-          >
-            {label(name, t.copy)}
-          </Button>
-        </div>
-        <span className={layout.bar}>
-          <span
-            className={layout.barFill}
-            style={{ width: `${(secondsLeft / CODE_PERIOD_SECS) * 100}%` }}
-          />
-        </span>
-        <span className={styles.muted}>{t.refreshesIn(secondsLeft)}</span>
-      </section>
 
       <div role="tablist" aria-label={t.sections} className={styles.tabs}>
         {TABS.map((id) => (
@@ -338,7 +353,7 @@ export default function AccountPage({
         role="tabpanel"
         id="panel-profile"
         aria-labelledby="tab-profile"
-        className={styles.panel}
+        className={`${styles.panel} rise`}
         hidden={tab !== 'profile'}
       >
         <ProfileTab
@@ -354,7 +369,7 @@ export default function AccountPage({
         role="tabpanel"
         id="panel-playing"
         aria-labelledby="tab-playing"
-        className={styles.panel}
+        className={`${styles.panel} rise`}
         hidden={tab !== 'playing'}
       >
         <PlayingTab accountName={name} signedIn={account.signedIn} />
@@ -364,7 +379,7 @@ export default function AccountPage({
         role="tabpanel"
         id="panel-security"
         aria-labelledby="tab-security"
-        className={styles.panel}
+        className={`${styles.panel} rise`}
         hidden={tab !== 'security'}
       >
         <section className={styles.section} aria-label={t.security.title}>
@@ -401,7 +416,11 @@ export default function AccountPage({
               <dt>{t.security.webApiKey}</dt>
               {account.signedIn ? (
                 <dd className={styles.reveal}>
-                  <ApiKeyState apiKey={apiKey} />
+                  {apiKey === undefined && !keyError ? (
+                    <Skeleton width={110} height={12} />
+                  ) : (
+                    <ApiKeyState apiKey={apiKey} />
+                  )}
                   <button
                     type="button"
                     className={styles.link}
@@ -419,9 +438,13 @@ export default function AccountPage({
               <dt>{t.security.activeSessions}</dt>
               {account.signedIn ? (
                 <dd className={styles.reveal}>
-                  <span className={devices ? undefined : styles.muted}>
-                    {devicesSummary(t, devices)}
-                  </span>
+                  {devices === undefined && !devicesError ? (
+                    <Skeleton width={130} height={12} />
+                  ) : (
+                    <span className={devices ? undefined : styles.muted}>
+                      {devicesSummary(t, devices)}
+                    </span>
+                  )}
                   {devices && devices.length > 0 && (
                     <button
                       type="button"
@@ -456,15 +479,23 @@ export default function AccountPage({
                 <dd
                   className={wallet === undefined ? styles.muted : styles.mono}
                 >
-                  <Private mask={wallet ? MASK.money : walletText(t, wallet)}>
-                    {walletText(t, wallet)}
-                  </Private>
+                  {wallet === undefined && !walletError ? (
+                    <Skeleton width={90} height={12} />
+                  ) : (
+                    <Private mask={wallet ? MASK.money : walletText(t, wallet)}>
+                      {walletText(t, wallet)}
+                    </Private>
+                  )}
                 </dd>
               ) : (
                 <dd className={styles.muted}>{t.security.signInToCheck}</dd>
               )}
             </div>
-            <StandingFacts standing={standing} signedIn={account.signedIn} />
+            <StandingFacts
+              standing={standing}
+              signedIn={account.signedIn}
+              loading={standing === undefined && !standingError}
+            />
             <div className={styles.fact}>
               <dt>{t.security.proxy}</dt>
               <dd>
@@ -516,7 +547,11 @@ export default function AccountPage({
             <div className={styles.fact}>
               <dt>{t.security.steamId}</dt>
               <dd className={account.steamId ? styles.mono : styles.muted}>
-                {account.steamId ?? t.security.appearsAfterSignIn}
+                {account.steamId ? (
+                  <Private mask={MASK.id}>{account.steamId}</Private>
+                ) : (
+                  t.security.appearsAfterSignIn
+                )}
               </dd>
             </div>
             <div className={styles.fact}>
@@ -579,24 +614,14 @@ export default function AccountPage({
               {devicesError}
             </p>
           )}
-          {signedOut !== null && (
-            <p className={styles.muted} role="status">
-              {signedOut === 0
-                ? t.security.noOtherDevice
-                : t.security.signedOutDevices(signedOut)}
-            </p>
-          )}
           {keyError && (
             <p className={styles.error} role="alert">
               {keyError}
             </p>
           )}
-          {checked && (
-            <p
-              className={checked.ok ? styles.muted : styles.error}
-              role={checked.ok ? 'status' : 'alert'}
-            >
-              {checked.text}
+          {sessionError && (
+            <p className={styles.error} role="alert">
+              {sessionError}
             </p>
           )}
           <div className={styles.actions}>
@@ -624,11 +649,6 @@ export default function AccountPage({
               {t.security.remove}
             </button>
           </div>
-          {exported && (
-            <p className={styles.muted} role="status">
-              {t.security.saved(exported)}
-            </p>
-          )}
         </section>
 
         <section
@@ -718,7 +738,11 @@ export default function AccountPage({
         onClose={() => setDialog(null)}
         onSignedOut={(count) => {
           setDialog(null)
-          setSignedOut(count)
+          toast(
+            count === 0
+              ? t.security.noOtherDevice
+              : t.security.signedOutDevices(count),
+          )
           void loadDevices()
         }}
       />

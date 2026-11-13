@@ -58,6 +58,39 @@
   gap: 8px;
 }
 
+.pause,
+.rules {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.pause {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.pause:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.rules {
+  background: var(--color-text);
+  border: 0;
+  color: var(--color-panel);
+  font-weight: 600;
+}
+
+.pause:focus-visible,
+.rules:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
 .summary {
   margin: 0 0 10px;
   color: var(--color-text-faint);
