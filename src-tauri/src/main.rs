@@ -81,6 +81,7 @@ fn main() {
             profile::profile_settings,
             profile::save_profile,
             profile::clear_name_history,
+            profile::change_avatar,
             proxies::list_proxies,
             proxies::add_proxies,
             proxies::add_proxy,

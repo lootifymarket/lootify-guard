@@ -1,14 +1,20 @@
 use reqwest::blocking::Client;
+use reqwest::blocking::multipart::{Form, Part};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 use crate::contents::{Account, Session};
 use crate::proxy::ProxyAddress;
 use crate::steam::{
-    SteamError, community_get, community_post, html_unescape, session_id, with_session,
+    SteamError, community_get, community_post, community_upload, html_unescape, session_id,
+    with_session,
 };
 
 // Where the edit pages keep their current values for the page's own script.
+const AVATAR_URL: &str = "https://steamcommunity.com/actions/FileUploader/";
+/// Steam turns down bigger avatars.
+pub const MAX_AVATAR_LEN: usize = 1024 * 1024;
+
 const INFO_MARK: &str = "data-profile-edit=";
 const PRIVACY_MARK: &str = "data-privacysettings=";
 
@@ -154,6 +160,81 @@ pub fn clear_name_history(
         answer(community_post(client, &url, session, &[])?)
     })?;
     Ok(session)
+}
+
+/// The image formats Steam takes for an avatar, told apart by their first bytes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AvatarImage {
+    Jpeg,
+    Png,
+    Gif,
+}
+
+impl AvatarImage {
+    pub fn of(image: &[u8]) -> Option<Self> {
+        if image.starts_with(&[0xFF, 0xD8, 0xFF]) {
+            Some(Self::Jpeg)
+        } else if image.starts_with(b"\x89PNG\r\n\x1a\n") {
+            Some(Self::Png)
+        } else if image.starts_with(b"GIF87a") || image.starts_with(b"GIF89a") {
+            Some(Self::Gif)
+        } else {
+            None
+        }
+    }
+
+    fn file(self) -> (&'static str, &'static str) {
+        match self {
+            Self::Jpeg => ("avatar.jpg", "image/jpeg"),
+            Self::Png => ("avatar.png", "image/png"),
+            Self::Gif => ("avatar.gif", "image/gif"),
+        }
+    }
+}
+
+/// Makes the image the account's avatar.
+pub fn upload_avatar(
+    account: &Account,
+    proxy: Option<&ProxyAddress>,
+    image: &[u8],
+) -> Result<Session, SteamError> {
+    if image.len() > MAX_AVATAR_LEN {
+        return Err(SteamError::Steam("the image is over 1 MB".to_owned()));
+    }
+    let (name, mime) = AvatarImage::of(image)
+        .ok_or_else(|| SteamError::Steam("the file isn't a JPEG, PNG or GIF".to_owned()))?
+        .file();
+    let (session, ()) = with_session(account, proxy, |client, session, steam_id| {
+        let part = Part::bytes(image.to_vec())
+            .file_name(name)
+            .mime_str(mime)
+            .expect("a valid MIME type");
+        let form = Form::new()
+            .text("MAX_FILE_SIZE", image.len().to_string())
+            .text("type", "player_avatar_image")
+            .text("sId", steam_id.to_string())
+            .text("sessionid", session_id(session))
+            .text("doSub", "1")
+            .text("json", "1")
+            .part("avatar", part);
+        uploaded(&community_upload(client, AVATAR_URL, form)?)
+    })?;
+    Ok(session)
+}
+
+/// The uploader answers `{"success": true}`, or a message saying why not.
+fn uploaded(body: &str) -> Result<(), SteamError> {
+    let answer: Value = serde_json::from_str(body)
+        .map_err(|_| SteamError::Steam("unreadable answer".to_owned()))?;
+    if answer["success"] == Value::Bool(true) {
+        return Ok(());
+    }
+    let message = text(&answer, "message");
+    Err(if message.is_empty() {
+        SteamError::Steam("the avatar wasn't saved".to_owned())
+    } else {
+        SteamError::Refused(strip_tags(&message))
+    })
 }
 
 fn set_privacy(
@@ -372,6 +453,31 @@ mod tests {
                 .unwrap()
                 .1,
             "0"
+        );
+    }
+
+    #[test]
+    fn avatar_formats_are_told_by_their_first_bytes() {
+        assert_eq!(
+            AvatarImage::of(b"\xFF\xD8\xFF\xE0rest"),
+            Some(AvatarImage::Jpeg)
+        );
+        assert_eq!(
+            AvatarImage::of(b"\x89PNG\r\n\x1a\nrest"),
+            Some(AvatarImage::Png)
+        );
+        assert_eq!(AvatarImage::of(b"GIF89arest"), Some(AvatarImage::Gif));
+        assert_eq!(AvatarImage::of(b"<svg></svg>"), None);
+    }
+
+    #[test]
+    fn the_uploader_answer_is_read() {
+        assert!(uploaded(r#"{"success":true,"images":{"full":"x"}}"#).is_ok());
+        assert_eq!(
+            uploaded(r#"{"success":false,"message":"Image too large"}"#)
+                .unwrap_err()
+                .to_string(),
+            "Steam said: Image too large"
         );
     }
 

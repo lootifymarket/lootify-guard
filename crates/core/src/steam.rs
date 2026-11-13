@@ -5,6 +5,7 @@ use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use reqwest::StatusCode;
 use reqwest::Url;
+use reqwest::blocking::multipart::Form;
 use reqwest::blocking::{Client, ClientBuilder, Response};
 use reqwest::cookie::Jar;
 use serde::Deserialize;
@@ -378,6 +379,20 @@ pub(crate) fn community_post(
     let response = client
         .post(url)
         .form(&fields)
+        .send()
+        .map_err(request_error)?;
+    community_page(response)
+}
+
+/// A file upload to steamcommunity.com with a client from `with_session`.
+pub(crate) fn community_upload(
+    client: &Client,
+    url: &str,
+    form: Form,
+) -> Result<String, SteamError> {
+    let response = client
+        .post(url)
+        .multipart(form)
         .send()
         .map_err(request_error)?;
     community_page(response)

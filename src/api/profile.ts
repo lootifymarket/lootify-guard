@@ -70,3 +70,7 @@ export const saveProfile = (accountName: string, changes: ProfileChanges) =>
 
 export const clearNameHistory = (accountName: string) =>
   invoke<void>('clear_name_history', { accountName })
+
+/** Opens a picker; resolves to false when no image was picked. */
+export const changeAvatar = (accountName: string) =>
+  invoke<boolean>('change_avatar', { accountName })

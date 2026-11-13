@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useState } from 'react'
-import { newTradeUrl, tradeUrl } from '../../../api/profile.ts'
+import { changeAvatar, newTradeUrl, tradeUrl } from '../../../api/profile.ts'
 import { errorMessage } from '../../../api/vault.ts'
+import Avatar from '../../../components/Avatar.tsx'
 import Button from '../../../components/Button.tsx'
 import Dialog from '../../../components/Dialog.tsx'
 import dialogStyles from '../../../components/Dialog.module.css'
@@ -11,6 +12,8 @@ import styles from './AccountPage.module.css'
 type Props = {
   accountName: string
   steamId: string | null
+  /** A data URL, or null before the profile was fetched. */
+  avatar: string | null
   signedIn: boolean
   /** Steam turned the session down, so the account should be reloaded. */
   onChanged: () => void
@@ -19,6 +22,7 @@ type Props = {
 export default function ProfileTab({
   accountName,
   steamId,
+  avatar,
   signedIn,
   onChanged,
 }: Props) {
@@ -45,6 +49,11 @@ export default function ProfileTab({
 
   return (
     <>
+      <AvatarPicker
+        accountName={accountName}
+        avatar={avatar}
+        onChanged={onChanged}
+      />
       <ProfileForm
         accountName={accountName}
         steamId={steamId}
@@ -148,5 +157,52 @@ function Refresh({
         </Button>
       </div>
     </>
+  )
+}
+
+function AvatarPicker({
+  accountName,
+  avatar,
+  onChanged,
+}: {
+  accountName: string
+  avatar: string | null
+  onChanged: () => void
+}) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  async function pick() {
+    setBusy(true)
+    setError('')
+    try {
+      if (await changeAvatar(accountName)) onChanged()
+    } catch (err) {
+      setError(errorMessage(err))
+    }
+    setBusy(false)
+  }
+
+  return (
+    <div className={styles.avatarPicker}>
+      <Avatar name={accountName} src={avatar} size="lg" />
+      <div className={styles.avatarWords}>
+        <Button
+          variant="secondary"
+          size="sm"
+          busy={busy}
+          disabled={busy}
+          onClick={() => void pick()}
+        >
+          {busy ? 'Uploading…' : 'Change avatar'}
+        </Button>
+        <span className={styles.muted}>JPG, PNG or GIF, up to 1 MB.</span>
+        {error && (
+          <span className={styles.error} role="alert">
+            {error}
+          </span>
+        )}
+      </div>
+    </div>
   )
 }

@@ -322,6 +322,7 @@ export default function AccountPage({
         <ProfileTab
           accountName={name}
           steamId={account.steamId}
+          avatar={account.avatar}
           signedIn={account.signedIn}
           onChanged={onChanged}
         />
