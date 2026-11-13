@@ -3,6 +3,7 @@ import { VISIBILITY_NAMES, type Visibility } from '../../../api/profile.ts'
 import Button from '../../../components/Button.tsx'
 import Dropdown from '../../../components/Dropdown.tsx'
 import TextField from '../../../components/TextField.tsx'
+import { useT } from '../../../i18n/index.ts'
 import styles from './Tasks.module.css'
 
 export type PrivacyKey = 'profile' | 'inventory' | 'games'
@@ -13,21 +14,11 @@ export type ProfileChoice = {
   avatar: File | null
 }
 
-const PRIVACY: { key: PrivacyKey; label: string }[] = [
-  { key: 'profile', label: 'Profile' },
-  { key: 'inventory', label: 'Inventory' },
-  { key: 'games', label: 'Games' },
-]
+const PRIVACY: PrivacyKey[] = ['profile', 'inventory', 'games']
 
 const KEEP = 'keep'
 
-const VISIBILITY_OPTIONS = [
-  { value: KEEP, label: 'Keep' },
-  ...(['public', 'friendsOnly', 'private'] as const).map((value) => ({
-    value,
-    label: VISIBILITY_NAMES[value],
-  })),
-]
+const VISIBILITIES = ['public', 'friendsOnly', 'private'] as const
 
 type Props = {
   choice: ProfileChoice
@@ -36,7 +27,17 @@ type Props = {
 
 /** What a Profile task changes; anything left empty stays as it is. */
 export default function ProfileOptions({ choice, onChange }: Props) {
+  const words = useT()
+  const t = words.tasks.profile
   const picker = useRef<HTMLInputElement>(null)
+  // Built here, not at load, so the names follow the language.
+  const visibilityOptions = [
+    { value: KEEP, label: t.keep },
+    ...VISIBILITIES.map((value) => ({
+      value,
+      label: VISIBILITY_NAMES[value],
+    })),
+  ]
 
   function setPrivacy(key: PrivacyKey, value: string) {
     const privacy = { ...choice.privacy }
@@ -49,8 +50,8 @@ export default function ProfileOptions({ choice, onChange }: Props) {
     <div className={styles.options}>
       <div className={styles.optionGroup}>
         <TextField
-          label="Nickname"
-          placeholder="Keep as is"
+          label={t.nickname}
+          placeholder={t.keepAsIs}
           className={styles.input}
           maxLength={40}
           value={choice.nameTemplate}
@@ -58,20 +59,17 @@ export default function ProfileOptions({ choice, onChange }: Props) {
             onChange({ ...choice, nameTemplate: event.target.value })
           }
         />
-        <p className={styles.note}>
-          {'{n}'} becomes the account’s place in the group: farm {'{n}'} gives
-          farm 1, farm 2…
-        </p>
+        <p className={styles.note}>{t.templateNote}</p>
       </div>
 
       <div className={styles.privacy}>
-        {PRIVACY.map(({ key, label }) => (
+        {PRIVACY.map((key) => (
           <Dropdown
             key={key}
-            label={label}
+            label={t.privacy[key]}
             size="sm"
             value={choice.privacy[key] ?? KEEP}
-            options={VISIBILITY_OPTIONS}
+            options={visibilityOptions}
             onChange={(value) => setPrivacy(key, value)}
           />
         ))}
@@ -79,7 +77,7 @@ export default function ProfileOptions({ choice, onChange }: Props) {
 
       <div className={styles.option}>
         <span className={styles.avatarName}>
-          {choice.avatar ? choice.avatar.name : 'Avatar: keep'}
+          {choice.avatar ? choice.avatar.name : t.avatarKeep}
         </span>
         <span className={styles.avatarActions}>
           {choice.avatar && (
@@ -88,7 +86,7 @@ export default function ProfileOptions({ choice, onChange }: Props) {
               size="sm"
               onClick={() => onChange({ ...choice, avatar: null })}
             >
-              Remove
+              {t.remove}
             </Button>
           )}
           <Button
@@ -96,7 +94,7 @@ export default function ProfileOptions({ choice, onChange }: Props) {
             size="sm"
             onClick={() => picker.current?.click()}
           >
-            {choice.avatar ? 'Change' : 'Choose image'}
+            {choice.avatar ? words.common.change : t.chooseImage}
           </Button>
         </span>
         <input

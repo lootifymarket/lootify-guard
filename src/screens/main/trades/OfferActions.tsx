@@ -13,6 +13,7 @@ import { errorMessage } from '../../../api/vault.ts'
 import Button from '../../../components/Button.tsx'
 import Dialog from '../../../components/Dialog.tsx'
 import dialogStyles from '../../../components/Dialog.module.css'
+import { useT } from '../../../i18n/index.ts'
 import styles from './Trades.module.css'
 
 type Props = {
@@ -25,6 +26,7 @@ type Props = {
 
 /** What can be done with an open offer, by which side sent it. */
 export default function OfferActions({ offer, warnings, onDone }: Props) {
+  const t = useT().trades
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [note, setNote] = useState('')
@@ -48,7 +50,7 @@ export default function OfferActions({ offer, warnings, onDone }: Props) {
     await run(async () => {
       const accepted = await acceptTradeOffer(offer)
       if (accepted === 'needsEmail') {
-        return 'Steam sent an email to confirm the trade.'
+        return t.actions.emailSent
       }
     })
   }
@@ -63,7 +65,7 @@ export default function OfferActions({ offer, warnings, onDone }: Props) {
             disabled={busy}
             onClick={() => void run(() => declineTradeOffer(offer))}
           >
-            Decline
+            {t.actions.decline}
           </Button>
           <Button
             size="sm"
@@ -74,7 +76,7 @@ export default function OfferActions({ offer, warnings, onDone }: Props) {
               offer.give.length > 0 ? setConfirming(true) : void accept()
             }
           >
-            Accept
+            {t.actions.accept}
           </Button>
         </>
       )}
@@ -85,7 +87,7 @@ export default function OfferActions({ offer, warnings, onDone }: Props) {
           disabled={busy}
           onClick={() => void run(() => confirmTradeOffer(offer))}
         >
-          Confirm
+          {t.actions.confirm}
         </Button>
       )}
       {offer.sent && (
@@ -95,7 +97,7 @@ export default function OfferActions({ offer, warnings, onDone }: Props) {
           disabled={busy}
           onClick={() => void run(() => cancelTradeOffer(offer))}
         >
-          Cancel
+          {t.actions.cancel}
         </Button>
       )}
       {error && (
@@ -110,29 +112,29 @@ export default function OfferActions({ offer, warnings, onDone }: Props) {
       )}
       <Dialog
         open={confirming}
-        title="Accept the trade?"
+        title={t.actions.confirmTitle}
         onClose={() => setConfirming(false)}
       >
         {warnings.length > 0 && (
           <p className={styles.scam}>
-            The sender looks risky. {warnings.map(warningText).join(' · ')}
+            {t.actions.risky(warnings.map(warningText).join(' · '))}
           </p>
         )}
         <p className={dialogStyles.text}>
-          Guard confirms it right away, and the items leave {offer.accountName}.
+          {t.actions.itemsLeave(offer.accountName)}
         </p>
-        <ItemList label="You give" items={offer.give} />
-        <ItemList label="You get" items={offer.get} />
+        <ItemList label={t.columns.give} items={offer.give} />
+        <ItemList label={t.columns.get} items={offer.get} />
         <div className={dialogStyles.actions}>
           <Button
             variant="secondary"
             size="sm"
             onClick={() => setConfirming(false)}
           >
-            Cancel
+            {t.actions.cancel}
           </Button>
           <Button size="sm" onClick={() => void accept()}>
-            Accept
+            {t.actions.accept}
           </Button>
         </div>
       </Dialog>
@@ -141,11 +143,12 @@ export default function OfferActions({ offer, warnings, onDone }: Props) {
 }
 
 function ItemList({ label, items }: { label: string; items: Item[] }) {
+  const t = useT().trades
   return (
     <div className={styles.itemList}>
       <span className={styles.itemListLabel}>{label}</span>
       {items.length === 0 ? (
-        <span className={styles.nothing}>Nothing</span>
+        <span className={styles.nothing}>{t.nothing}</span>
       ) : (
         <ul>
           {items.map((item, i) => (

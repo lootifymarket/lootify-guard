@@ -7,6 +7,7 @@ import {
 } from 'react'
 import type { InventoryItem } from '../../../api/inventory.ts'
 import Icon from '../../../components/Icon.tsx'
+import { useT } from '../../../i18n/index.ts'
 import { useItemIcon } from './itemIcons.ts'
 import styles from './ItemCard.module.css'
 
@@ -35,6 +36,7 @@ export default function ItemCard({
   unavailable,
   onToggle,
 }: Props) {
+  const t = useT().inventory.card
   const card = useRef<HTMLButtonElement>(null)
   const visible = useVisible(card)
   const picture = useItemIcon(accountName, item.icon, visible)
@@ -73,7 +75,7 @@ export default function ItemCard({
             <span className={styles.foot}>
               {[
                 unavailable,
-                item.amount > 1 ? `${item.amount} pcs` : null,
+                item.amount > 1 ? t.pieces(item.amount) : null,
                 owner,
               ]
                 .filter(Boolean)

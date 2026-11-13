@@ -4,6 +4,10 @@ import { guard } from './guard/ru.ts'
 import { account } from './account/ru.ts'
 import { addAccount } from './addAccount/ru.ts'
 import { groups } from './groups/ru.ts'
+import { trades } from './trades/ru.ts'
+import { inventory } from './inventory/ru.ts'
+import { tasks } from './tasks/ru.ts'
+import { proxies } from './proxies/ru.ts'
 
 export const ru: Dictionary = {
   accounts,
@@ -11,6 +15,10 @@ export const ru: Dictionary = {
   account,
   addAccount,
   groups,
+  trades,
+  inventory,
+  tasks,
+  proxies,
 
   common: {
     back: 'Назад',

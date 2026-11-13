@@ -13,6 +13,7 @@ import { errorMessage } from '../../../api/vault.ts'
 import Button from '../../../components/Button.tsx'
 import Dialog from '../../../components/Dialog.tsx'
 import dialogStyles from '../../../components/Dialog.module.css'
+import { useT } from '../../../i18n/index.ts'
 import styles from './Inventory.module.css'
 
 type Props = {
@@ -26,13 +27,9 @@ type Props = {
 }
 
 export default function ListOnMarket(props: Props) {
+  const t = useT().inventory.market
   return (
-    <Dialog
-      open={props.open}
-      title="List on the Steam market"
-      wide
-      onClose={props.onClose}
-    >
+    <Dialog open={props.open} title={t.title} wide onClose={props.onClose}>
       <Form {...props} />
     </Dialog>
   )
@@ -42,6 +39,8 @@ export default function ListOnMarket(props: Props) {
 type Row = { name: string; owned: { account: string; item: InventoryItem }[] }
 
 function Form({ game, picked, onClose, onListed }: Props) {
+  const words = useT()
+  const t = words.inventory.market
   const rows = rowsOf(picked)
   const skipped = Object.values(picked)
     .flat()
@@ -131,14 +130,12 @@ function Form({ game, picked, onClose, onListed }: Props) {
   return (
     <>
       <p className={dialogStyles.text}>
-        Set what the buyer pays. Steam keeps 5% and the game 10%, and Guard
-        confirms the listings right away.
-        {skipped > 0 &&
-          ` ${skipped} picked ${skipped === 1 ? 'item' : 'items'} can’t be listed now and ${skipped === 1 ? 'is' : 'are'} left out.`}
+        {t.intro}
+        {skipped > 0 && t.skipped(skipped)}
       </p>
       {priceError && (
         <p className={dialogStyles.error} role="alert">
-          Couldn’t get market prices: {priceError}
+          {t.noPrices(priceError)}
         </p>
       )}
       <div className={styles.listings}>
@@ -157,21 +154,21 @@ function Form({ game, picked, onClose, onListed }: Props) {
                 </span>
                 <span className={styles.muted} data-private>
                   {!prices && !priceError
-                    ? 'Asking the market…'
+                    ? t.asking
                     : price
                       ? [
                           price.lowest !== null &&
-                            `Lowest ${formatMoney(price.lowest, currency)}`,
+                            t.lowest(formatMoney(price.lowest, currency)),
                           price.median !== null &&
-                            `median ${formatMoney(price.median, currency)}`,
+                            t.median(formatMoney(price.median, currency)),
                         ]
                           .filter(Boolean)
                           .join(' · ')
-                      : 'No market price'}
+                      : t.noPrice}
                 </span>
               </span>
               <label className={styles.priceField}>
-                <span className={styles.hidden}>Buyer pays for {row.name}</span>
+                <span className={styles.hidden}>{t.buyerPays(row.name)}</span>
                 <input
                   data-private
                   inputMode="decimal"
@@ -187,7 +184,7 @@ function Form({ game, picked, onClose, onListed }: Props) {
               </label>
               <span className={styles.youGet} data-private>
                 {own !== null
-                  ? `you get ${formatMoney(sellerGets(own), currency)}`
+                  ? t.youGet(formatMoney(sellerGets(own), currency))
                   : ''}
               </span>
             </div>
@@ -201,11 +198,11 @@ function Form({ game, picked, onClose, onListed }: Props) {
       )}
       <div className={styles.listingFooter}>
         <span className={styles.muted} data-private>
-          {count > 0 && `You get about ${formatMoney(total, currency)} in all`}
+          {count > 0 && t.youGetTotal(formatMoney(total, currency))}
         </span>
         <span className={dialogStyles.actions}>
           <Button variant="secondary" size="sm" onClick={onClose}>
-            Cancel
+            {words.common.cancel}
           </Button>
           <Button
             size="sm"
@@ -213,9 +210,7 @@ function Form({ game, picked, onClose, onListed }: Props) {
             disabled={busy || count === 0 || !currency}
             onClick={() => void list()}
           >
-            {busy
-              ? 'Listing…'
-              : `List ${count} ${count === 1 ? 'item' : 'items'}`}
+            {busy ? t.listing : t.list(count)}
           </Button>
         </span>
       </div>
@@ -233,6 +228,7 @@ function Reports({
   names: Record<string, string>
   onClose: () => void
 }) {
+  const t = useT().inventory.market
   const nameOf = (report: ListingReport) =>
     names[`${report.accountName}/${report.assetId}`] ?? report.assetId
   return (
@@ -252,11 +248,11 @@ function Reports({
             </span>
             <span className={styles.reportOutcome}>
               {report.outcome === 'done'
-                ? 'Listed'
+                ? t.listed
                 : report.outcome === 'unconfirmed'
-                  ? 'Listed, but waiting for a confirmation on the Steam Guard screen'
+                  ? t.unconfirmed
                   : report.outcome === 'needsEmail'
-                    ? 'Listed, waiting for the email confirmation Steam sent'
+                    ? t.needsEmail
                     : report.reason}
             </span>
           </li>
@@ -264,7 +260,7 @@ function Reports({
       </ul>
       <div className={dialogStyles.actions}>
         <Button size="sm" onClick={onClose}>
-          Done
+          {t.done}
         </Button>
       </div>
     </>

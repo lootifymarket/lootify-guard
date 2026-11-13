@@ -35,14 +35,17 @@ export const useT = () => useContext(LanguageContext).t
 
 export const useLanguage = () => useContext(LanguageContext)
 
-let current: Dictionary = en
+let currentLanguage: Language = 'en'
 
 /**
  * The words for code outside components, like error messages, which are made
  * in many places that have no hook at hand. Kept in step by the app's root.
  */
-export const words = () => current
+export const words = () => DICTIONARIES[currentLanguage]
+
+/** The language in use, for code outside components that formats for it. */
+export const languageInUse = () => currentLanguage
 
 export function setWordsFor(language: Language) {
-  current = DICTIONARIES[language]
+  currentLanguage = language
 }

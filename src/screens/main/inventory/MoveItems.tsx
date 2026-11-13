@@ -10,6 +10,7 @@ import Button from '../../../components/Button.tsx'
 import Dialog from '../../../components/Dialog.tsx'
 import dialogStyles from '../../../components/Dialog.module.css'
 import Dropdown from '../../../components/Dropdown.tsx'
+import { useT } from '../../../i18n/index.ts'
 import styles from './Inventory.module.css'
 
 type Props = {
@@ -23,18 +24,17 @@ type Props = {
 }
 
 export default function MoveItems(props: Props) {
+  const t = useT().inventory.move
   return (
-    <Dialog
-      open={props.open}
-      title="Move to one account"
-      onClose={props.onClose}
-    >
+    <Dialog open={props.open} title={t.title} onClose={props.onClose}>
       <Form {...props} />
     </Dialog>
   )
 }
 
 function Form({ accounts, picked, onClose, onMoved }: Props) {
+  const words = useT()
+  const t = words.inventory.move
   const signedIn = accounts.filter((account) => account.signedIn)
   const holders = Object.entries(picked).sort(
     ([, a], [, b]) => b.length - a.length,
@@ -75,14 +75,14 @@ function Form({ accounts, picked, onClose, onMoved }: Props) {
           {reports.map((report) => (
             <li key={report.accountName} data-outcome={report.outcome}>
               <span>
-                {report.accountName} → {target}: {report.count}{' '}
-                {report.count === 1 ? 'item' : 'items'}
+                {report.accountName} → {target}:{' '}
+                {words.inventory.items(report.count)}
               </span>
               <span className={styles.reportOutcome}>
                 {report.outcome === 'done'
-                  ? 'Moved'
+                  ? t.moved
                   : report.outcome === 'sent'
-                    ? `Sent, but ${target} couldn’t take it yet. It waits on the Trades screen. (${report.reason})`
+                    ? t.sentWaiting(target, report.reason)
                     : report.reason}
               </span>
             </li>
@@ -90,7 +90,7 @@ function Form({ accounts, picked, onClose, onMoved }: Props) {
         </ul>
         <div className={dialogStyles.actions}>
           <Button size="sm" onClick={onClose}>
-            Done
+            {t.done}
           </Button>
         </div>
       </>
@@ -100,7 +100,7 @@ function Form({ accounts, picked, onClose, onMoved }: Props) {
   return (
     <>
       <Dropdown
-        label="Move to"
+        label={t.moveTo}
         value={target}
         options={signedIn.map((account) => ({
           value: account.accountName,
@@ -108,7 +108,7 @@ function Form({ accounts, picked, onClose, onMoved }: Props) {
           hint: [
             account.personaName ? account.accountName : null,
             picked[account.accountName]
-              ? `${picked[account.accountName].length} picked items here`
+              ? t.pickedHere(picked[account.accountName].length)
               : null,
           ]
             .filter(Boolean)
@@ -118,12 +118,9 @@ function Form({ accounts, picked, onClose, onMoved }: Props) {
       />
       <p className={dialogStyles.text}>
         {count === 0
-          ? `Everything picked is already on ${target}.`
-          : `${count} ${count === 1 ? 'item' : 'items'} from ${moving.length} ${
-              moving.length === 1 ? 'account' : 'accounts'
-            } ${count === 1 ? 'goes' : 'go'} to ${target}. Each account sends a trade, Guard confirms it, and ${target} accepts it, so no phone is needed.`}
-        {staying > 0 &&
-          ` ${staying} picked ${staying === 1 ? 'item is' : 'items are'} already there and stay.`}
+          ? t.allThere(target)
+          : t.plan(count, moving.length, target)}
+        {staying > 0 && t.staying(staying)}
       </p>
       {error && (
         <p className={dialogStyles.error} role="alert">
@@ -132,7 +129,7 @@ function Form({ accounts, picked, onClose, onMoved }: Props) {
       )}
       <div className={dialogStyles.actions}>
         <Button variant="secondary" size="sm" onClick={onClose}>
-          Cancel
+          {words.common.cancel}
         </Button>
         <Button
           size="sm"
@@ -140,7 +137,7 @@ function Form({ accounts, picked, onClose, onMoved }: Props) {
           disabled={busy || count === 0}
           onClick={() => void move()}
         >
-          {busy ? 'Moving…' : `Move ${count} ${count === 1 ? 'item' : 'items'}`}
+          {busy ? t.moving : t.move(count)}
         </Button>
       </div>
     </>

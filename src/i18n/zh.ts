@@ -4,6 +4,10 @@ import { guard } from './guard/zh.ts'
 import { account } from './account/zh.ts'
 import { addAccount } from './addAccount/zh.ts'
 import { groups } from './groups/zh.ts'
+import { trades } from './trades/zh.ts'
+import { inventory } from './inventory/zh.ts'
+import { tasks } from './tasks/zh.ts'
+import { proxies } from './proxies/zh.ts'
 
 export const zh: Dictionary = {
   accounts,
@@ -11,6 +15,10 @@ export const zh: Dictionary = {
   account,
   addAccount,
   groups,
+  trades,
+  inventory,
+  tasks,
+  proxies,
 
   common: {
     back: '返回',

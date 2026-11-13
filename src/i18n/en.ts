@@ -3,6 +3,10 @@ import { guard } from './guard/en.ts'
 import { account } from './account/en.ts'
 import { addAccount } from './addAccount/en.ts'
 import { groups } from './groups/en.ts'
+import { trades } from './trades/en.ts'
+import { inventory } from './inventory/en.ts'
+import { tasks } from './tasks/en.ts'
+import { proxies } from './proxies/en.ts'
 
 /** Every word the app shows, in English. Other languages fill the same shape. */
 export const en = {
@@ -11,6 +15,10 @@ export const en = {
   account,
   addAccount,
   groups,
+  trades,
+  inventory,
+  tasks,
+  proxies,
 
   common: {
     back: 'Back',

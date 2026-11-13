@@ -14,6 +14,7 @@ import dialogStyles from '../../../components/Dialog.module.css'
 import Dropdown from '../../../components/Dropdown.tsx'
 import Flag from '../../../components/Flag.tsx'
 import TextField from '../../../components/TextField.tsx'
+import { useT } from '../../../i18n/index.ts'
 import { countryName } from '../../../lib/countries.ts'
 import styles from './Proxies.module.css'
 
@@ -34,11 +35,12 @@ const KIND_OPTIONS = Object.entries(PROXY_KIND_NAMES).map(([value, label]) => ({
 }))
 
 export default function AddProxy({ open, onClose, onAdded }: Props) {
+  const t = useT().proxies.form
   const linkField = useRef<HTMLInputElement>(null)
   return (
     <Dialog
       open={open}
-      title="Add proxy"
+      title={t.title}
       onClose={onClose}
       initialFocus={linkField}
     >
@@ -56,6 +58,8 @@ function Form({
   onCancel: () => void
   onAdded: () => void
 }) {
+  const words = useT()
+  const t = words.proxies.form
   const [link, setLink] = useState('')
   const [linkError, setLinkError] = useState('')
   const latestLink = useRef('')
@@ -130,7 +134,7 @@ function Form({
     try {
       const country = test?.state === 'ok' ? test.country : null
       if (!(await addProxy(fields, name.trim() || null, country))) {
-        setError('This proxy is already in the list')
+        setError(t.alreadyAdded)
         setBusy(false)
         return
       }
@@ -147,7 +151,7 @@ function Form({
       <div className={styles.linkField}>
         <TextField
           ref={linkField}
-          label="Link"
+          label={t.link}
           placeholder="socks5://login:password@host:port"
           autoComplete="off"
           spellCheck={false}
@@ -158,27 +162,25 @@ function Form({
         {linkError ? (
           <span className={styles.error}>{linkError}</span>
         ) : (
-          <span className={styles.hint}>
-            Paste a full link to fill in the fields below, or type them in.
-          </span>
+          <span className={styles.hint}>{t.linkHint}</span>
         )}
       </div>
       <TextField
-        label="Name"
-        placeholder="Optional, shown instead of the address"
+        label={t.name}
+        placeholder={t.namePlaceholder}
         autoComplete="off"
         value={name}
         onChange={(event) => setName(event.target.value)}
       />
       <div className={styles.addressFields}>
         <Dropdown
-          label="Type"
+          label={t.type}
           value={kind}
           options={KIND_OPTIONS}
           onChange={(value) => edit(setKind)(value as ProxyKind)}
         />
         <TextField
-          label="Host"
+          label={t.host}
           placeholder="185.12.40.7"
           autoComplete="off"
           spellCheck={false}
@@ -186,7 +188,7 @@ function Form({
           onChange={(event) => edit(setHost)(event.target.value)}
         />
         <TextField
-          label="Port"
+          label={t.port}
           placeholder="1080"
           inputMode="numeric"
           autoComplete="off"
@@ -198,14 +200,14 @@ function Form({
       </div>
       <div className={styles.credentialFields}>
         <TextField
-          label="Login"
+          label={t.login}
           autoComplete="off"
           spellCheck={false}
           value={login}
           onChange={(event) => edit(setLogin)(event.target.value)}
         />
         <TextField
-          label="Password"
+          label={t.password}
           type="password"
           autoComplete="off"
           value={password}
@@ -220,7 +222,7 @@ function Form({
           disabled={!valid || test?.state === 'testing'}
           onClick={() => void runTest()}
         >
-          Test connection
+          {t.test}
         </Button>
         <TestResult test={test} />
       </div>
@@ -231,10 +233,10 @@ function Form({
       )}
       <div className={dialogStyles.actions}>
         <Button variant="secondary" size="sm" onClick={onCancel}>
-          Cancel
+          {words.common.cancel}
         </Button>
         <Button type="submit" size="sm" busy={busy} disabled={!valid || busy}>
-          Add
+          {t.add}
         </Button>
       </div>
     </form>
@@ -242,11 +244,12 @@ function Form({
 }
 
 function TestResult({ test }: { test: Test | null }) {
+  const t = useT().proxies.form
   if (test?.state === 'ok') {
     return (
       <span className={styles.testOk} role="status">
         {test.country && <Flag code={test.country} />}
-        Connected · {test.pingMs} ms
+        {t.connected(test.pingMs)}
         {test.country && ` · ${countryName(test.country)}`}
       </span>
     )

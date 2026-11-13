@@ -2,6 +2,7 @@ import { warningText, type TradeOffer } from '../../../api/trades.ts'
 import Button from '../../../components/Button.tsx'
 import Dialog from '../../../components/Dialog.tsx'
 import dialogStyles from '../../../components/Dialog.module.css'
+import { useT } from '../../../i18n/index.ts'
 import styles from './Trades.module.css'
 import type { CheckResult } from './usePartnerCheck.ts'
 
@@ -20,6 +21,8 @@ export default function PartnerDialog({
   pastTrades,
   onClose,
 }: DialogProps) {
+  const trades = useT().trades
+  const t = trades.partner
   const check = result && 'check' in result ? result.check : null
   const copied = check?.warnings.find(
     (warning) => warning.kind === 'copiesName',
@@ -27,7 +30,7 @@ export default function PartnerDialog({
   return (
     <Dialog
       open={open}
-      title={check?.name ?? offer.partnerName ?? 'Trade partner'}
+      title={check?.name ?? offer.partnerName ?? t.title}
       onClose={onClose}
     >
       {result && 'error' in result && (
@@ -35,31 +38,23 @@ export default function PartnerDialog({
           {result.error}
         </p>
       )}
-      {copied && (
-        <p className={styles.scam}>
-          This account copies the name of {copied.of}, someone you trade with,
-          from a different Steam account. That’s how trade swap scams work:
-          don’t send it anything.
-        </p>
-      )}
+      {copied && <p className={styles.scam}>{t.copiesName(copied.of)}</p>}
       {check && (
         <dl className={styles.facts}>
           <div>
-            <dt>Account age</dt>
-            <dd>
-              {check.ageDays === null ? 'Hidden' : `${check.ageDays} days`}
-            </dd>
+            <dt>{t.accountAge}</dt>
+            <dd>{check.ageDays === null ? t.hidden : t.days(check.ageDays)}</dd>
           </div>
           <div>
-            <dt>Steam level</dt>
-            <dd>{check.level ?? 'Unknown'}</dd>
+            <dt>{t.level}</dt>
+            <dd>{check.level ?? t.unknown}</dd>
           </div>
           <div>
-            <dt>Trades with you this week</dt>
-            <dd>{pastTrades === 0 ? 'None' : pastTrades}</dd>
+            <dt>{t.tradesThisWeek}</dt>
+            <dd>{pastTrades === 0 ? t.none : pastTrades}</dd>
           </div>
           <div>
-            <dt>Steam ID</dt>
+            <dt>{t.steamId}</dt>
             <dd className={styles.mono}>{offer.partnerId}</dd>
           </div>
         </dl>
@@ -71,10 +66,10 @@ export default function PartnerDialog({
           ))}
         </ul>
       )}
-      {!result && <p className={dialogStyles.text}>Asking Steam…</p>}
+      {!result && <p className={dialogStyles.text}>{trades.askingSteam}</p>}
       <div className={dialogStyles.actions}>
         <Button size="sm" onClick={onClose}>
-          Close
+          {t.close}
         </Button>
       </div>
     </Dialog>
