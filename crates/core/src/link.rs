@@ -14,6 +14,7 @@ use steamguard::{
 };
 
 use crate::contents::{Account, Authenticator, AutoConfirm, Secret};
+use crate::games::PlayingList;
 use crate::proxy::ProxyAddress;
 use crate::steam::{
     self, SteamError, guard_code_error, login_error, mobile_login, session_of, steam_id_of,
@@ -240,6 +241,7 @@ fn to_account(
         trusted_api_key: None,
         device_names: BTreeMap::new(),
         client_token: None,
+        playing: PlayingList::default(),
     })
 }
 

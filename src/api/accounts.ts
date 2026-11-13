@@ -16,6 +16,8 @@ export type Account = {
   proxyId: number | null
   groupId: number | null
   autoConfirm: AutoConfirm
+  /** Whether the account has a game connection up or coming up. */
+  playing: boolean
 }
 
 export type Group = {

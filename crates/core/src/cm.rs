@@ -3,11 +3,12 @@
 //! its own, as the Steam client would.
 
 use std::hash::{BuildHasher, Hasher, RandomState};
-use std::io;
+use std::io::{self, Read};
 use std::net::TcpStream;
 use std::time::{Duration, Instant};
 
-use serde::Deserialize;
+use flate2::read::GzDecoder;
+use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 use steamguard::protobufs::steammessages_auth_steamclient::EAuthTokenPlatformType;
 use steamguard::transport::WebApiTransport;
@@ -44,16 +45,43 @@ const LOGON_TIMEOUT: Duration = Duration::from_secs(20);
 // How often a wait looks up from the socket to send a heartbeat that's due.
 const POLL: Duration = Duration::from_secs(1);
 const DEFAULT_HEARTBEAT: Duration = Duration::from_secs(9);
+// A Multi unpacks to well under this; past it, it isn't one.
+const MAX_UNZIPPED: u64 = 16 * 1024 * 1024;
 
 mod emsg {
     pub const MULTI: u32 = 1;
     pub const HEARTBEAT: u32 = 703;
     pub const LOG_OFF: u32 = 706;
+    pub const CHANGE_STATUS: u32 = 716;
     pub const LOGON_RESPONSE: u32 = 751;
     pub const LOGGED_OFF: u32 = 757;
     pub const GAMES_PLAYED: u32 = 5410;
     pub const LOGON: u32 = 5514;
     pub const PLAYING_SESSION_STATE: u32 = 9600;
+}
+
+/// How the account shows to friends. Steam keeps a client connection offline
+/// until it says otherwise, and then the profile doesn't show the games either.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Presence {
+    #[default]
+    Online,
+    Away,
+    /// "Do not disturb" in the client.
+    Busy,
+    Invisible,
+}
+
+impl Presence {
+    fn persona_state(self) -> u64 {
+        match self {
+            Self::Online => 1,
+            Self::Busy => 2,
+            Self::Away => 3,
+            Self::Invisible => 7,
+        }
+    }
 }
 
 /// Something Steam said on the connection that the owner should act on.
@@ -247,6 +275,13 @@ impl Connection {
         self.send(emsg::GAMES_PLAYED, &games_played(games, status))
     }
 
+    pub fn show_as(&mut self, presence: Presence) -> Result<(), SteamError> {
+        let body = Writer::default()
+            .varint(1, presence.persona_state())
+            .finish();
+        self.send(emsg::CHANGE_STATUS, &body)
+    }
+
     /// Waits up to `limit` for something to act on, keeping the connection alive
     /// meanwhile. An error means the connection is gone.
     pub fn wait(&mut self, limit: Duration) -> Result<Option<Event>, SteamError> {
@@ -413,8 +448,8 @@ struct Incoming {
 }
 
 /// The protobuf messages in a frame, with the ones a Multi carries taken out.
-/// Messages that aren't protobuf, and gzipped Multis, hold nothing the app acts
-/// on and are skipped.
+/// Steam gzips a Multi when it's big, as the one with the sign-in answer often
+/// is. Messages that aren't protobuf hold nothing the app acts on and are skipped.
 fn messages(data: &[u8]) -> Vec<Incoming> {
     let Some((raw, rest)) = split_u32(data) else {
         return Vec::new();
@@ -433,10 +468,20 @@ fn messages(data: &[u8]) -> Vec<Incoming> {
         let Ok(multi) = Fields::read(body) else {
             return Vec::new();
         };
-        if multi.varint(1).unwrap_or(0) > 0 {
-            return Vec::new();
-        }
-        let mut payload = multi.bytes(2).unwrap_or_default();
+        let packed = multi.bytes(2).unwrap_or_default();
+        let mut unzipped = Vec::new();
+        let mut payload = if multi.varint(1).unwrap_or(0) > 0 {
+            if GzDecoder::new(packed)
+                .take(MAX_UNZIPPED)
+                .read_to_end(&mut unzipped)
+                .is_err()
+            {
+                return Vec::new();
+            }
+            unzipped.as_slice()
+        } else {
+            packed
+        };
         let mut out = Vec::new();
         while let Some((len, rest)) = split_u32(payload) {
             let Some((one, rest)) = rest.split_at_checked(len as usize) else {
@@ -483,7 +528,7 @@ mod tests {
     }
 
     #[test]
-    fn a_multi_is_unpacked_and_a_gzipped_one_skipped() {
+    fn a_multi_is_unpacked_gzipped_or_not() {
         let one = frame(emsg::LOGGED_OFF, &[], &[0x08, 0x06]);
         let two = frame(emsg::PLAYING_SESSION_STATE, &[], &[0x10, 0x01]);
         let mut payload = Vec::new();
@@ -505,12 +550,23 @@ mod tests {
             [Some(Event::LoggedOff(6)), Some(Event::PlayingBlocked(true))]
         );
 
+        let mut zipper = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+        std::io::Write::write_all(&mut zipper, &payload).unwrap();
         let gzipped = frame(
+            emsg::MULTI,
+            &[],
+            &Writer::default()
+                .varint(1, payload.len() as u64)
+                .bytes(2, &zipper.finish().unwrap())
+                .finish(),
+        );
+        assert_eq!(messages(&gzipped).len(), 2);
+        let broken = frame(
             emsg::MULTI,
             &[],
             &Writer::default().varint(1, 100).bytes(2, &payload).finish(),
         );
-        assert!(messages(&gzipped).is_empty());
+        assert!(messages(&broken).is_empty());
         assert!(messages(&[1, 2]).is_empty());
     }
 

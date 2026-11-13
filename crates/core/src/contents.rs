@@ -4,6 +4,7 @@ use std::fmt;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroizing;
 
+use crate::games::PlayingList;
 use crate::proxy::{Proxy, ProxyAddress};
 
 /// What the vault holds once decrypted.
@@ -77,6 +78,8 @@ pub struct Account {
     /// needs and the mobile session can't do. The app makes it itself.
     #[serde(default)]
     pub client_token: Option<Secret>,
+    #[serde(default)]
+    pub playing: PlayingList,
 }
 
 /// What the app may confirm for the account without asking. Everything is off until
@@ -395,6 +398,7 @@ mod tests {
             trusted_api_key: None,
             device_names: BTreeMap::new(),
             client_token: None,
+            playing: PlayingList::default(),
         }
     }
 

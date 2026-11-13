@@ -6,9 +6,11 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use lootify_guard_core::cm::MAX_GAMES;
 use lootify_guard_core::contents::{Account, Contents, DamagedContents};
+use lootify_guard_core::games::PlayingList;
 use lootify_guard_core::inventory::Game;
-use lootify_guard_core::licenses::{self, MAX_LICENSES};
+use lootify_guard_core::licenses::{self, License, MAX_LICENSES};
 use lootify_guard_core::moves::{self, Side};
 use lootify_guard_core::profile_settings::{AvatarImage, MAX_AVATAR_LEN};
 use lootify_guard_core::steam::SteamError;
@@ -21,6 +23,7 @@ use tauri::{AppHandle, Manager, State};
 
 use crate::accounts::{account_and_proxy, no_such_account};
 use crate::inventory::InventoryCache;
+use crate::playing::{self, Players};
 use crate::vault::{CommandError, VaultState};
 
 // A failed account goes to the back of the line, up to this many tries in all.
@@ -108,6 +111,11 @@ pub enum TaskInput {
     FreeGames {
         licenses: String,
     },
+    /// Games as typed, or nothing for each account's own list.
+    HourBoost {
+        games: String,
+    },
+    GoOffline,
     #[serde(rename_all = "camelCase")]
     MoveToStorage {
         storage: String,
@@ -123,6 +131,9 @@ enum Work {
         storage: String,
         game: Game,
     },
+    /// Plays these games, or each account's own list, on a connection that stays up.
+    Play(Option<Vec<u32>>),
+    GoOffline,
 }
 
 #[derive(Deserialize)]
@@ -224,6 +235,8 @@ pub fn start_task(
                 }
                 Work::Each(Task::FreeGames(licenses))
             }
+            TaskInput::HourBoost { games } => Work::Play(boost_games(&games)?),
+            TaskInput::GoOffline => Work::GoOffline,
             TaskInput::MoveToStorage { storage, game } => {
                 contents.account(&storage).ok_or_else(no_such_account)?;
                 // The storage account has nothing to send to itself.
@@ -293,6 +306,30 @@ pub fn start_task(
         }
     });
     Ok(id)
+}
+
+fn boost_games(text: &str) -> Result<Option<Vec<u32>>, CommandError> {
+    let licenses = licenses::parse(text).map_err(|word| {
+        CommandError::Failed(format!("can't read \"{word}\": use app IDs or store links"))
+    })?;
+    if licenses.is_empty() {
+        return Ok(None);
+    }
+    if licenses.len() > MAX_GAMES {
+        return Err(CommandError::Failed(format!(
+            "Steam plays at most {MAX_GAMES} games at once"
+        )));
+    }
+    licenses
+        .into_iter()
+        .map(|license| match license {
+            License::App(id) => Ok(id),
+            License::Package(id) => Err(CommandError::Failed(format!(
+                "sub {id} is a package, use its app ID"
+            ))),
+        })
+        .collect::<Result<_, _>>()
+        .map(Some)
 }
 
 fn profile_task(
@@ -463,6 +500,32 @@ fn run_one(
             save(state, &[&account])?;
             result.map_err(Failed::Steam)
         }
+        Work::Play(games) => {
+            let list = match games {
+                Some(games) => PlayingList {
+                    games: games.clone(),
+                    ..account.playing.clone()
+                },
+                None => account.playing.clone(),
+            };
+            let count = list.games.len();
+            playing::start(app, state, account_name, list)?;
+            app.state::<Players>()
+                .wait_started(account_name)
+                .map_err(|reason| Failed::Vault(CommandError::Failed(reason)))?;
+            Ok(Outcome::Done(match count {
+                1 => "Playing 1 game".to_owned(),
+                n => format!("Playing {n} games"),
+            }))
+        }
+        Work::GoOffline => Ok(Outcome::Done(
+            if app.state::<Players>().stop(account_name) {
+                "Offline"
+            } else {
+                "Wasn't playing"
+            }
+            .to_owned(),
+        )),
         Work::MoveTo { storage, game } => {
             let (mut to, to_proxy) = account_and_proxy(state, storage)?;
             let result = tasks::move_to_storage(
@@ -562,6 +625,18 @@ fn now() -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn boosts_take_app_ids_or_each_account_s_own_list() {
+        assert_eq!(boost_games("  ").ok(), Some(None));
+        assert_eq!(
+            boost_games("730, store.steampowered.com/app/570/Dota_2/").ok(),
+            Some(Some(vec![730, 570]))
+        );
+        assert!(boost_games("sub/12345").is_err());
+        let too_many: Vec<String> = (1..=33).map(|id| id.to_string()).collect();
+        assert!(boost_games(&too_many.join(" ")).is_err());
+    }
 
     #[test]
     fn pauses_stay_in_range_and_vary() {

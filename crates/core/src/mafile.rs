@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use zeroize::Zeroizing;
 
 use crate::contents::{Account, Authenticator, AutoConfirm, Secret};
+use crate::games::PlayingList;
 
 const SECRET_LEN: usize = 20;
 // The upper half of every user's SteamID64: public universe, individual account,
@@ -101,6 +102,7 @@ pub fn parse(file: &[u8]) -> Result<Account, MaFileError> {
         trusted_api_key: None,
         device_names: BTreeMap::new(),
         client_token: None,
+        playing: PlayingList::default(),
     })
 }
 
