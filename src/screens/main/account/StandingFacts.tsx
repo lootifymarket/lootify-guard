@@ -45,29 +45,43 @@ function trading({ bans, market }: Standing): Fact {
   if (bans?.tradeBan === 'probation') {
     return { text: 'On trade probation', bad: true }
   }
-  if (!market) return UNKNOWN
-  if (market.allowed) return { text: 'Available', bad: false }
-  return {
-    text: market.allowedAt
-      ? `Restricted until ${new Date(market.allowedAt * 1000).toLocaleDateString()}`
-      : 'Restricted',
-    bad: true,
+  if (market) {
+    if (market.allowed) return { text: 'Available', bad: false }
+    return {
+      text: market.allowedAt
+        ? `Restricted until ${new Date(market.allowedAt * 1000).toLocaleDateString()}`
+        : 'Restricted',
+      bad: true,
+    }
   }
+  // Without the market's answer, only the trade ban is known.
+  return bans ? { text: 'No trade ban', bad: false } : UNKNOWN
 }
 
 function bans({
+  vacBanned,
   vacBans,
   gameBans,
   daysSinceLast,
   communityBanned,
 }: Bans): Fact {
+  // Only the profile answered: it tells whether there's a VAC ban, nothing more.
+  if (vacBans === null) {
+    return vacBanned
+      ? { text: 'VAC banned', bad: true }
+      : { text: 'No VAC ban', bad: false }
+  }
+  const games = gameBans ?? 0
   const parts = [
     vacBans > 0 && `${vacBans} VAC ${vacBans === 1 ? 'ban' : 'bans'}`,
-    gameBans > 0 && `${gameBans} game ${gameBans === 1 ? 'ban' : 'bans'}`,
+    games > 0 && `${games} game ${games === 1 ? 'ban' : 'bans'}`,
     communityBanned && 'community ban',
   ].filter(Boolean)
   if (parts.length === 0) return { text: 'None', bad: false }
-  const when = vacBans + gameBans > 0 ? ` · ${daysSinceLast} days ago` : ''
+  const when =
+    vacBans + games > 0 && daysSinceLast !== null
+      ? ` · ${daysSinceLast} days ago`
+      : ''
   return { text: parts.join(', ') + when, bad: true }
 }
 

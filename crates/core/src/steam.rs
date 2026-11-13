@@ -421,6 +421,21 @@ pub(crate) fn request_error(err: reqwest::Error) -> SteamError {
     }
 }
 
+/// The text of the first `<name>` element in a profile's XML, without CDATA
+/// wrapping or escapes, or `None` when it's missing or empty.
+pub(crate) fn xml_tag(page: &str, name: &str) -> Option<String> {
+    let open = format!("<{name}>");
+    let start = page.find(&open)? + open.len();
+    let rest = &page[start..];
+    let text = &rest[..rest.find(&format!("</{name}>"))?];
+    let text = text
+        .trim()
+        .trim_start_matches("<![CDATA[")
+        .trim_end_matches("]]>")
+        .trim();
+    (!text.is_empty()).then(|| html_unescape(text))
+}
+
 /// Undoes the escaping of text taken out of an HTML page.
 pub(crate) fn html_unescape(text: &str) -> String {
     text.replace("&lt;", "<")

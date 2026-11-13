@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::contents::{Account, Session};
 use crate::proxy::ProxyAddress;
-use crate::steam::{SteamError, community_get, html_unescape, with_session};
+use crate::steam::{SteamError, community_get, with_session, xml_tag};
 
 const NEW_ACCOUNT_DAYS: u64 = 30;
 const DAY_SECS: u64 = 24 * 60 * 60;
@@ -160,18 +160,7 @@ fn same_name_key(name: &str) -> String {
 }
 
 fn parse_profile(page: &str) -> Profile {
-    let tag = |name: &str| -> Option<String> {
-        let open = format!("<{name}>");
-        let start = page.find(&open)? + open.len();
-        let rest = &page[start..];
-        let text = &rest[..rest.find(&format!("</{name}>"))?];
-        let text = text
-            .trim()
-            .trim_start_matches("<![CDATA[")
-            .trim_end_matches("]]>")
-            .trim();
-        (!text.is_empty()).then(|| html_unescape(text))
-    };
+    let tag = |name: &str| xml_tag(page, name);
     Profile {
         name: tag("steamID"),
         member_since: tag("memberSince"),
