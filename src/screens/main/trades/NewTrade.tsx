@@ -52,6 +52,7 @@ function Form({
   const [query, setQuery] = useState('')
   const [tradable, setTradable] = useState<Tradable | null>(null)
   const [loadError, setLoadError] = useState('')
+  const [attempt, setAttempt] = useState(0)
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -62,8 +63,16 @@ function Form({
   )
   useEffect(() => {
     if (!from) return
-    void tradableItems(from, game).then(loaded, failed)
-  }, [from, game])
+    // An answer for an account or game no longer picked is dropped.
+    let current = true
+    void tradableItems(from, game).then(
+      (items) => current && loaded(items),
+      (err: unknown) => current && failed(err),
+    )
+    return () => {
+      current = false
+    }
+  }, [from, game, attempt])
 
   function choose(next: { from?: string; game?: Game }) {
     if (next.from !== undefined) setFrom(next.from)
@@ -164,9 +173,21 @@ function Form({
         </div>
         <div className={styles.pickerList}>
           {loadError && (
-            <p className={styles.error} role="alert">
-              {loadError}
-            </p>
+            <div className={styles.pickerNote}>
+              <p className={styles.error} role="alert">
+                {loadError}
+              </p>
+              <button
+                type="button"
+                className={styles.check}
+                onClick={() => {
+                  setLoadError('')
+                  setAttempt((n) => n + 1)
+                }}
+              >
+                Try again
+              </button>
+            </div>
           )}
           {!tradable && !loadError && (
             <p className={styles.pickerNote}>Loading the inventory…</p>

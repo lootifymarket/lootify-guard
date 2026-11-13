@@ -1,5 +1,8 @@
 use std::collections::HashMap;
+use std::thread;
+use std::time::Duration;
 
+use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
 use crate::contents::{Account, Session};
@@ -10,9 +13,11 @@ use crate::steam::{SteamError, community_get, with_session};
 const PAGE_SIZE: u32 = 2000;
 // Big storage accounts hold tens of thousands; past this the rest is left out.
 const MAX_PAGES: usize = 10;
+// Pauses before asking again when Steam says it's busy, longer each time.
+const RETRY_AFTER: [Duration; 2] = [Duration::from_secs(2), Duration::from_secs(4)];
 
 /// The games whose items the app trades, with Steam's ids for their inventories.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Game {
     Cs2,
@@ -108,7 +113,7 @@ pub fn tradable(
             if let Some(start) = &start {
                 url.push_str(&format!("&start_assetid={start}"));
             }
-            let page = community_get(client, &url)?;
+            let page = page_with_retries(client, &url)?;
             let (more, next) = read_page(&page, game, &mut result)?;
             match (more, next) {
                 (true, Some(next)) => start = Some(next),
@@ -118,6 +123,17 @@ pub fn tradable(
         result.items.sort_by(|a, b| a.name.cmp(&b.name));
         Ok(result)
     })
+}
+
+/// Steam often answers an inventory page with a 500 that is gone a little later.
+fn page_with_retries(client: &Client, url: &str) -> Result<String, SteamError> {
+    for pause in RETRY_AFTER {
+        match community_get(client, url) {
+            Err(SteamError::Busy) => thread::sleep(pause),
+            page => return page,
+        }
+    }
+    community_get(client, url)
 }
 
 /// Adds one page to `result`, and says whether there's another and where it starts.

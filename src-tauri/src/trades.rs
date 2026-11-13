@@ -1,5 +1,6 @@
+use std::collections::HashMap;
 use std::thread;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use lootify_guard_core::contents::{Account, Contents};
 use lootify_guard_core::inventory::{self, Game, Tradable};
@@ -9,7 +10,7 @@ use lootify_guard_core::steam::SteamError;
 use lootify_guard_core::trades::{self, Accepted, Asset, Sent, TradeOffer};
 use serde::Serialize;
 use tauri::State;
-use tauri::async_runtime::spawn_blocking;
+use tauri::async_runtime::{Mutex as AsyncMutex, spawn_blocking};
 
 use crate::accounts::{account_and_proxy, settle, store_session};
 use crate::vault::{CommandError, VaultState};
@@ -212,18 +213,37 @@ pub async fn check_trade_partner(
     Ok(check)
 }
 
+/// Inventories asked of Steam lately. Steam answers 500 to an inventory asked for
+/// again too soon or twice at once, so requests go one at a time and a fresh
+/// answer is reused. It lives in memory only and holds no secrets.
+#[derive(Default)]
+pub struct InventoryCache {
+    one_at_a_time: AsyncMutex<HashMap<(String, Game), (Instant, Tradable)>>,
+}
+
+const INVENTORY_FRESH_FOR: Duration = Duration::from_secs(60);
+
 /// The account's items in the game that can be traded now.
 #[tauri::command]
 pub async fn tradable_items(
     state: State<'_, VaultState>,
+    cache: State<'_, InventoryCache>,
     account_name: String,
     game: Game,
 ) -> Result<Tradable, CommandError> {
+    let mut cached = cache.one_at_a_time.lock().await;
+    let key = (account_name.clone(), game);
+    if let Some((fetched_at, items)) = cached.get(&key)
+        && fetched_at.elapsed() < INVENTORY_FRESH_FOR
+    {
+        return Ok(items.clone());
+    }
     let (account, proxy) = account_and_proxy(&state, &account_name)?;
     let result =
         spawn_blocking(move || inventory::tradable(&account, proxy.as_ref(), game)).await?;
     let (session, items) = settle(&state, &account_name, result)?;
     store_session(&state, &account_name, Some(session))?;
+    cached.insert(key, (Instant::now(), items.clone()));
     Ok(items)
 }
 

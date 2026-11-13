@@ -30,6 +30,7 @@ fn main() {
             app.manage(vault::VaultState::new(data_dir.join("vault.lgv")));
             app.manage(auto_confirm::AutoConfirmLog::default());
             app.manage(add_account::AddAccountState::default());
+            app.manage(trades::InventoryCache::default());
             vault::watch_idle(app.handle().clone());
             auto_confirm::watch(app.handle().clone());
             Ok(())

@@ -72,6 +72,10 @@ pub enum SteamError {
     Network,
     #[error("Steam took too long to answer, try again")]
     Timeout,
+    #[error("Steam's servers are busy, try again in a minute")]
+    Busy,
+    #[error("Steam is getting too many requests from this address, wait a few minutes")]
+    RateLimited,
     #[error("couldn't reach Steam through the proxy")]
     Proxy,
     /// Steam turned the change down and said why, in its own words.
@@ -430,8 +434,15 @@ fn community_page(response: Response) -> Result<String, SteamError> {
     if response.url().path().starts_with("/login") {
         return Err(SteamError::SessionExpired);
     }
-    if !response.status().is_success() {
-        return Err(SteamError::Steam(response.status().to_string()));
+    let status = response.status();
+    if status == StatusCode::TOO_MANY_REQUESTS {
+        return Err(SteamError::RateLimited);
+    }
+    if status.is_server_error() {
+        return Err(SteamError::Busy);
+    }
+    if !status.is_success() {
+        return Err(SteamError::Steam(status.to_string()));
     }
     response.text().map_err(request_error)
 }
