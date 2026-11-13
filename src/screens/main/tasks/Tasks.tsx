@@ -21,6 +21,11 @@ const TASKS: { kind: Kind; name: string; text: string }[] = [
     text: 'Play games on a connection that stays up',
   },
   {
+    kind: 'cardFarming',
+    name: 'Card farming',
+    text: 'Play the games with card drops left until they run out',
+  },
+  {
     kind: 'moveToStorage',
     name: 'Move to storage',
     text: 'Every tradable item to one account',
@@ -134,6 +139,7 @@ export default function Tasks({ accounts, groups }: Props) {
       case 'hourBoost':
         return { kind, games: boostGames }
       case 'goOffline':
+      case 'cardFarming':
         return { kind }
       case 'profile': {
         const { avatar } = profile

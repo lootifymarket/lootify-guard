@@ -13,6 +13,7 @@ use tauri::async_runtime::spawn_blocking;
 use tauri::{AppHandle, Manager, State};
 
 use crate::accounts::{account_and_proxy, no_such_account, settle, store_session};
+use crate::farming::Farms;
 use crate::vault::{CommandError, VaultState};
 
 const MAX_STATUS: usize = 64;
@@ -311,8 +312,16 @@ pub fn start(
             .playing = list.clone();
         vault.save_data(contents.to_bytes())?;
     }
+    // Games picked by hand take over from card farming.
+    app.state::<Farms>().stop(account_name);
     app.state::<Players>().start(app, account_name, list);
     Ok(())
+}
+
+/// Ends card farming and playing on the account. Whether it was playing.
+pub fn stop(app: &AppHandle, account_name: &str) -> bool {
+    app.state::<Farms>().stop(account_name);
+    app.state::<Players>().stop(account_name)
 }
 
 #[tauri::command]
@@ -326,8 +335,8 @@ pub fn start_playing(
 }
 
 #[tauri::command]
-pub fn stop_playing(players: State<'_, Players>, account_name: String) {
-    players.stop(&account_name);
+pub fn stop_playing(app: AppHandle, account_name: String) {
+    stop(&app, &account_name);
 }
 
 /// Every account with a connection, playing or trying to.

@@ -56,3 +56,34 @@ export const stopPlaying = (accountName: string) =>
 /** Most played first. */
 export const ownedGames = (accountName: string) =>
   invoke<OwnedGame[]>('owned_games', { accountName })
+
+export type CardGame = {
+  appId: number
+  name: string
+  drops: number
+  hours: number
+}
+
+export type Farm = { accountName: string } & (
+  | { state: 'checking' }
+  | {
+      state: 'farming'
+      /** Games with drops left. */
+      games: CardGame[]
+      /** The ones being played now. */
+      playing: number[]
+      /** In Unix seconds. */
+      nextCheck: number
+      /** Why the last check failed; farming goes on meanwhile. */
+      problem: string | null
+    }
+  /** Every card has dropped. */
+  | { state: 'done' }
+  | { state: 'stopped'; reason: string }
+)
+
+/** Plays the games with card drops left until they run out. */
+export const startFarming = (accountName: string) =>
+  invoke<void>('start_farming', { accountName })
+
+export const farmingNow = () => invoke<Farm[]>('farming_now')

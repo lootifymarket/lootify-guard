@@ -1,12 +1,15 @@
 import { useEffect, useEffectEvent, useState } from 'react'
 import {
+  farmingNow,
   MAX_GAMES,
   ownedGames,
   playingList,
   playingNow,
   PRESENCE_NAMES,
+  startFarming,
   startPlaying,
   stopPlaying,
+  type Farm,
   type OwnedGame,
   type Player,
   type PlayingList,
@@ -34,6 +37,7 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
     presence: 'online',
   })
   const [player, setPlayer] = useState<Player | null>(null)
+  const [farm, setFarm] = useState<Farm | null>(null)
   const [owned, setOwned] = useState<OwnedGame[] | undefined>(undefined)
   const [ownedError, setOwnedError] = useState('')
   const [picking, setPicking] = useState(false)
@@ -43,12 +47,15 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000))
 
   function refresh() {
-    return playingNow().then((players) => {
-      setNow(Math.floor(Date.now() / 1000))
-      setPlayer(
-        players.find((item) => item.accountName === accountName) ?? null,
-      )
-    })
+    return Promise.all([playingNow(), farmingNow()]).then(
+      ([players, farms]) => {
+        const mine = <T extends { accountName: string }>(list: T[]) =>
+          list.find((item) => item.accountName === accountName) ?? null
+        setNow(Math.floor(Date.now() / 1000))
+        setPlayer(mine(players))
+        setFarm(mine(farms))
+      },
+    )
   }
   const poll = useEffectEvent(() => void refresh())
   useEffect(() => {
@@ -80,8 +87,11 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
   const running = player !== null && player.state !== 'stopped'
   const status = draft.status?.trim() || null
   const room = MAX_GAMES - (status ? 1 : 0)
+  const farming = farm?.state === 'checking' || farm?.state === 'farming'
+  // While farming, the games are the farm's to pick, not the list below.
   const changed =
     running &&
+    !farming &&
     (player.games.join() !== draft.games.join() ||
       (player.status ?? null) !== status ||
       player.presence !== draft.presence)
@@ -145,6 +155,35 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
           {error}
         </p>
       )}
+
+      <div className={styles.run}>
+        <span className={styles.runWords}>
+          <span className={styles.runTitle}>Card farming</span>
+          <span className={styles.runText}>
+            <FarmText farm={farm} now={now} />
+          </span>
+        </span>
+        {farming ? (
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={busy}
+            onClick={() => void act(() => stopPlaying(accountName))}
+          >
+            Stop
+          </Button>
+        ) : (
+          <Button
+            variant="secondary"
+            size="sm"
+            busy={busy}
+            disabled={busy}
+            onClick={() => void act(() => startFarming(accountName))}
+          >
+            Farm cards
+          </Button>
+        )}
+      </div>
 
       <div className={styles.field}>
         <span className={styles.label}>
@@ -251,6 +290,33 @@ function RunTitle({ player, now }: { player: Player | null; now: number }) {
       <span className={styles.runText}>{text}</span>
     </>
   )
+}
+
+function FarmText({ farm, now }: { farm: Farm | null; now: number }) {
+  switch (farm?.state) {
+    case undefined:
+      return 'Plays the games that still drop cards until they run out'
+    case 'checking':
+      return 'Reading the badges…'
+    case 'done':
+      return 'No card drops left'
+    case 'stopped':
+      return farm.reason
+    case 'farming': {
+      const drops = farm.games.reduce((sum, game) => sum + game.drops, 0)
+      const playing = farm.games
+        .filter((game) => farm.playing.includes(game.appId))
+        .map((game) => game.name)
+      const minutes = Math.max(1, Math.ceil((farm.nextCheck - now) / 60))
+      return [
+        `${drops} drops left in ${farm.games.length} games`,
+        playing.length === 1
+          ? `playing ${playing[0]}`
+          : `building hours in ${playing.length} games`,
+        farm.problem ?? `next check in ${minutes} min`,
+      ].join(' · ')
+    }
+  }
 }
 
 function elapsed(seconds: number) {

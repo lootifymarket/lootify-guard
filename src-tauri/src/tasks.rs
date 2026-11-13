@@ -22,6 +22,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, State};
 
 use crate::accounts::{account_and_proxy, no_such_account};
+use crate::farming::Farms;
 use crate::inventory::InventoryCache;
 use crate::playing::{self, Players};
 use crate::vault::{CommandError, VaultState};
@@ -116,6 +117,7 @@ pub enum TaskInput {
         games: String,
     },
     GoOffline,
+    CardFarming,
     #[serde(rename_all = "camelCase")]
     MoveToStorage {
         storage: String,
@@ -134,6 +136,8 @@ enum Work {
     /// Plays these games, or each account's own list, on a connection that stays up.
     Play(Option<Vec<u32>>),
     GoOffline,
+    /// Plays the games with card drops left until they run out.
+    Farm,
 }
 
 #[derive(Deserialize)]
@@ -237,6 +241,7 @@ pub fn start_task(
             }
             TaskInput::HourBoost { games } => Work::Play(boost_games(&games)?),
             TaskInput::GoOffline => Work::GoOffline,
+            TaskInput::CardFarming => Work::Farm,
             TaskInput::MoveToStorage { storage, game } => {
                 contents.account(&storage).ok_or_else(no_such_account)?;
                 // The storage account has nothing to send to itself.
@@ -518,8 +523,16 @@ fn run_one(
                 n => format!("Playing {n} games"),
             }))
         }
+        Work::Farm => {
+            let farms = app.state::<Farms>();
+            farms.start(app, account_name);
+            farms
+                .wait_started(account_name)
+                .map(Outcome::Done)
+                .map_err(|reason| Failed::Vault(CommandError::Failed(reason)))
+        }
         Work::GoOffline => Ok(Outcome::Done(
-            if app.state::<Players>().stop(account_name) {
+            if playing::stop(app, account_name) {
                 "Offline"
             } else {
                 "Wasn't playing"

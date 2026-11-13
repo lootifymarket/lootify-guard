@@ -19,6 +19,8 @@ export type TaskInput =
   /** App IDs or store links; empty plays each account's own list. */
   | { kind: 'hourBoost'; games: string }
   | { kind: 'goOffline' }
+  /** Plays the games with card drops left until they run out. */
+  | { kind: 'cardFarming' }
   /** Every tradable item to one account. */
   | { kind: 'moveToStorage'; storage: string; game: Game }
 
