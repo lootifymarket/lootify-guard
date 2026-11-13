@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { fromBackend } from '../i18n/backend/index.ts'
 import { words } from '../i18n/index.ts'
 import type { InventoryItem } from './inventory.ts'
 
@@ -54,7 +55,14 @@ export type Trades = {
   signedOut: string[]
 }
 
-export const listTradeOffers = () => invoke<Trades>('list_trade_offers')
+export const listTradeOffers = () =>
+  invoke<Trades>('list_trade_offers').then((trades) => ({
+    ...trades,
+    failures: trades.failures.map((failure) => ({
+      ...failure,
+      reason: fromBackend(failure.reason),
+    })),
+  }))
 
 /** What came of accepting: done, confirmed in Guard here, or waiting for email. */
 export type Accepted = 'done' | 'confirmed' | 'needsEmail'

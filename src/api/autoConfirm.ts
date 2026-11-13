@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { fromBackend } from '../i18n/backend/index.ts'
 import { words } from '../i18n/index.ts'
 import type { Confirmation } from './confirmations.ts'
 
@@ -65,4 +66,11 @@ export const setAutoConfirmRule = (
 export const setAutoConfirmPaused = (paused: boolean) =>
   invoke<void>('set_auto_confirm_paused', { paused })
 
-export const autoConfirmLog = () => invoke<AutoConfirmLog>('auto_confirm_log')
+export const autoConfirmLog = () =>
+  invoke<AutoConfirmLog>('auto_confirm_log').then((log) => ({
+    ...log,
+    failures: log.failures.map((failure) => ({
+      ...failure,
+      reason: fromBackend(failure.reason),
+    })),
+  }))

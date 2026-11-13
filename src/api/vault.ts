@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { fromBackend } from '../i18n/backend/index.ts'
 import { words } from '../i18n/index.ts'
 
 export type VaultStatus = 'missing' | 'locked' | 'unlocked'
@@ -77,7 +78,7 @@ export function errorMessage(error: unknown) {
   const t = words().errors
   switch (commandError?.kind) {
     case 'failed':
-      return commandError.message
+      return fromBackend(commandError.message)
     case 'wrongPassword':
       return t.wrongPassword
     case 'locked':
