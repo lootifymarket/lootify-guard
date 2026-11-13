@@ -1,5 +1,6 @@
 use lootify_guard_core::api_key;
 use lootify_guard_core::contents::Contents;
+use lootify_guard_core::sessions::{self, Device};
 use serde::Serialize;
 use tauri::State;
 use tauri::async_runtime::spawn_blocking;
@@ -59,6 +60,33 @@ pub async fn revoke_api_key(
     let session = settle(&state, &account_name, result)?;
     store_session(&state, &account_name, Some(session))?;
     save_trusted(&state, &account_name, None)
+}
+
+/// The devices signed in to the account, this app first.
+#[tauri::command]
+pub async fn list_devices(
+    state: State<'_, VaultState>,
+    account_name: String,
+) -> Result<Vec<Device>, CommandError> {
+    let (account, proxy) = account_and_proxy(&state, &account_name)?;
+    let result = spawn_blocking(move || sessions::list(&account, proxy.as_ref())).await?;
+    let (session, devices) = settle(&state, &account_name, result)?;
+    store_session(&state, &account_name, Some(session))?;
+    Ok(devices)
+}
+
+/// Signs every device but this app out of the account. Returns how many there were.
+#[tauri::command]
+pub async fn sign_out_other_devices(
+    state: State<'_, VaultState>,
+    account_name: String,
+) -> Result<usize, CommandError> {
+    let (account, proxy) = account_and_proxy(&state, &account_name)?;
+    let result =
+        spawn_blocking(move || sessions::sign_out_others(&account, proxy.as_ref())).await?;
+    let (session, count) = settle(&state, &account_name, result)?;
+    store_session(&state, &account_name, Some(session))?;
+    Ok(count)
 }
 
 fn save_trusted(

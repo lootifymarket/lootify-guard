@@ -19,7 +19,13 @@ import {
   proxyTitle,
   type Proxy,
 } from '../../../api/proxies.ts'
-import { checkApiKey, type ApiKey } from '../../../api/security.ts'
+import {
+  checkApiKey,
+  DEVICE_KIND_NAMES,
+  listDevices,
+  type ApiKey,
+  type Device,
+} from '../../../api/security.ts'
 import {
   biometricStatus,
   errorMessage,
@@ -30,6 +36,7 @@ import Button from '../../../components/Button.tsx'
 import Dropdown, { type DropdownOption } from '../../../components/Dropdown.tsx'
 import Flag from '../../../components/Flag.tsx'
 import Toggle from '../../../components/Toggle.tsx'
+import { ago } from '../../../lib/ago.ts'
 import { useCopy } from '../../../lib/useCopy.ts'
 import { useCodeSecondsLeft } from '../useAccounts.ts'
 import AutoConfirmRules from '../AutoConfirmRules.tsx'
@@ -38,6 +45,7 @@ import layout from '../layout.module.css'
 import ConfirmOwner from './ConfirmOwner.tsx'
 import RemoveAccount from './RemoveAccount.tsx'
 import SignIn from './SignIn.tsx'
+import SignOutEverywhere from './SignOutEverywhere.tsx'
 import styles from './AccountPage.module.css'
 
 type Props = {
@@ -50,7 +58,8 @@ type Props = {
   onRemoved: () => void
 }
 
-type OpenDialog = 'signIn' | 'reveal' | 'export' | 'remove' | 'rules' | null
+type OpenDialog =
+  'signIn' | 'reveal' | 'export' | 'remove' | 'rules' | 'signOut' | null
 
 export default function AccountPage({
   account,
@@ -72,6 +81,10 @@ export default function AccountPage({
   const [apiKey, setApiKey] = useState<ApiKey | null | undefined>(undefined)
   const [checkingKey, setCheckingKey] = useState(false)
   const [keyError, setKeyError] = useState('')
+  const [devices, setDevices] = useState<Device[] | undefined>(undefined)
+  const [devicesShown, setDevicesShown] = useState(false)
+  const [devicesError, setDevicesError] = useState('')
+  const [signedOut, setSignedOut] = useState<number | null>(null)
   const [checked, setChecked] = useState<{ ok: boolean; text: string } | null>(
     null,
   )
@@ -86,10 +99,12 @@ export default function AccountPage({
     void listProxies().then(setProxies)
   }, [])
 
-  const checkKeyOnOpen = useEffectEvent(() => {
-    if (account.signedIn) void checkKey()
+  const checkOnOpen = useEffectEvent(() => {
+    if (!account.signedIn) return
+    void checkKey()
+    void loadDevices()
   })
-  useEffect(() => checkKeyOnOpen(), [])
+  useEffect(() => checkOnOpen(), [])
 
   const proxyMissing =
     account.proxyId !== null &&
@@ -160,6 +175,16 @@ export default function AccountPage({
       onChanged()
     } finally {
       setCheckingKey(false)
+    }
+  }
+
+  async function loadDevices() {
+    setDevicesError('')
+    try {
+      setDevices(await listDevices(name))
+    } catch (err) {
+      setDevicesError(errorMessage(err))
+      onChanged()
     }
   }
 
@@ -276,6 +301,55 @@ export default function AccountPage({
             )}
           </div>
           <div className={styles.fact}>
+            <dt>Active sessions</dt>
+            {account.signedIn ? (
+              <dd className={styles.reveal}>
+                <span className={devices ? undefined : styles.muted}>
+                  {devicesSummary(devices)}
+                </span>
+                {devices && devices.length > 0 && (
+                  <button
+                    type="button"
+                    className={styles.link}
+                    aria-expanded={devicesShown}
+                    onClick={() => setDevicesShown(!devicesShown)}
+                  >
+                    {devicesShown ? 'Hide' : 'Show'}
+                  </button>
+                )}
+              </dd>
+            ) : (
+              <dd className={styles.muted}>Sign in to check</dd>
+            )}
+          </div>
+          {devicesShown && devices && (
+            <div className={styles.devices}>
+              <dt className={styles.hidden}>Devices</dt>
+              {devices.map((device, i) => (
+                <dd key={i} className={styles.device}>
+                  <span className={styles.deviceWords}>
+                    <span>
+                      {device.name || DEVICE_KIND_NAMES[device.kind]}
+                      {device.thisApp && (
+                        <span className={styles.muted}> · this app</span>
+                      )}
+                    </span>
+                    <span className={styles.muted}>
+                      {[DEVICE_KIND_NAMES[device.kind], device.place]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
+                  </span>
+                  {device.lastSeenAt !== null && (
+                    <span className={styles.muted}>
+                      {ago(device.lastSeenAt)}
+                    </span>
+                  )}
+                </dd>
+              ))}
+            </div>
+          )}
+          <div className={styles.fact}>
             <dt>Proxy</dt>
             <dd>
               <div className={styles.proxyPicker}>
@@ -339,6 +413,18 @@ export default function AccountPage({
             {proxyError}
           </p>
         )}
+        {devicesError && (
+          <p className={styles.error} role="alert">
+            {devicesError}
+          </p>
+        )}
+        {signedOut !== null && (
+          <p className={styles.muted} role="status">
+            {signedOut === 0
+              ? 'No other device was signed in.'
+              : `Signed out ${signedOut} ${signedOut === 1 ? 'device' : 'devices'}.`}
+          </p>
+        )}
         {keyError && (
           <p className={styles.error} role="alert">
             {keyError}
@@ -353,6 +439,15 @@ export default function AccountPage({
           </p>
         )}
         <div className={styles.actions}>
+          {account.signedIn && (
+            <button
+              type="button"
+              className={styles.action}
+              onClick={() => setDialog('signOut')}
+            >
+              Sign out everywhere
+            </button>
+          )}
           <button
             type="button"
             className={styles.action}
@@ -447,6 +542,17 @@ export default function AccountPage({
           setDialog(null)
           void checkSession()
           void checkKey()
+          void loadDevices()
+        }}
+      />
+      <SignOutEverywhere
+        open={dialog === 'signOut'}
+        accountName={name}
+        onClose={() => setDialog(null)}
+        onSignedOut={(count) => {
+          setDialog(null)
+          setSignedOut(count)
+          void loadDevices()
         }}
       />
       <AutoConfirmRules
@@ -474,4 +580,11 @@ function ApiKeyState({ apiKey }: { apiKey: ApiKey | null | undefined }) {
       {apiKey.trusted && <span className={styles.muted}> · yours</span>}
     </span>
   )
+}
+
+function devicesSummary(devices: Device[] | undefined) {
+  if (devices === undefined) return 'Unknown'
+  const others = devices.filter((device) => !device.thisApp).length
+  if (others === 0) return 'Only this app'
+  return `This app and ${others} ${others === 1 ? 'other device' : 'other devices'}`
 }

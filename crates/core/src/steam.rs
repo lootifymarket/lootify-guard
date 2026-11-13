@@ -276,6 +276,24 @@ pub(crate) fn web_api_get(
         .query(query)
         .send()
         .map_err(|_| SteamError::Network)?;
+    web_api_body(response)
+}
+
+/// A POST to Steam's Web API on behalf of the session, for the methods that take no GET.
+pub(crate) fn web_api_post(
+    client: &Client,
+    url: &str,
+    session: &Session,
+) -> Result<Vec<u8>, SteamError> {
+    let response = client
+        .post(url)
+        .query(&[("access_token", session.access_token.expose())])
+        .send()
+        .map_err(|_| SteamError::Network)?;
+    web_api_body(response)
+}
+
+fn web_api_body(response: Response) -> Result<Vec<u8>, SteamError> {
     if matches!(
         response.status(),
         StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN
