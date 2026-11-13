@@ -20,6 +20,11 @@ import {
   type Proxy,
 } from '../../../api/proxies.ts'
 import {
+  formatMoney,
+  walletBalance,
+  type Wallet,
+} from '../../../api/profile.ts'
+import {
   checkApiKey,
   checkStanding,
   listDevices,
@@ -42,6 +47,7 @@ import { useCodeSecondsLeft } from '../useAccounts.ts'
 import AutoConfirmRules from '../AutoConfirmRules.tsx'
 import ApiKeyAlert from './ApiKeyAlert.tsx'
 import DeviceRow from './DeviceRow.tsx'
+import ProfileTab from './ProfileTab.tsx'
 import layout from '../layout.module.css'
 import ConfirmOwner from './ConfirmOwner.tsx'
 import RemoveAccount from './RemoveAccount.tsx'
@@ -60,6 +66,13 @@ type Props = {
   onRemoved: () => void
 }
 
+type Tab = 'profile' | 'security'
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'profile', label: 'Profile' },
+  { id: 'security', label: 'Security' },
+]
+
 type OpenDialog =
   'signIn' | 'reveal' | 'export' | 'remove' | 'rules' | 'signOut' | null
 
@@ -71,6 +84,7 @@ export default function AccountPage({
   onChanged,
   onRemoved,
 }: Props) {
+  const [tab, setTab] = useState<Tab>('profile')
   const [dialog, setDialog] = useState<OpenDialog>(null)
   const [revocationCode, setRevocationCode] = useState<string | null>(null)
   const [exported, setExported] = useState<string | null>(null)
@@ -89,6 +103,9 @@ export default function AccountPage({
   const [signedOut, setSignedOut] = useState<number | null>(null)
   const [standing, setStanding] = useState<Standing | undefined>(undefined)
   const [standingError, setStandingError] = useState('')
+  // `undefined` until Steam was asked, `null` when the account has no wallet.
+  const [wallet, setWallet] = useState<Wallet | null | undefined>(undefined)
+  const [walletError, setWalletError] = useState('')
   const [checked, setChecked] = useState<{ ok: boolean; text: string } | null>(
     null,
   )
@@ -108,6 +125,7 @@ export default function AccountPage({
     void checkKey()
     void loadDevices()
     void loadStanding()
+    void loadWallet()
   })
   useEffect(() => checkOnOpen(), [])
 
@@ -203,6 +221,16 @@ export default function AccountPage({
     }
   }
 
+  async function loadWallet() {
+    setWalletError('')
+    try {
+      setWallet(await walletBalance(name))
+    } catch (err) {
+      setWalletError(errorMessage(err))
+      onChanged()
+    }
+  }
+
   async function reveal(password: string | null) {
     setRevocationCode(await revealRevocationCode(name, password))
     setDialog(null)
@@ -266,260 +294,319 @@ export default function AccountPage({
         <span className={styles.muted}>Refreshes in {secondsLeft} s</span>
       </section>
 
-      <section className={styles.section} aria-labelledby="security-title">
-        <h2 id="security-title" className={styles.sectionTitle}>
-          Security
-        </h2>
-        <dl className={styles.facts}>
-          <div className={styles.fact}>
-            <dt>Steam session</dt>
-            <dd className={styles.reveal}>
-              <span className={account.signedIn ? undefined : styles.muted}>
-                {account.signedIn ? 'Signed in' : 'Not signed in'}
-              </span>
-              {account.signedIn ? (
-                <button
-                  type="button"
-                  className={styles.link}
-                  disabled={checking}
-                  onClick={() => void checkSession()}
-                >
-                  {checking ? 'Checking…' : 'Check'}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className={styles.link}
-                  onClick={() => setDialog('signIn')}
-                >
-                  Sign in
-                </button>
-              )}
-            </dd>
-          </div>
-          <div className={styles.fact}>
-            <dt>Web API key</dt>
-            {account.signedIn ? (
+      <div role="tablist" aria-label="Sections" className={styles.tabs}>
+        {TABS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            role="tab"
+            id={`tab-${item.id}`}
+            aria-selected={tab === item.id}
+            aria-controls={`panel-${item.id}`}
+            className={styles.tab}
+            onClick={() => setTab(item.id)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Both panels stay mounted, so switching tabs doesn't ask Steam again. */}
+      <div
+        role="tabpanel"
+        id="panel-profile"
+        aria-labelledby="tab-profile"
+        className={styles.panel}
+        hidden={tab !== 'profile'}
+      >
+        <ProfileTab
+          accountName={name}
+          steamId={account.steamId}
+          avatar={account.avatar}
+          signedIn={account.signedIn}
+          onChanged={onChanged}
+        />
+      </div>
+
+      <div
+        role="tabpanel"
+        id="panel-security"
+        aria-labelledby="tab-security"
+        className={styles.panel}
+        hidden={tab !== 'security'}
+      >
+        <section className={styles.section} aria-label="Security">
+          <dl className={styles.facts}>
+            <div className={styles.fact}>
+              <dt>Steam session</dt>
               <dd className={styles.reveal}>
-                <ApiKeyState apiKey={apiKey} />
-                <button
-                  type="button"
-                  className={styles.link}
-                  disabled={checkingKey}
-                  onClick={() => void checkKey()}
-                >
-                  {checkingKey ? 'Checking…' : 'Check'}
-                </button>
-              </dd>
-            ) : (
-              <dd className={styles.muted}>Sign in to check</dd>
-            )}
-          </div>
-          <div className={styles.fact}>
-            <dt>Active sessions</dt>
-            {account.signedIn ? (
-              <dd className={styles.reveal}>
-                <span className={devices ? undefined : styles.muted}>
-                  {devicesSummary(devices)}
+                <span className={account.signedIn ? undefined : styles.muted}>
+                  {account.signedIn ? 'Signed in' : 'Not signed in'}
                 </span>
-                {devices && devices.length > 0 && (
+                {account.signedIn ? (
                   <button
                     type="button"
                     className={styles.link}
-                    aria-expanded={devicesShown}
-                    onClick={() => setDevicesShown(!devicesShown)}
+                    disabled={checking}
+                    onClick={() => void checkSession()}
                   >
-                    {devicesShown ? 'Hide' : 'Show'}
+                    {checking ? 'Checking…' : 'Check'}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className={styles.link}
+                    onClick={() => setDialog('signIn')}
+                  >
+                    Sign in
                   </button>
                 )}
               </dd>
-            ) : (
-              <dd className={styles.muted}>Sign in to check</dd>
-            )}
-          </div>
-          {devicesShown && devices && (
-            <div className={styles.devices}>
-              <dt className={styles.hidden}>Devices</dt>
-              {devices.map((device) => (
-                <DeviceRow
-                  key={device.id}
-                  accountName={name}
-                  device={device}
-                  onChanged={() => void loadDevices()}
-                />
-              ))}
             </div>
-          )}
-          <StandingFacts standing={standing} signedIn={account.signedIn} />
-          <div className={styles.fact}>
-            <dt>Proxy</dt>
-            <dd>
-              <div className={styles.proxyPicker}>
-                <Dropdown
-                  label="Proxy"
-                  hideLabel
-                  size="sm"
-                  value={
-                    account.proxyId === null ? '' : String(account.proxyId)
-                  }
-                  options={proxyOptions}
-                  onChange={(value) => void changeProxy(value)}
-                />
+            <div className={styles.fact}>
+              <dt>Web API key</dt>
+              {account.signedIn ? (
+                <dd className={styles.reveal}>
+                  <ApiKeyState apiKey={apiKey} />
+                  <button
+                    type="button"
+                    className={styles.link}
+                    disabled={checkingKey}
+                    onClick={() => void checkKey()}
+                  >
+                    {checkingKey ? 'Checking…' : 'Check'}
+                  </button>
+                </dd>
+              ) : (
+                <dd className={styles.muted}>Sign in to check</dd>
+              )}
+            </div>
+            <div className={styles.fact}>
+              <dt>Active sessions</dt>
+              {account.signedIn ? (
+                <dd className={styles.reveal}>
+                  <span className={devices ? undefined : styles.muted}>
+                    {devicesSummary(devices)}
+                  </span>
+                  {devices && devices.length > 0 && (
+                    <button
+                      type="button"
+                      className={styles.link}
+                      aria-expanded={devicesShown}
+                      onClick={() => setDevicesShown(!devicesShown)}
+                    >
+                      {devicesShown ? 'Hide' : 'Show'}
+                    </button>
+                  )}
+                </dd>
+              ) : (
+                <dd className={styles.muted}>Sign in to check</dd>
+              )}
+            </div>
+            {devicesShown && devices && (
+              <div className={styles.devices}>
+                <dt className={styles.hidden}>Devices</dt>
+                {devices.map((device) => (
+                  <DeviceRow
+                    key={device.id}
+                    accountName={name}
+                    device={device}
+                    onChanged={() => void loadDevices()}
+                  />
+                ))}
               </div>
-            </dd>
-          </div>
-          <div className={styles.fact}>
-            <dt>Steam ID</dt>
-            <dd className={account.steamId ? styles.mono : styles.muted}>
-              {account.steamId ?? 'Appears after you sign in'}
-            </dd>
-          </div>
-          <div className={styles.fact}>
-            <dt>Revocation code</dt>
-            {account.hasRevocationCode ? (
-              <dd className={styles.reveal}>
-                <span className={styles.revocationCode}>
-                  {revocationCode ?? 'R•••••'}
-                </span>
-                <button
-                  type="button"
-                  className={styles.link}
-                  onClick={() =>
-                    revocationCode
-                      ? setRevocationCode(null)
-                      : setDialog('reveal')
-                  }
-                >
-                  {revocationCode ? 'Hide' : 'Show'}
-                </button>
-              </dd>
-            ) : (
-              <dd className={styles.muted}>Not in the .maFile</dd>
             )}
-          </div>
-          <div className={styles.fact}>
-            <dt>Device ID</dt>
-            <dd className={account.deviceId ? styles.mono : styles.muted}>
-              {account.deviceId || 'Not in the .maFile'}
-            </dd>
-          </div>
-        </dl>
-        {proxyMissing && (
-          <p className={styles.error} role="alert">
-            This account’s proxy was deleted. It can’t reach Steam until you
-            pick another proxy or No proxy.
-          </p>
-        )}
-        {proxyError && (
-          <p className={styles.error} role="alert">
-            {proxyError}
-          </p>
-        )}
-        {standingError && (
-          <p className={styles.error} role="alert">
-            {standingError}
-          </p>
-        )}
-        {devicesError && (
-          <p className={styles.error} role="alert">
-            {devicesError}
-          </p>
-        )}
-        {signedOut !== null && (
-          <p className={styles.muted} role="status">
-            {signedOut === 0
-              ? 'No other device was signed in.'
-              : `Signed out ${signedOut} ${signedOut === 1 ? 'device' : 'devices'}.`}
-          </p>
-        )}
-        {keyError && (
-          <p className={styles.error} role="alert">
-            {keyError}
-          </p>
-        )}
-        {checked && (
-          <p
-            className={checked.ok ? styles.muted : styles.error}
-            role={checked.ok ? 'status' : 'alert'}
-          >
-            {checked.text}
-          </p>
-        )}
-        <div className={styles.actions}>
-          {account.signedIn && (
+            <div className={styles.fact}>
+              <dt>Wallet</dt>
+              {account.signedIn ? (
+                <dd
+                  className={wallet === undefined ? styles.muted : styles.mono}
+                >
+                  {walletText(wallet)}
+                </dd>
+              ) : (
+                <dd className={styles.muted}>Sign in to check</dd>
+              )}
+            </div>
+            <StandingFacts standing={standing} signedIn={account.signedIn} />
+            <div className={styles.fact}>
+              <dt>Proxy</dt>
+              <dd>
+                <div className={styles.proxyPicker}>
+                  <Dropdown
+                    label="Proxy"
+                    hideLabel
+                    size="sm"
+                    value={
+                      account.proxyId === null ? '' : String(account.proxyId)
+                    }
+                    options={proxyOptions}
+                    onChange={(value) => void changeProxy(value)}
+                  />
+                </div>
+              </dd>
+            </div>
+            <div className={styles.fact}>
+              <dt>Steam ID</dt>
+              <dd className={account.steamId ? styles.mono : styles.muted}>
+                {account.steamId ?? 'Appears after you sign in'}
+              </dd>
+            </div>
+            <div className={styles.fact}>
+              <dt>Revocation code</dt>
+              {account.hasRevocationCode ? (
+                <dd className={styles.reveal}>
+                  <span className={styles.revocationCode}>
+                    {revocationCode ?? 'R•••••'}
+                  </span>
+                  <button
+                    type="button"
+                    className={styles.link}
+                    onClick={() =>
+                      revocationCode
+                        ? setRevocationCode(null)
+                        : setDialog('reveal')
+                    }
+                  >
+                    {revocationCode ? 'Hide' : 'Show'}
+                  </button>
+                </dd>
+              ) : (
+                <dd className={styles.muted}>Not in the .maFile</dd>
+              )}
+            </div>
+            <div className={styles.fact}>
+              <dt>Device ID</dt>
+              <dd className={account.deviceId ? styles.mono : styles.muted}>
+                {account.deviceId || 'Not in the .maFile'}
+              </dd>
+            </div>
+          </dl>
+          {proxyMissing && (
+            <p className={styles.error} role="alert">
+              This account’s proxy was deleted. It can’t reach Steam until you
+              pick another proxy or No proxy.
+            </p>
+          )}
+          {proxyError && (
+            <p className={styles.error} role="alert">
+              {proxyError}
+            </p>
+          )}
+          {walletError && (
+            <p className={styles.error} role="alert">
+              {walletError}
+            </p>
+          )}
+          {standingError && (
+            <p className={styles.error} role="alert">
+              {standingError}
+            </p>
+          )}
+          {devicesError && (
+            <p className={styles.error} role="alert">
+              {devicesError}
+            </p>
+          )}
+          {signedOut !== null && (
+            <p className={styles.muted} role="status">
+              {signedOut === 0
+                ? 'No other device was signed in.'
+                : `Signed out ${signedOut} ${signedOut === 1 ? 'device' : 'devices'}.`}
+            </p>
+          )}
+          {keyError && (
+            <p className={styles.error} role="alert">
+              {keyError}
+            </p>
+          )}
+          {checked && (
+            <p
+              className={checked.ok ? styles.muted : styles.error}
+              role={checked.ok ? 'status' : 'alert'}
+            >
+              {checked.text}
+            </p>
+          )}
+          <div className={styles.actions}>
+            {account.signedIn && (
+              <button
+                type="button"
+                className={styles.action}
+                onClick={() => setDialog('signOut')}
+              >
+                Sign out everywhere
+              </button>
+            )}
             <button
               type="button"
               className={styles.action}
-              onClick={() => setDialog('signOut')}
+              onClick={() => setDialog('export')}
             >
-              Sign out everywhere
+              Export .maFile
             </button>
+            <button
+              type="button"
+              className={`${styles.action} ${styles.danger}`}
+              onClick={() => setDialog('remove')}
+            >
+              Remove from Lootify Guard
+            </button>
+          </div>
+          {exported && (
+            <p className={styles.muted} role="status">
+              Saved {exported}
+            </p>
           )}
-          <button
-            type="button"
-            className={styles.action}
-            onClick={() => setDialog('export')}
-          >
-            Export .maFile
-          </button>
-          <button
-            type="button"
-            className={`${styles.action} ${styles.danger}`}
-            onClick={() => setDialog('remove')}
-          >
-            Remove from Lootify Guard
-          </button>
-        </div>
-        {exported && (
-          <p className={styles.muted} role="status">
-            Saved {exported}
-          </p>
-        )}
-      </section>
+        </section>
 
-      <section className={styles.section} aria-labelledby="auto-confirm-title">
-        <div className={styles.sectionHead}>
-          <h2 id="auto-confirm-title" className={styles.sectionTitle}>
-            Auto-confirm
-          </h2>
-          <button
-            type="button"
-            className={styles.link}
-            onClick={() => setDialog('rules')}
-          >
-            Set for many accounts
-          </button>
-        </div>
-        <div className={styles.rules}>
-          {AUTO_CONFIRM_RULES.map(({ rule, label, hint, warning }) => (
-            <div key={rule} className={styles.rule}>
-              <div className={styles.ruleWords}>
-                <span className={styles.ruleLabel}>{label}</span>
-                <span className={styles.ruleHint}>{hint}</span>
-                {warning && account.autoConfirm[rule] && (
-                  <span className={styles.ruleWarning}>{warning}</span>
-                )}
+        <section
+          className={styles.section}
+          aria-labelledby="auto-confirm-title"
+        >
+          <div className={styles.sectionHead}>
+            <h2 id="auto-confirm-title" className={styles.sectionTitle}>
+              Auto-confirm
+            </h2>
+            <button
+              type="button"
+              className={styles.link}
+              onClick={() => setDialog('rules')}
+            >
+              Set for many accounts
+            </button>
+          </div>
+          <div className={styles.rules}>
+            {AUTO_CONFIRM_RULES.map(({ rule, label, hint, warning }) => (
+              <div key={rule} className={styles.rule}>
+                <div className={styles.ruleWords}>
+                  <span className={styles.ruleLabel}>{label}</span>
+                  <span className={styles.ruleHint}>{hint}</span>
+                  {warning && account.autoConfirm[rule] && (
+                    <span className={styles.ruleWarning}>{warning}</span>
+                  )}
+                </div>
+                <Toggle
+                  on={account.autoConfirm[rule]}
+                  label={label}
+                  onChange={(on) => void changeRule(rule, on)}
+                />
               </div>
-              <Toggle
-                on={account.autoConfirm[rule]}
-                label={label}
-                onChange={(on) => void changeRule(rule, on)}
-              />
-            </div>
-          ))}
-        </div>
-        {ruleError && (
-          <p className={styles.error} role="alert">
-            {ruleError}
+            ))}
+          </div>
+          {ruleError && (
+            <p className={styles.error} role="alert">
+              {ruleError}
+            </p>
+          )}
+          <p className={styles.muted}>
+            {!account.signedIn &&
+            AUTO_CONFIRM_RULES.some(({ rule }) => account.autoConfirm[rule])
+              ? 'Nothing is confirmed until the account is signed in to Steam.'
+              : 'Checked every minute while the vault is unlocked. API keys, phone changes and account recovery are never confirmed automatically.'}
           </p>
-        )}
-        <p className={styles.muted}>
-          {!account.signedIn &&
-          AUTO_CONFIRM_RULES.some(({ rule }) => account.autoConfirm[rule])
-            ? 'Nothing is confirmed until the account is signed in to Steam.'
-            : 'Checked every minute while the vault is unlocked. API keys, phone changes and account recovery are never confirmed automatically.'}
-        </p>
-      </section>
+        </section>
+      </div>
 
       <ConfirmOwner
         open={dialog === 'reveal'}
@@ -596,4 +683,13 @@ function devicesSummary(devices: Device[] | undefined) {
   const others = devices.filter((device) => !device.thisApp).length
   if (others === 0) return 'Only this app'
   return `This app and ${others} ${others === 1 ? 'other device' : 'other devices'}`
+}
+
+function walletText(wallet: Wallet | null | undefined) {
+  if (wallet === undefined) return 'Unknown'
+  if (wallet === null) return 'No wallet'
+  const balance = formatMoney(wallet.balance, wallet.currency)
+  return wallet.pending > 0
+    ? `${balance} · ${formatMoney(wallet.pending, wallet.currency)} pending`
+    : balance
 }

@@ -86,7 +86,7 @@ pub fn check(
         let market = optional_get(client, MARKET_URL, session, &[("steamid", &id)])?
             .and_then(|body| parse_market(&body));
         let profile = format!("https://steamcommunity.com/profiles/{id}/?xml=1");
-        let limited = match community_get(client, &profile, session, steam_id) {
+        let limited = match community_get(client, &profile) {
             Ok(page) => parse_limited(&page),
             Err(SteamError::Steam(_)) => None,
             Err(err) => return Err(err),
