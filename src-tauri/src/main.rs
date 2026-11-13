@@ -6,6 +6,7 @@ mod add_account;
 mod auto_confirm;
 mod biometrics;
 mod confirmations;
+mod profile;
 mod proxies;
 mod security;
 mod sign_ins;
@@ -74,6 +75,9 @@ fn main() {
             sign_ins::list_sign_in_requests,
             sign_ins::answer_sign_in,
             sign_ins::allow_qr_sign_in,
+            profile::trade_url,
+            profile::new_trade_url,
+            profile::wallet_balance,
             proxies::list_proxies,
             proxies::add_proxies,
             proxies::add_proxy,
