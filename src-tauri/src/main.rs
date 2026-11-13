@@ -13,6 +13,7 @@ mod playing;
 mod profile;
 mod proxies;
 mod security;
+mod settings;
 mod sign_ins;
 mod tasks;
 mod trades;
@@ -32,7 +33,12 @@ fn main() {
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data_dir)?;
-            app.manage(vault::VaultState::new(data_dir.join("vault.lgv")));
+            let settings = settings::SettingsState::load(data_dir.join("settings.json"));
+            app.manage(vault::VaultState::new(
+                data_dir.join("vault.lgv"),
+                settings.get().auto_lock(),
+            ));
+            app.manage(settings);
             app.manage(auto_confirm::AutoConfirmLog::default());
             app.manage(add_account::AddAccountState::default());
             app.manage(inventory::InventoryCache::default());
@@ -52,6 +58,8 @@ fn main() {
             vault::unlock_with_biometrics,
             vault::enable_biometrics,
             vault::change_password,
+            vault::change_master_password,
+            vault::disable_biometrics,
             vault::lock_vault,
             vault::erase_vault,
             vault::report_activity,
@@ -97,6 +105,9 @@ fn main() {
             profile::save_profile,
             profile::clear_name_history,
             profile::change_avatar,
+            settings::get_settings,
+            settings::set_auto_lock,
+            settings::export_backup,
             playing::start_playing,
             farming::start_farming,
             farming::farming_now,

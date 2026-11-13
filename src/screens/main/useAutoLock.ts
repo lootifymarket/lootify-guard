@@ -7,9 +7,10 @@ const ACTIVITY_EVENTS = ['pointerdown', 'pointermove', 'keydown', 'wheel']
 /**
  * Tells the backend the user is still here and notices when it has locked the
  * vault. The backend owns the timer; this only keeps it informed. Returns when the
- * vault locks, in Unix seconds.
+ * vault locks, in Unix seconds, or `null` when it never locks by itself.
+ * A new `version` asks again, for when the auto-lock time changed.
  */
-export function useAutoLock(onLocked: () => void) {
+export function useAutoLock(onLocked: () => void, version: number) {
   const [deadline, setDeadline] = useState<number | null>(null)
   const locked = useEffectEvent(onLocked)
 
@@ -18,12 +19,13 @@ export function useAutoLock(onLocked: () => void) {
     let timer: ReturnType<typeof setTimeout> | undefined
     let lastReport = 0
 
-    async function sync(request: () => Promise<number>) {
+    async function sync(request: () => Promise<number | null>) {
       try {
         const next = await request()
         if (!active) return
         setDeadline(next)
         clearTimeout(timer)
+        if (next === null) return
         // Check again just past the deadline, when the backend has locked.
         timer = setTimeout(
           () => void sync(autoLockDeadline),
@@ -59,7 +61,7 @@ export function useAutoLock(onLocked: () => void) {
       }
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [])
+  }, [version])
 
   return deadline
 }
