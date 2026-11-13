@@ -8,6 +8,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use lootify_guard_core::cm::MAX_GAMES;
 use lootify_guard_core::contents::{Account, Contents, DamagedContents};
+use lootify_guard_core::events::MAX_QUEUES;
 use lootify_guard_core::games::PlayingList;
 use lootify_guard_core::inventory::Game;
 use lootify_guard_core::licenses::{self, License, MAX_LICENSES};
@@ -118,6 +119,11 @@ pub enum TaskInput {
     },
     GoOffline,
     CardFarming,
+    #[serde(rename_all = "camelCase")]
+    Events {
+        queues: u8,
+        claim_item: bool,
+    },
     #[serde(rename_all = "camelCase")]
     MoveToStorage {
         storage: String,
@@ -242,6 +248,17 @@ pub fn start_task(
             TaskInput::HourBoost { games } => Work::Play(boost_games(&games)?),
             TaskInput::GoOffline => Work::GoOffline,
             TaskInput::CardFarming => Work::Farm,
+            TaskInput::Events { queues, claim_item } => {
+                if queues > MAX_QUEUES {
+                    return Err(CommandError::Failed(format!(
+                        "sales reward at most {MAX_QUEUES} queues a day"
+                    )));
+                }
+                if queues == 0 && !claim_item {
+                    return Err(CommandError::Failed("pick something to do".to_owned()));
+                }
+                Work::Each(Task::Events { queues, claim_item })
+            }
             TaskInput::MoveToStorage { storage, game } => {
                 contents.account(&storage).ok_or_else(no_such_account)?;
                 // The storage account has nothing to send to itself.
