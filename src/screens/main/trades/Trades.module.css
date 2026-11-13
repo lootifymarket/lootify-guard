@@ -63,8 +63,9 @@
 .row {
   display: grid;
   grid-template-columns:
-    minmax(180px, 1.2fr) minmax(140px, 1fr) minmax(140px, 1fr)
-    minmax(160px, 1fr);
+    minmax(170px, 1.2fr) minmax(130px, 1fr) minmax(130px, 1fr)
+    minmax(130px, 1fr) 200px;
+  /* Every row is a grid of its own, so no column may size to its content. */
   gap: 16px;
   align-items: center;
 }
@@ -135,4 +136,54 @@
   color: var(--color-text-faint);
   font-size: 12px;
   line-height: 1.5;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
+
+.actionError,
+.actionNote {
+  flex-basis: 100%;
+  font-size: 12px;
+  text-align: right;
+}
+
+.actionError {
+  color: var(--color-danger);
+}
+
+.actionError::first-letter {
+  text-transform: uppercase;
+}
+
+.actionNote {
+  color: var(--color-text-muted);
+}
+
+.itemList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.itemList ul {
+  max-height: 160px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.itemListLabel {
+  color: var(--color-text-muted);
+  font-size: 12px;
 }

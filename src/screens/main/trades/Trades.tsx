@@ -11,6 +11,7 @@ import { errorMessage } from '../../../api/vault.ts'
 import Button from '../../../components/Button.tsx'
 import { ago } from '../../../lib/ago.ts'
 import layout from '../layout.module.css'
+import OfferActions from './OfferActions.tsx'
 import styles from './Trades.module.css'
 
 type Tab = 'incoming' | 'outgoing' | 'history'
@@ -122,6 +123,7 @@ export default function Trades({ onChanged }: Props) {
               <OfferRow
                 key={`${offer.accountName}-${offer.id}`}
                 offer={offer}
+                onDone={load}
               />
             ))}
           </div>
@@ -143,7 +145,13 @@ export default function Trades({ onChanged }: Props) {
   )
 }
 
-function OfferRow({ offer }: { offer: TradeOffer }) {
+function OfferRow({
+  offer,
+  onDone,
+}: {
+  offer: TradeOffer
+  onDone: () => void
+}) {
   const partner =
     offer.partnerAccount ?? offer.partnerName ?? `Steam ID ${offer.partnerId}`
   const [from, to] = offer.sent
@@ -166,6 +174,11 @@ function OfferRow({ offer }: { offer: TradeOffer }) {
         {offer.message && <q className={styles.message}>{offer.message}</q>}
         <span>{status(offer)}</span>
       </span>
+      {isOpen(offer.state) ? (
+        <OfferActions offer={offer} onDone={onDone} />
+      ) : (
+        <span />
+      )}
     </div>
   )
 }

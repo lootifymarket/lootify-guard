@@ -1,12 +1,16 @@
 use std::collections::{BTreeMap, HashMap};
 
 use reqwest::blocking::Client;
+use reqwest::header::REFERER;
 use serde::{Deserialize, Serialize};
 
+use crate::confirmations::confirm_offer;
 use crate::contents::{Account, Session};
 use crate::mafile::USER_ID_HIGH;
 use crate::proxy::ProxyAddress;
-use crate::steam::{SteamError, community_get, web_api_get, with_session};
+use crate::steam::{
+    SteamError, community_get, request_error, session_id, web_api_get, with_session,
+};
 
 const OFFERS_URL: &str = "https://api.steampowered.com/IEconService/GetTradeOffers/v1/";
 /// How far back finished offers are listed.
@@ -239,6 +243,151 @@ fn parse(body: &[u8]) -> Result<Vec<TradeOffer>, SteamError> {
     Ok(offers)
 }
 
+/// What came of accepting an offer.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Accepted {
+    /// The trade went through.
+    Done,
+    /// Steam took it, and the confirmation it asked for was given here.
+    Confirmed,
+    /// Steam wants the email confirmation it sent, which this app can't give.
+    NeedsEmail,
+}
+
+#[derive(Deserialize)]
+struct AcceptAnswer {
+    #[serde(default)]
+    needs_mobile_confirmation: bool,
+    #[serde(default)]
+    needs_email_confirmation: bool,
+}
+
+/// Accepts an offer someone sent, and confirms it in Guard when Steam asks to, as
+/// accepting is what the user asked for.
+pub fn accept(
+    account: &Account,
+    proxy: Option<&ProxyAddress>,
+    offer_id: &str,
+    partner_id: &str,
+) -> Result<(Session, Accepted), SteamError> {
+    with_session(account, proxy, |client, session, steam_id| {
+        let body = offer_action(
+            client,
+            session,
+            offer_id,
+            "accept",
+            &[
+                ("serverid", "1"),
+                ("tradeofferid", offer_id),
+                ("partner", partner_id),
+                ("captcha", ""),
+            ],
+        )?;
+        let answer: AcceptAnswer = serde_json::from_str(&body)
+            .map_err(|_| SteamError::Steam("unreadable answer".to_owned()))?;
+        if answer.needs_mobile_confirmation {
+            if !confirm_offer(client, session, account, steam_id, offer_id)? {
+                return Err(SteamError::Steam(
+                    "Steam asked for a confirmation that isn't there yet; look on the Steam Guard screen"
+                        .to_owned(),
+                ));
+            }
+            return Ok(Accepted::Confirmed);
+        }
+        if answer.needs_email_confirmation {
+            return Ok(Accepted::NeedsEmail);
+        }
+        Ok(Accepted::Done)
+    })
+}
+
+/// Turns down an offer someone sent.
+pub fn decline(
+    account: &Account,
+    proxy: Option<&ProxyAddress>,
+    offer_id: &str,
+) -> Result<Session, SteamError> {
+    let (session, _) = with_session(account, proxy, |client, session, _| {
+        offer_action(client, session, offer_id, "decline", &[])
+    })?;
+    Ok(session)
+}
+
+/// Takes back an offer this account sent.
+pub fn cancel(
+    account: &Account,
+    proxy: Option<&ProxyAddress>,
+    offer_id: &str,
+) -> Result<Session, SteamError> {
+    let (session, _) = with_session(account, proxy, |client, session, _| {
+        offer_action(client, session, offer_id, "cancel", &[])
+    })?;
+    Ok(session)
+}
+
+/// Gives the Guard confirmation an offer this account sent is waiting for.
+pub fn confirm(
+    account: &Account,
+    proxy: Option<&ProxyAddress>,
+    offer_id: &str,
+) -> Result<Session, SteamError> {
+    let (session, ()) = with_session(account, proxy, |client, session, steam_id| {
+        if confirm_offer(client, session, account, steam_id, offer_id)? {
+            Ok(())
+        } else {
+            Err(SteamError::Steam(
+                "there's nothing to confirm for this offer".to_owned(),
+            ))
+        }
+    })?;
+    Ok(session)
+}
+
+/// A form on an offer's page. Steam only takes these with the page as the referrer,
+/// and says why it refused in the body of an error answer.
+fn offer_action(
+    client: &Client,
+    session: &Session,
+    offer_id: &str,
+    action: &str,
+    form: &[(&str, &str)],
+) -> Result<String, SteamError> {
+    if offer_id.is_empty() || !offer_id.bytes().all(|byte| byte.is_ascii_digit()) {
+        return Err(SteamError::Steam("unknown trade offer".to_owned()));
+    }
+    let page = format!("https://steamcommunity.com/tradeoffer/{offer_id}/");
+    let session_id = session_id(session);
+    let mut fields = vec![("sessionid", session_id.as_str())];
+    fields.extend_from_slice(form);
+    let response = client
+        .post(format!("{page}{action}"))
+        .header(REFERER, &page)
+        .form(&fields)
+        .send()
+        .map_err(request_error)?;
+    let status = response.status();
+    let body = response.text().map_err(request_error)?;
+    if status.is_success() {
+        return Ok(body);
+    }
+    if status == reqwest::StatusCode::UNAUTHORIZED {
+        return Err(SteamError::SessionExpired);
+    }
+    Err(refusal(&body).unwrap_or_else(|| SteamError::Steam(status.to_string())))
+}
+
+#[derive(Deserialize)]
+struct ErrorAnswer {
+    #[serde(rename = "strError")]
+    message: String,
+}
+
+fn refusal(body: &str) -> Option<SteamError> {
+    let message = serde_json::from_str::<ErrorAnswer>(body).ok()?.message;
+    Some(SteamError::Refused(message.trim().to_owned()))
+}
+
 /// Looks up the nickname of everyone on the other side, once each. A name Steam
 /// won't give is left out; the list works without it.
 fn name_partners(client: &Client, offers: &mut [TradeOffer]) {
@@ -306,6 +455,19 @@ mod tests {
         assert_eq!(offers[0].state, OfferState::OnHold);
         assert!(!offers[0].state.is_open());
         assert_eq!(offers[0].held_until, Some(1700600000));
+    }
+
+    #[test]
+    fn steam_refusals_keep_their_words() {
+        let err = refusal(
+            r#"{"strError":"There was an error accepting this trade offer. Please try again later. (28)"}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            err.to_string(),
+            "Steam said: There was an error accepting this trade offer. Please try again later. (28)"
+        );
+        assert!(refusal("<html>").is_none());
     }
 
     #[test]

@@ -63,3 +63,31 @@ export type Trades = {
 }
 
 export const listTradeOffers = () => invoke<Trades>('list_trade_offers')
+
+/** What came of accepting: done, confirmed in Guard here, or waiting for email. */
+export type Accepted = 'done' | 'confirmed' | 'needsEmail'
+
+export const acceptTradeOffer = (offer: TradeOffer) =>
+  invoke<Accepted>('accept_trade_offer', {
+    accountName: offer.accountName,
+    offerId: offer.id,
+    partnerId: offer.partnerId,
+  })
+
+export const declineTradeOffer = (offer: TradeOffer) =>
+  invoke<void>('decline_trade_offer', {
+    accountName: offer.accountName,
+    offerId: offer.id,
+  })
+
+export const cancelTradeOffer = (offer: TradeOffer) =>
+  invoke<void>('cancel_trade_offer', {
+    accountName: offer.accountName,
+    offerId: offer.id,
+  })
+
+export const confirmTradeOffer = (offer: TradeOffer) =>
+  invoke<void>('confirm_trade_offer', {
+    accountName: offer.accountName,
+    offerId: offer.id,
+  })

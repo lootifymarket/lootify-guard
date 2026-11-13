@@ -400,7 +400,7 @@ pub(crate) fn community_upload(
 
 /// Tells apart the ways a request can fail without passing on reqwest's text,
 /// which includes the URL.
-fn request_error(err: reqwest::Error) -> SteamError {
+pub(crate) fn request_error(err: reqwest::Error) -> SteamError {
     if err.is_timeout() {
         SteamError::Timeout
     } else if err.is_redirect() {

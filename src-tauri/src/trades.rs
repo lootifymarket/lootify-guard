@@ -4,12 +4,12 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use lootify_guard_core::contents::{Account, Contents};
 use lootify_guard_core::proxy::ProxyAddress;
 use lootify_guard_core::steam::SteamError;
-use lootify_guard_core::trades::{self, TradeOffer};
+use lootify_guard_core::trades::{self, Accepted, TradeOffer};
 use serde::Serialize;
 use tauri::State;
 use tauri::async_runtime::spawn_blocking;
 
-use crate::accounts::store_session;
+use crate::accounts::{account_and_proxy, settle, store_session};
 use crate::vault::{CommandError, VaultState};
 
 // Enough to list many accounts quickly without looking like a flood to Steam.
@@ -135,4 +135,61 @@ pub async fn list_trade_offers(state: State<'_, VaultState>) -> Result<TradesVie
         failures,
         signed_out,
     })
+}
+
+/// Accepts an offer someone sent, confirming it in Guard when Steam asks.
+#[tauri::command]
+pub async fn accept_trade_offer(
+    state: State<'_, VaultState>,
+    account_name: String,
+    offer_id: String,
+    partner_id: String,
+) -> Result<Accepted, CommandError> {
+    let (account, proxy) = account_and_proxy(&state, &account_name)?;
+    let result =
+        spawn_blocking(move || trades::accept(&account, proxy.as_ref(), &offer_id, &partner_id))
+            .await?;
+    let (session, accepted) = settle(&state, &account_name, result)?;
+    store_session(&state, &account_name, Some(session))?;
+    Ok(accepted)
+}
+
+#[tauri::command]
+pub async fn decline_trade_offer(
+    state: State<'_, VaultState>,
+    account_name: String,
+    offer_id: String,
+) -> Result<(), CommandError> {
+    let (account, proxy) = account_and_proxy(&state, &account_name)?;
+    let result =
+        spawn_blocking(move || trades::decline(&account, proxy.as_ref(), &offer_id)).await?;
+    let session = settle(&state, &account_name, result)?;
+    store_session(&state, &account_name, Some(session))
+}
+
+#[tauri::command]
+pub async fn cancel_trade_offer(
+    state: State<'_, VaultState>,
+    account_name: String,
+    offer_id: String,
+) -> Result<(), CommandError> {
+    let (account, proxy) = account_and_proxy(&state, &account_name)?;
+    let result =
+        spawn_blocking(move || trades::cancel(&account, proxy.as_ref(), &offer_id)).await?;
+    let session = settle(&state, &account_name, result)?;
+    store_session(&state, &account_name, Some(session))
+}
+
+/// Confirms in Guard an offer this account sent.
+#[tauri::command]
+pub async fn confirm_trade_offer(
+    state: State<'_, VaultState>,
+    account_name: String,
+    offer_id: String,
+) -> Result<(), CommandError> {
+    let (account, proxy) = account_and_proxy(&state, &account_name)?;
+    let result =
+        spawn_blocking(move || trades::confirm(&account, proxy.as_ref(), &offer_id)).await?;
+    let session = settle(&state, &account_name, result)?;
+    store_session(&state, &account_name, Some(session))
 }
