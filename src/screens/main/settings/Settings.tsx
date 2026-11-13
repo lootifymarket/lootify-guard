@@ -8,8 +8,6 @@ import {
   setAutoLock,
   setCloseToTray,
   setLaunchAtStartup,
-  setStreamerMode,
-  showStreamerMode,
   type Settings as SettingsValues,
 } from '../../../api/settings.ts'
 import {
@@ -31,6 +29,8 @@ import {
   type Language,
 } from '../../../i18n/index.ts'
 import { ago } from '../../../lib/ago.ts'
+import { useStreamerMode } from '../../../lib/streamer.ts'
+import { useToast } from '../../../lib/toast.ts'
 import layout from '../layout.module.css'
 import ChangePassword from './ChangePassword.tsx'
 import styles from './Settings.module.css'
@@ -45,13 +45,14 @@ type Props = {
 export default function Settings({ onAutoLockChanged }: Props) {
   const { language, t: words, setLanguage } = useLanguage()
   const t = words.settings
+  const streamer = useStreamerMode()
+  const toast = useToast()
   const [settings, setSettings] = useState<SettingsValues | null>(null)
   const [biometric, setBiometric] = useState<BiometricStatus | null>(null)
   const [atStartup, setAtStartup] = useState(false)
   const [changing, setChanging] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [note, setNote] = useState('')
 
   useEffect(() => {
     void getSettings().then(setSettings)
@@ -62,7 +63,6 @@ export default function Settings({ onAutoLockChanged }: Props) {
   async function act(action: () => Promise<void>) {
     setBusy(true)
     setError('')
-    setNote('')
     try {
       await action()
     } catch (err) {
@@ -117,17 +117,9 @@ export default function Settings({ onAutoLockChanged }: Props) {
               <span className={styles.hint}>{t.streamerHint}</span>
             </span>
             <Toggle
-              on={settings?.streamerMode ?? false}
+              on={streamer.on}
               label={t.streamer}
-              onChange={(on) =>
-                void act(async () => {
-                  await setStreamerMode(on)
-                  showStreamerMode(on)
-                  setSettings(
-                    (current) => current && { ...current, streamerMode: on },
-                  )
-                })
-              }
+              onChange={(on) => void act(() => streamer.set(on))}
             />
           </div>
         </section>
@@ -215,7 +207,7 @@ export default function Settings({ onAutoLockChanged }: Props) {
               onClick={() =>
                 void act(async () => {
                   if (!(await exportBackup())) return
-                  setNote(t.backupSaved)
+                  toast(t.backupSaved)
                   setSettings(await getSettings())
                 })
               }
@@ -270,11 +262,6 @@ export default function Settings({ onAutoLockChanged }: Props) {
             {error}
           </p>
         )}
-        {note && (
-          <p className={styles.note} role="status">
-            {note}
-          </p>
-        )}
       </div>
 
       <ChangePassword
@@ -283,7 +270,7 @@ export default function Settings({ onAutoLockChanged }: Props) {
         onClose={() => setChanging(false)}
         onChanged={() => {
           setChanging(false)
-          setNote(t.passwordChanged)
+          toast(t.passwordChanged)
         }}
       />
     </>

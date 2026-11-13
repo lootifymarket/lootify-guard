@@ -153,6 +153,11 @@ export const ru: Dictionary = {
     remembered: '← Я вспомнил пароль',
   },
 
+  splash: {
+    steps: ['Проверяем целостность', 'Загружаем настройки', 'Готово'],
+    by: 'от Lootify Market',
+  },
+
   sidebar: {
     menu: 'Главное меню',
     accounts: 'Аккаунты',
@@ -166,6 +171,9 @@ export const ru: Dictionary = {
     vaultUnlocked: 'Хранилище открыто',
     locksIn: (minutes) => `Закроется через ${minutes} мин`,
     lock: 'Заблокировать',
+    streamerOn: 'Режим стримера включён',
+    streamerOff: 'Выключить режим стримера',
+    version: (version) => `v${version} · открытый код`,
   },
 
   settings: {

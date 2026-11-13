@@ -70,6 +70,7 @@
 
 .home:focus-visible,
 .item:focus-visible,
+.streamer:focus-visible,
 .lock:focus-visible {
   outline: 2px solid var(--color-text);
   outline-offset: 2px;
@@ -79,9 +80,47 @@
   margin-top: auto;
   padding: 0 10px;
   display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.streamer {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  background: rgb(229 37 42 / 0.1);
+  border: 1px solid rgb(229 37 42 / 0.4);
+  border-radius: 8px;
+  color: var(--color-danger);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.streamerDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-danger);
+}
+
+.rule {
+  height: 1px;
+  background: var(--color-divider);
+}
+
+.vaultRow {
+  display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 8px;
+}
+
+.version {
+  color: var(--color-text-faint);
+  font-size: 11px;
 }
 
 .vault {

@@ -43,6 +43,12 @@ impl SettingsState {
     }
 }
 
+/// The app's version, as built.
+#[tauri::command]
+pub fn app_version() -> &'static str {
+    env!("CARGO_PKG_VERSION")
+}
+
 #[tauri::command]
 pub fn get_settings(settings: State<'_, SettingsState>) -> Settings {
     settings.get()

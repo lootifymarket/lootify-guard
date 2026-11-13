@@ -59,12 +59,6 @@
   text-transform: uppercase;
 }
 
-.note {
-  margin: 8px 0 0;
-  color: var(--color-success);
-  font-size: 13px;
-}
-
 .form {
   display: flex;
   flex-direction: column;

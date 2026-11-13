@@ -30,3 +30,48 @@ input {
   filter: blur(0.4em);
   user-select: none;
 }
+
+/* A placeholder for what's still loading, the shape of what will be there. */
+.skeleton {
+  display: block;
+  background: linear-gradient(
+      90deg,
+      var(--color-skeleton) 30%,
+      var(--color-skeleton-shine) 50%,
+      var(--color-skeleton) 70%
+    )
+    0 0 / 200% 100%;
+  border-radius: 6px;
+  animation: shimmer 1.3s ease-in-out infinite;
+}
+
+/* How new things come in: lists after loading, toasts, panels. */
+.rise {
+  animation: rise 0.18s ease-out both;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

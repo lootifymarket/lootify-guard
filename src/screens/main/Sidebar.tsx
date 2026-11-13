@@ -1,6 +1,9 @@
+import { useEffect, useState } from 'react'
 import Icon from '../../components/Icon.tsx'
 import LogoMark from '../../components/LogoMark.tsx'
+import { appVersion } from '../../api/settings.ts'
 import { useT } from '../../i18n/index.ts'
+import { useStreamerMode } from '../../lib/streamer.ts'
 import { useSecondsLeft } from './useAccounts.ts'
 import styles from './Sidebar.module.css'
 
@@ -26,15 +29,15 @@ const SECTIONS: { id: Section; icon: string }[] = [
   },
   {
     id: 'trades',
-    icon: 'M7 7h13l-4-4M17 17H4l4 4',
+    icon: 'M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3',
   },
   {
     id: 'inventory',
-    icon: 'M21 8l-9-5-9 5v8l9 5 9-5V8zM3 8l9 5 9-5M12 13v8',
+    icon: 'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16zM3.3 7L12 12l8.7-5M12 22V12',
   },
   {
     id: 'tasks',
-    icon: 'M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2',
+    icon: 'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5',
   },
   {
     id: 'proxies',
@@ -43,7 +46,7 @@ const SECTIONS: { id: Section; icon: string }[] = [
   { id: 'add', icon: 'M12 5v14M5 12h14' },
   {
     id: 'settings',
-    icon: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z',
+    icon: 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6',
   },
 ]
 
@@ -58,6 +61,13 @@ type Props = {
 
 export default function Sidebar({ section, locksAt, onSelect, onLock }: Props) {
   const t = useT().sidebar
+  const streamer = useStreamerMode()
+  const [version, setVersion] = useState('')
+
+  useEffect(() => {
+    void appVersion().then(setVersion)
+  }, [])
+
   return (
     <nav aria-label={t.menu} className={styles.sidebar}>
       <button
@@ -84,18 +94,35 @@ export default function Sidebar({ section, locksAt, onSelect, onLock }: Props) {
         ))}
       </div>
       <div className={styles.footer}>
-        <span className={styles.vault}>
-          <span className={styles.vaultState}>{t.vaultUnlocked}</span>
-          {locksAt !== null && <LocksIn deadline={locksAt} />}
-        </span>
-        <button
-          type="button"
-          className={styles.lock}
-          aria-label={t.lock}
-          onClick={onLock}
-        >
-          <Icon path={LOCK} size={15} stroke={1.8} />
-        </button>
+        {streamer.on && (
+          <button
+            type="button"
+            className={styles.streamer}
+            title={t.streamerOff}
+            onClick={() => void streamer.set(false)}
+          >
+            <span className={styles.streamerDot} />
+            {t.streamerOn}
+          </button>
+        )}
+        <span className={styles.rule} />
+        <div className={styles.vaultRow}>
+          <span className={styles.vault}>
+            <span className={styles.vaultState}>{t.vaultUnlocked}</span>
+            {locksAt !== null && <LocksIn deadline={locksAt} />}
+          </span>
+          <button
+            type="button"
+            className={styles.lock}
+            aria-label={t.lock}
+            onClick={onLock}
+          >
+            <Icon path={LOCK} size={15} stroke={1.8} />
+          </button>
+        </div>
+        {version && (
+          <span className={styles.version}>{t.version(version)}</span>
+        )}
       </div>
     </nav>
   )

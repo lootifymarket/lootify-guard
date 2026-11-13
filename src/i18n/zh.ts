@@ -150,6 +150,11 @@ export const zh: Dictionary = {
     remembered: '← 我想起来了',
   },
 
+  splash: {
+    steps: ['正在检查完整性', '正在加载设置', '完成'],
+    by: 'Lootify Market 出品',
+  },
+
   sidebar: {
     menu: '主菜单',
     accounts: '账户',
@@ -163,6 +168,9 @@ export const zh: Dictionary = {
     vaultUnlocked: '保险库已解锁',
     locksIn: (minutes) => `${minutes} 分钟后锁定`,
     lock: '锁定',
+    streamerOn: '主播模式已开启',
+    streamerOff: '关闭主播模式',
+    version: (version) => `v${version} · 开源`,
   },
 
   settings: {

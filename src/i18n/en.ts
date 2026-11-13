@@ -154,6 +154,11 @@ export const en = {
     remembered: '← I remembered it',
   },
 
+  splash: {
+    steps: ['Checking integrity', 'Loading settings', 'Done'],
+    by: 'by Lootify Market',
+  },
+
   sidebar: {
     menu: 'Main menu',
     accounts: 'Accounts',
@@ -167,6 +172,9 @@ export const en = {
     vaultUnlocked: 'Vault unlocked',
     locksIn: (minutes: number) => `Locks in ${minutes} min`,
     lock: 'Lock',
+    streamerOn: 'Streamer mode on',
+    streamerOff: 'Turn off streamer mode',
+    version: (version: string) => `v${version} · open source`,
   },
 
   settings: {

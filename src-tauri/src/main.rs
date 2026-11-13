@@ -115,6 +115,7 @@ fn main() {
             profile::save_profile,
             profile::clear_name_history,
             profile::change_avatar,
+            settings::app_version,
             settings::get_settings,
             settings::set_auto_lock,
             settings::set_streamer_mode,
