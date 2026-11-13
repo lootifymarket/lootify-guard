@@ -50,10 +50,12 @@ export const signOutOtherDevices = (accountName: string) =>
 export type TradeBan = 'none' | 'probation' | 'banned'
 
 export type Bans = {
-  vacBans: number
-  gameBans: number
-  daysSinceLast: number
-  communityBanned: boolean
+  vacBanned: boolean
+  /** The counts are `null` when they came from the profile, not the Web API. */
+  vacBans: number | null
+  gameBans: number | null
+  daysSinceLast: number | null
+  communityBanned: boolean | null
   tradeBan: TradeBan
 }
 

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::contents::{Account, Session};
 use crate::proxy::ProxyAddress;
-use crate::steam::{SteamError, community_get, with_session};
+use crate::steam::{SteamError, community_get, with_session, xml_tag};
 
 const BANS_URL: &str = "https://api.steampowered.com/ISteamUser/GetPlayerBans/v1/";
 const MARKET_URL: &str = "https://api.steampowered.com/IEconMarketService/GetMarketEligibility/v1/";
@@ -23,10 +23,13 @@ pub struct Standing {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Bans {
-    pub vac_bans: u32,
-    pub game_bans: u32,
-    pub days_since_last: u32,
-    pub community_banned: bool,
+    pub vac_banned: bool,
+    /// The counts come only from the Web API; the profile's XML, used when the
+    /// API won't answer, says only whether there is a VAC ban.
+    pub vac_bans: Option<u32>,
+    pub game_bans: Option<u32>,
+    pub days_since_last: Option<u32>,
+    pub community_banned: Option<bool>,
     pub trade_ban: TradeBan,
 }
 
@@ -86,14 +89,14 @@ pub fn check(
         let market = optional_get(client, MARKET_URL, session, &[("steamid", &id)])?
             .and_then(|body| parse_market(&body));
         let profile = format!("https://steamcommunity.com/profiles/{id}/?xml=1");
-        let limited = match community_get(client, &profile) {
-            Ok(page) => parse_limited(&page),
+        let profile = match community_get(client, &profile) {
+            Ok(page) => Some(page),
             Err(SteamError::Steam(_)) => None,
             Err(err) => return Err(err),
         };
         Ok(Standing {
-            bans,
-            limited,
+            bans: bans.or_else(|| profile.as_deref().and_then(bans_from_profile)),
+            limited: profile.as_deref().and_then(parse_limited),
             market,
         })
     })
@@ -130,15 +133,12 @@ fn parse_bans(body: &[u8]) -> Option<Bans> {
         .into_iter()
         .next()?;
     Some(Bans {
-        vac_bans: player.number_of_vac_bans,
-        game_bans: player.number_of_game_bans,
-        days_since_last: player.days_since_last_ban,
-        community_banned: player.community_banned,
-        trade_ban: match player.economy_ban.as_str() {
-            "none" => TradeBan::None,
-            "probation" => TradeBan::Probation,
-            _ => TradeBan::Banned,
-        },
+        vac_banned: player.number_of_vac_bans > 0,
+        vac_bans: Some(player.number_of_vac_bans),
+        game_bans: Some(player.number_of_game_bans),
+        days_since_last: Some(player.days_since_last_ban),
+        community_banned: Some(player.community_banned),
+        trade_ban: trade_ban(&player.economy_ban),
     })
 }
 
@@ -150,9 +150,30 @@ fn parse_market(body: &[u8]) -> Option<Market> {
     })
 }
 
+fn bans_from_profile(profile: &str) -> Option<Bans> {
+    let vac_banned = xml_tag(profile, "vacBanned")?;
+    Some(Bans {
+        vac_banned: vac_banned == "1",
+        vac_bans: None,
+        game_bans: None,
+        days_since_last: None,
+        community_banned: None,
+        trade_ban: trade_ban(&xml_tag(profile, "tradeBanState")?),
+    })
+}
+
+/// The Web API writes "none" and "probation", the profile "None" and "Probation".
+/// Any other word is a ban of some kind.
+fn trade_ban(state: &str) -> TradeBan {
+    match state.to_ascii_lowercase().as_str() {
+        "none" => TradeBan::None,
+        "probation" => TradeBan::Probation,
+        _ => TradeBan::Banned,
+    }
+}
+
 fn parse_limited(profile: &str) -> Option<bool> {
-    let start = profile.find("<isLimitedAccount>")? + "<isLimitedAccount>".len();
-    match profile[start..].split('<').next()?.trim() {
+    match xml_tag(profile, "isLimitedAccount")?.as_str() {
         "1" => Some(true),
         "0" => Some(false),
         _ => None,
@@ -171,10 +192,11 @@ mod tests {
         assert_eq!(
             parse_bans(body),
             Some(Bans {
-                vac_bans: 1,
-                game_bans: 2,
-                days_since_last: 120,
-                community_banned: false,
+                vac_banned: true,
+                vac_bans: Some(1),
+                game_bans: Some(2),
+                days_since_last: Some(120),
+                community_banned: Some(false),
                 trade_ban: TradeBan::Probation,
             })
         );
@@ -213,6 +235,24 @@ mod tests {
                 allowed_at: None,
             })
         );
+    }
+
+    #[test]
+    fn the_profile_stands_in_for_the_web_api() {
+        let profile = "<profile><vacBanned>1</vacBanned><tradeBanState>None</tradeBanState>\
+            <isLimitedAccount>0</isLimitedAccount></profile>";
+        assert_eq!(
+            bans_from_profile(profile),
+            Some(Bans {
+                vac_banned: true,
+                vac_bans: None,
+                game_bans: None,
+                days_since_last: None,
+                community_banned: None,
+                trade_ban: TradeBan::None,
+            })
+        );
+        assert_eq!(bans_from_profile("<profile></profile>"), None);
     }
 
     #[test]
