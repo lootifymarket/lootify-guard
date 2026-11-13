@@ -89,6 +89,8 @@ fn main() {
             trades::cancel_trade_offer,
             trades::confirm_trade_offer,
             trades::check_trade_partner,
+            trades::tradable_items,
+            trades::send_trade_offer,
             proxies::list_proxies,
             proxies::add_proxies,
             proxies::add_proxy,

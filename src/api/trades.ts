@@ -137,3 +137,46 @@ export function warningText(warning: PartnerWarning) {
       return `Copies the name of ${warning.of}`
   }
 }
+
+export type Game = 'cs2' | 'dota2'
+
+export const GAME_NAMES: Record<Game, string> = {
+  cs2: 'Counter-Strike 2',
+  dota2: 'Dota 2',
+}
+
+export type InventoryItem = {
+  appId: number
+  contextId: string
+  assetId: string
+  name: string
+  color: string | null
+  amount: number
+}
+
+/** Items that can be traded now; `held` counts the ones under a trade hold. */
+export type Tradable = { items: InventoryItem[]; held: number }
+
+export const tradableItems = (accountName: string, game: Game) =>
+  invoke<Tradable>('tradable_items', { accountName, game })
+
+export type Sent = { offerId: string; accepted: Accepted }
+
+/** Sends the items, asking nothing back, and confirms the offer in Guard. */
+export const sendTradeOffer = (
+  accountName: string,
+  tradeUrl: string,
+  items: InventoryItem[],
+  message: string,
+) =>
+  invoke<Sent>('send_trade_offer', {
+    accountName,
+    tradeUrl,
+    assets: items.map(({ appId, contextId, assetId, amount }) => ({
+      appId,
+      contextId,
+      assetId,
+      amount,
+    })),
+    message,
+  })

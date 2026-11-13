@@ -344,8 +344,7 @@ pub fn confirm(
     Ok(session)
 }
 
-/// A form on an offer's page. Steam only takes these with the page as the referrer,
-/// and says why it refused in the body of an error answer.
+/// A form on an offer's page.
 fn offer_action(
     client: &Client,
     session: &Session,
@@ -357,12 +356,24 @@ fn offer_action(
         return Err(SteamError::Steam("unknown trade offer".to_owned()));
     }
     let page = format!("https://steamcommunity.com/tradeoffer/{offer_id}/");
+    trade_form(client, session, &format!("{page}{action}"), &page, form)
+}
+
+/// Steam only takes trade forms with the page they come from as the referrer, and
+/// says why it refused in the body of an error answer.
+fn trade_form(
+    client: &Client,
+    session: &Session,
+    url: &str,
+    page: &str,
+    form: &[(&str, &str)],
+) -> Result<String, SteamError> {
     let session_id = session_id(session);
     let mut fields = vec![("sessionid", session_id.as_str())];
     fields.extend_from_slice(form);
     let response = client
-        .post(format!("{page}{action}"))
-        .header(REFERER, &page)
+        .post(url)
+        .header(REFERER, page)
         .form(&fields)
         .send()
         .map_err(request_error)?;
@@ -375,6 +386,158 @@ fn offer_action(
         return Err(SteamError::SessionExpired);
     }
     Err(refusal(&body).unwrap_or_else(|| SteamError::Steam(status.to_string())))
+}
+
+/// Someone to send an offer to, read from their trade URL.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Recipient {
+    pub account_id: u32,
+    pub token: String,
+}
+
+impl Recipient {
+    pub fn steam_id(&self) -> u64 {
+        (USER_ID_HIGH << 32) | u64::from(self.account_id)
+    }
+}
+
+/// Reads `https://steamcommunity.com/tradeoffer/new/?partner=…&token=…`.
+pub fn parse_trade_url(url: &str) -> Result<Recipient, SteamError> {
+    let bad = || SteamError::Steam("that isn't a Steam trade URL".to_owned());
+    let url = reqwest::Url::parse(url.trim()).map_err(|_| bad())?;
+    if url.host_str() != Some("steamcommunity.com") || url.path() != "/tradeoffer/new/" {
+        return Err(bad());
+    }
+    let value = |key: &str| {
+        url.query_pairs()
+            .find(|(name, _)| name == key)
+            .map(|(_, value)| value.into_owned())
+    };
+    let account_id = value("partner")
+        .and_then(|partner| partner.parse().ok())
+        .filter(|&id: &u32| id != 0)
+        .ok_or_else(bad)?;
+    let token = value("token")
+        .filter(|token| {
+            !token.is_empty()
+                && token
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+        })
+        .ok_or_else(bad)?;
+    Ok(Recipient { account_id, token })
+}
+
+/// An item of this account to put in an offer.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Asset {
+    pub app_id: u32,
+    pub context_id: String,
+    pub asset_id: String,
+    pub amount: u32,
+}
+
+/// What came of sending an offer.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Sent {
+    pub offer_id: String,
+    pub accepted: Accepted,
+}
+
+#[derive(Deserialize)]
+struct SendAnswer {
+    tradeofferid: String,
+    #[serde(default)]
+    needs_mobile_confirmation: bool,
+    #[serde(default)]
+    needs_email_confirmation: bool,
+}
+
+/// Sends the items to the owner of the trade URL, asking nothing back, and
+/// confirms the offer in Guard, as sending it is what the user asked for.
+pub fn send(
+    account: &Account,
+    proxy: Option<&ProxyAddress>,
+    trade_url: &str,
+    assets: &[Asset],
+    message: &str,
+) -> Result<(Session, Sent), SteamError> {
+    let recipient = parse_trade_url(trade_url)?;
+    if assets.is_empty() {
+        return Err(SteamError::Steam("pick at least one item".to_owned()));
+    }
+    let offer = offer_json(assets);
+    let params = serde_json::json!({ "trade_offer_access_token": recipient.token }).to_string();
+    let partner = recipient.steam_id().to_string();
+    let page = format!(
+        "https://steamcommunity.com/tradeoffer/new/?partner={}&token={}",
+        recipient.account_id, recipient.token
+    );
+    with_session(account, proxy, |client, session, steam_id| {
+        if recipient.steam_id() == steam_id {
+            return Err(SteamError::Steam(
+                "that's this account's own trade URL".to_owned(),
+            ));
+        }
+        let body = trade_form(
+            client,
+            session,
+            "https://steamcommunity.com/tradeoffer/new/send",
+            &page,
+            &[
+                ("serverid", "1"),
+                ("partner", &partner),
+                ("tradeoffermessage", message),
+                ("json_tradeoffer", &offer),
+                ("captcha", ""),
+                ("trade_offer_create_params", &params),
+            ],
+        )?;
+        let answer: SendAnswer = serde_json::from_str(&body)
+            .map_err(|_| SteamError::Steam("unreadable answer".to_owned()))?;
+        let accepted = if answer.needs_mobile_confirmation {
+            if confirm_offer(client, session, account, steam_id, &answer.tradeofferid)? {
+                Accepted::Confirmed
+            } else {
+                return Err(SteamError::Steam(
+                    "the offer was sent, but its confirmation isn't there yet; look on the Steam Guard screen"
+                        .to_owned(),
+                ));
+            }
+        } else if answer.needs_email_confirmation {
+            Accepted::NeedsEmail
+        } else {
+            Accepted::Done
+        };
+        Ok(Sent {
+            offer_id: answer.tradeofferid,
+            accepted,
+        })
+    })
+}
+
+/// The offer as Steam's trade page writes it: these items from us, nothing back.
+fn offer_json(assets: &[Asset]) -> String {
+    let assets: Vec<_> = assets
+        .iter()
+        .map(|asset| {
+            serde_json::json!({
+                "appid": asset.app_id,
+                "contextid": asset.context_id,
+                "amount": asset.amount,
+                "assetid": asset.asset_id,
+            })
+        })
+        .collect();
+    serde_json::json!({
+        "newversion": true,
+        "version": assets.len() + 1,
+        "me": { "assets": assets, "currency": [], "ready": false },
+        "them": { "assets": [], "currency": [], "ready": false },
+    })
+    .to_string()
 }
 
 #[derive(Deserialize)]
@@ -468,6 +631,41 @@ mod tests {
             "Steam said: There was an error accepting this trade offer. Please try again later. (28)"
         );
         assert!(refusal("<html>").is_none());
+    }
+
+    #[test]
+    fn trade_urls_are_read() {
+        let recipient = parse_trade_url(
+            " https://steamcommunity.com/tradeoffer/new/?partner=40095734&token=Qm81z-x_ ",
+        )
+        .unwrap();
+        assert_eq!(recipient.account_id, 40095734);
+        assert_eq!(recipient.token, "Qm81z-x_");
+        assert_eq!(recipient.steam_id(), 76561198000361462);
+        for bad in [
+            "https://steamcommunity.com.evil.example/tradeoffer/new/?partner=1&token=a",
+            "https://steamcommunity.com/tradeoffer/new/?partner=0&token=a",
+            "https://steamcommunity.com/tradeoffer/new/?partner=1",
+            "https://steamcommunity.com/tradeoffer/new/?partner=1&token=a%26b",
+            "not a url",
+        ] {
+            assert!(parse_trade_url(bad).is_err(), "{bad}");
+        }
+    }
+
+    #[test]
+    fn the_offer_gives_the_items_and_asks_nothing() {
+        let offer: serde_json::Value = serde_json::from_str(&offer_json(&[Asset {
+            app_id: 730,
+            context_id: "2".to_owned(),
+            asset_id: "123".to_owned(),
+            amount: 1,
+        }]))
+        .unwrap();
+        assert_eq!(offer["version"], 2);
+        assert_eq!(offer["me"]["assets"][0]["assetid"], "123");
+        assert_eq!(offer["me"]["assets"][0]["appid"], 730);
+        assert!(offer["them"]["assets"].as_array().unwrap().is_empty());
     }
 
     #[test]

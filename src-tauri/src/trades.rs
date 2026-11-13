@@ -2,10 +2,11 @@ use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use lootify_guard_core::contents::{Account, Contents};
+use lootify_guard_core::inventory::{self, Game, Tradable};
 use lootify_guard_core::partner::{self, Known, PartnerCheck};
 use lootify_guard_core::proxy::ProxyAddress;
 use lootify_guard_core::steam::SteamError;
-use lootify_guard_core::trades::{self, Accepted, TradeOffer};
+use lootify_guard_core::trades::{self, Accepted, Asset, Sent, TradeOffer};
 use serde::Serialize;
 use tauri::State;
 use tauri::async_runtime::spawn_blocking;
@@ -209,6 +210,40 @@ pub async fn check_trade_partner(
     let (session, check) = settle(&state, &account_name, result)?;
     store_session(&state, &account_name, Some(session))?;
     Ok(check)
+}
+
+/// The account's items in the game that can be traded now.
+#[tauri::command]
+pub async fn tradable_items(
+    state: State<'_, VaultState>,
+    account_name: String,
+    game: Game,
+) -> Result<Tradable, CommandError> {
+    let (account, proxy) = account_and_proxy(&state, &account_name)?;
+    let result =
+        spawn_blocking(move || inventory::tradable(&account, proxy.as_ref(), game)).await?;
+    let (session, items) = settle(&state, &account_name, result)?;
+    store_session(&state, &account_name, Some(session))?;
+    Ok(items)
+}
+
+/// Sends the items to the owner of the trade URL and confirms the offer in Guard.
+#[tauri::command]
+pub async fn send_trade_offer(
+    state: State<'_, VaultState>,
+    account_name: String,
+    trade_url: String,
+    assets: Vec<Asset>,
+    message: String,
+) -> Result<Sent, CommandError> {
+    let (account, proxy) = account_and_proxy(&state, &account_name)?;
+    let result = spawn_blocking(move || {
+        trades::send(&account, proxy.as_ref(), &trade_url, &assets, &message)
+    })
+    .await?;
+    let (session, sent) = settle(&state, &account_name, result)?;
+    store_session(&state, &account_name, Some(session))?;
+    Ok(sent)
 }
 
 fn unix_now() -> Result<u64, CommandError> {

@@ -14,6 +14,7 @@ import { errorMessage } from '../../../api/vault.ts'
 import Button from '../../../components/Button.tsx'
 import { ago } from '../../../lib/ago.ts'
 import layout from '../layout.module.css'
+import NewTrade from './NewTrade.tsx'
 import OfferActions from './OfferActions.tsx'
 import PartnerDialog from './PartnerCheck.tsx'
 import { usePartnerCheck } from './usePartnerCheck.ts'
@@ -39,6 +40,8 @@ type Props = {
 /** Trade offers of every signed-in account in one list. */
 export default function Trades({ accounts, onChanged }: Props) {
   const [tab, setTab] = useState<Tab>('incoming')
+  const [creating, setCreating] = useState(false)
+  const [sentNote, setSentNote] = useState('')
   const [trades, setTrades] = useState<TradeList | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -80,15 +83,20 @@ export default function Trades({ accounts, onChanged }: Props) {
             Trade offers from all your accounts in one list
           </span>
         </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          busy={loading}
-          disabled={loading}
-          onClick={load}
-        >
-          {loading ? 'Loading…' : 'Reload'}
-        </Button>
+        <div className={styles.tools}>
+          <Button
+            variant="secondary"
+            size="sm"
+            busy={loading}
+            disabled={loading}
+            onClick={load}
+          >
+            {loading ? 'Loading…' : 'Reload'}
+          </Button>
+          <Button size="sm" onClick={() => setCreating(true)}>
+            New trade
+          </Button>
+        </div>
       </div>
 
       <div role="tablist" aria-label="Offers" className={styles.tabs}>
@@ -107,7 +115,24 @@ export default function Trades({ accounts, onChanged }: Props) {
         ))}
       </div>
 
+      <NewTrade
+        open={creating}
+        accounts={accounts}
+        onClose={() => setCreating(false)}
+        onSent={(note) => {
+          setCreating(false)
+          setSentNote(note)
+          setTab('outgoing')
+          load()
+        }}
+      />
+
       <div role="tabpanel" className={styles.panel}>
+        {sentNote && (
+          <p className={styles.sent} role="status">
+            {sentNote}
+          </p>
+        )}
         {error && (
           <p className={styles.error} role="alert">
             {error}

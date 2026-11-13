@@ -3,6 +3,7 @@ pub mod confirmations;
 pub mod contents;
 pub mod guard;
 pub mod idle;
+pub mod inventory;
 pub mod link;
 pub mod mafile;
 pub mod partner;
