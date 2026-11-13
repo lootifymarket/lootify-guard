@@ -38,7 +38,13 @@ pub fn install(app: &AppHandle) -> tauri::Result<()> {
                 show_window(tray.app_handle());
             }
         });
-    if let Some(icon) = app.default_window_icon() {
+    // The menu bar takes a one-colour icon that macOS tints for light and dark;
+    // elsewhere, a black icon would vanish on a dark taskbar, so it's the app's own.
+    if cfg!(target_os = "macos") {
+        tray = tray
+            .icon(tauri::include_image!("icons/tray.png"))
+            .icon_as_template(true);
+    } else if let Some(icon) = app.default_window_icon() {
         tray = tray.icon(icon.clone());
     }
     tray.build(app)?;
