@@ -21,10 +21,12 @@ import {
 } from '../../../api/proxies.ts'
 import {
   checkApiKey,
+  checkStanding,
   DEVICE_KIND_NAMES,
   listDevices,
   type ApiKey,
   type Device,
+  type Standing,
 } from '../../../api/security.ts'
 import {
   biometricStatus,
@@ -46,6 +48,7 @@ import ConfirmOwner from './ConfirmOwner.tsx'
 import RemoveAccount from './RemoveAccount.tsx'
 import SignIn from './SignIn.tsx'
 import SignOutEverywhere from './SignOutEverywhere.tsx'
+import StandingFacts from './StandingFacts.tsx'
 import styles from './AccountPage.module.css'
 
 type Props = {
@@ -85,6 +88,8 @@ export default function AccountPage({
   const [devicesShown, setDevicesShown] = useState(false)
   const [devicesError, setDevicesError] = useState('')
   const [signedOut, setSignedOut] = useState<number | null>(null)
+  const [standing, setStanding] = useState<Standing | undefined>(undefined)
+  const [standingError, setStandingError] = useState('')
   const [checked, setChecked] = useState<{ ok: boolean; text: string } | null>(
     null,
   )
@@ -103,6 +108,7 @@ export default function AccountPage({
     if (!account.signedIn) return
     void checkKey()
     void loadDevices()
+    void loadStanding()
   })
   useEffect(() => checkOnOpen(), [])
 
@@ -184,6 +190,16 @@ export default function AccountPage({
       setDevices(await listDevices(name))
     } catch (err) {
       setDevicesError(errorMessage(err))
+      onChanged()
+    }
+  }
+
+  async function loadStanding() {
+    setStandingError('')
+    try {
+      setStanding(await checkStanding(name))
+    } catch (err) {
+      setStandingError(errorMessage(err))
       onChanged()
     }
   }
@@ -349,6 +365,7 @@ export default function AccountPage({
               ))}
             </div>
           )}
+          <StandingFacts standing={standing} signedIn={account.signedIn} />
           <div className={styles.fact}>
             <dt>Proxy</dt>
             <dd>
@@ -411,6 +428,11 @@ export default function AccountPage({
         {proxyError && (
           <p className={styles.error} role="alert">
             {proxyError}
+          </p>
+        )}
+        {standingError && (
+          <p className={styles.error} role="alert">
+            {standingError}
           </p>
         )}
         {devicesError && (
@@ -543,6 +565,7 @@ export default function AccountPage({
           void checkSession()
           void checkKey()
           void loadDevices()
+          void loadStanding()
         }}
       />
       <SignOutEverywhere

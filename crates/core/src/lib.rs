@@ -8,5 +8,6 @@ pub mod mafile;
 pub mod proxy;
 pub mod sessions;
 pub mod sign_ins;
+pub mod standing;
 pub mod steam;
 pub mod vault;

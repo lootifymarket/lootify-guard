@@ -1,6 +1,7 @@
 use lootify_guard_core::api_key;
 use lootify_guard_core::contents::Contents;
 use lootify_guard_core::sessions::{self, Device};
+use lootify_guard_core::standing::{self, Standing};
 use serde::Serialize;
 use tauri::State;
 use tauri::async_runtime::spawn_blocking;
@@ -87,6 +88,19 @@ pub async fn sign_out_other_devices(
     let (session, count) = settle(&state, &account_name, result)?;
     store_session(&state, &account_name, Some(session))?;
     Ok(count)
+}
+
+/// Bans, limits and market access, each `None` when Steam didn't say.
+#[tauri::command]
+pub async fn check_standing(
+    state: State<'_, VaultState>,
+    account_name: String,
+) -> Result<Standing, CommandError> {
+    let (account, proxy) = account_and_proxy(&state, &account_name)?;
+    let result = spawn_blocking(move || standing::check(&account, proxy.as_ref())).await?;
+    let (session, standing) = settle(&state, &account_name, result)?;
+    store_session(&state, &account_name, Some(session))?;
+    Ok(standing)
 }
 
 fn save_trusted(

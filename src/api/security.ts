@@ -42,3 +42,29 @@ export const listDevices = (accountName: string) =>
 /** Resolves to how many devices were signed out. */
 export const signOutOtherDevices = (accountName: string) =>
   invoke<number>('sign_out_other_devices', { accountName })
+
+export type TradeBan = 'none' | 'probation' | 'banned'
+
+export type Bans = {
+  vacBans: number
+  gameBans: number
+  daysSinceLast: number
+  communityBanned: boolean
+  tradeBan: TradeBan
+}
+
+export type Market = {
+  allowed: boolean
+  /** When a temporary restriction ends, as Unix time. */
+  allowedAt: number | null
+}
+
+/** Each part is `null` when Steam didn't say. */
+export type Standing = {
+  bans: Bans | null
+  limited: boolean | null
+  market: Market | null
+}
+
+export const checkStanding = (accountName: string) =>
+  invoke<Standing>('check_standing', { accountName })

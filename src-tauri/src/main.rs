@@ -68,6 +68,7 @@ fn main() {
             security::revoke_api_key,
             security::list_devices,
             security::sign_out_other_devices,
+            security::check_standing,
             sign_ins::list_sign_in_requests,
             sign_ins::answer_sign_in,
             sign_ins::allow_qr_sign_in,
