@@ -6,6 +6,7 @@ mod add_account;
 mod auto_confirm;
 mod biometrics;
 mod confirmations;
+mod inventory;
 mod profile;
 mod proxies;
 mod security;
@@ -30,8 +31,8 @@ fn main() {
             app.manage(vault::VaultState::new(data_dir.join("vault.lgv")));
             app.manage(auto_confirm::AutoConfirmLog::default());
             app.manage(add_account::AddAccountState::default());
-            app.manage(trades::InventoryCache::default());
-            app.manage(trades::IconCache::default());
+            app.manage(inventory::InventoryCache::default());
+            app.manage(inventory::IconCache::default());
             vault::watch_idle(app.handle().clone());
             auto_confirm::watch(app.handle().clone());
             Ok(())
@@ -91,9 +92,12 @@ fn main() {
             trades::cancel_trade_offer,
             trades::confirm_trade_offer,
             trades::check_trade_partner,
-            trades::tradable_items,
+            inventory::inventory_items,
             trades::send_trade_offer,
-            trades::item_icons,
+            inventory::item_icons,
+            inventory::move_items,
+            inventory::market_prices,
+            inventory::list_on_market,
             proxies::list_proxies,
             proxies::add_proxies,
             proxies::add_proxy,

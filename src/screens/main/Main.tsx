@@ -2,6 +2,7 @@ import { useState } from 'react'
 import AccountPage from './account/AccountPage.tsx'
 import AddAccount from './add/AddAccount.tsx'
 import Accounts from './Accounts.tsx'
+import Inventory from './inventory/Inventory.tsx'
 import Proxies from './proxies/Proxies.tsx'
 import Sidebar, { type Section } from './Sidebar.tsx'
 import SteamGuard from './SteamGuard.tsx'
@@ -37,6 +38,9 @@ export default function Main({ onLock, onAutoLocked }: Props) {
     }
     if (section === 'trades') {
       return <Trades accounts={list.accounts} onChanged={reload} />
+    }
+    if (section === 'inventory') {
+      return <Inventory accounts={list.accounts} onChanged={reload} />
     }
     if (section === 'proxies') return <Proxies />
     if (section === 'add') {

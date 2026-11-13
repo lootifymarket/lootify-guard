@@ -112,6 +112,53 @@ pub(crate) fn confirm_offer(
     Ok(true)
 }
 
+/// A market listing waiting for its Guard confirmation.
+pub(crate) struct ListingConfirmation {
+    pub id: String,
+    nonce: String,
+    /// The item's name, as the confirmation shows it.
+    pub headline: String,
+}
+
+/// The market listings waiting for confirmation now.
+pub(crate) fn market_listings(
+    client: &Client,
+    session: &Session,
+    account: &Account,
+    steam_id: u64,
+) -> Result<Vec<ListingConfirmation>, SteamError> {
+    let guard_account = guard_account(account, session, steam_id);
+    let confirmer = Confirmer::new(WebApiTransport::new(client.clone()), &guard_account);
+    Ok(confirmer
+        .get_confirmations()
+        .map_err(confirmer_error)?
+        .into_iter()
+        .filter(|confirmation| confirmation.conf_type == ConfirmationType::MarketSell)
+        .map(|confirmation| ListingConfirmation {
+            id: confirmation.id,
+            nonce: confirmation.nonce,
+            headline: confirmation.headline,
+        })
+        .collect())
+}
+
+pub(crate) fn accept_listings(
+    client: &Client,
+    session: &Session,
+    account: &Account,
+    steam_id: u64,
+    listings: &[ListingConfirmation],
+) -> Result<(), SteamError> {
+    let guard_account = guard_account(account, session, steam_id);
+    let confirmer = Confirmer::new(WebApiTransport::new(client.clone()), &guard_account);
+    for listing in listings {
+        confirmer
+            .accept_confirmation(ConfirmationId::new(&listing.id, &listing.nonce))
+            .map_err(confirmer_error)?;
+    }
+    Ok(())
+}
+
 /// Whether the rules let a confirmation through. `partner` looks up the other side
 /// of a trade, and is called only when the answer depends on it.
 fn allowed(

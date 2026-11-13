@@ -1,3 +1,4 @@
+use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
 use crate::contents::{Account, Session};
@@ -104,7 +105,25 @@ impl Amount {
     }
 }
 
+/// The wallet's currency, as Steam numbers it, or `None` when there's no wallet.
+pub(crate) fn wallet_currency(client: &Client) -> Result<Option<u32>, SteamError> {
+    Ok(read_wallet(&community_get(client, MARKET_URL)?)?.and_then(|info| info.wallet_currency))
+}
+
 fn parse_wallet(page: &str) -> Result<Option<Wallet>, SteamError> {
+    let Some(info) = read_wallet(page)? else {
+        return Ok(None);
+    };
+    let cents = |amount: &Option<Amount>| amount.as_ref().and_then(Amount::cents).unwrap_or(0);
+    Ok(Some(Wallet {
+        currency: info.wallet_currency.and_then(currency_code),
+        balance: cents(&info.wallet_balance),
+        pending: cents(&info.wallet_delayed_balance),
+    }))
+}
+
+/// The wallet as the market page has it, or `None` when the account has none.
+fn read_wallet(page: &str) -> Result<Option<WalletInfo>, SteamError> {
     if page.contains(SIGNED_OUT_MARK) {
         return Err(SteamError::SessionExpired);
     }
@@ -118,19 +137,14 @@ fn parse_wallet(page: &str) -> Result<Option<Wallet>, SteamError> {
         .next()
         .and_then(Result::ok)
         .ok_or_else(|| SteamError::Steam("unreadable wallet".to_owned()))?;
-    let Some(currency) = info.wallet_currency.filter(|&id| id != 0) else {
-        return Ok(None);
-    };
-    let cents = |amount: &Option<Amount>| amount.as_ref().and_then(Amount::cents).unwrap_or(0);
-    Ok(Some(Wallet {
-        currency: currency_code(currency),
-        balance: cents(&info.wallet_balance),
-        pending: cents(&info.wallet_delayed_balance),
-    }))
+    Ok(info
+        .wallet_currency
+        .is_some_and(|id| id != 0)
+        .then_some(info))
 }
 
 /// Steam numbers its currencies itself; this maps them to ISO codes.
-fn currency_code(id: u32) -> Option<&'static str> {
+pub(crate) fn currency_code(id: u32) -> Option<&'static str> {
     const CODES: [&str; 41] = [
         "USD", "GBP", "EUR", "CHF", "RUB", "PLN", "BRL", "JPY", "NOK", "IDR", "MYR", "PHP", "SGD",
         "THB", "VND", "KRW", "TRY", "UAH", "MXN", "CAD", "AUD", "NZD", "CNY", "INR", "CLP", "PEN",

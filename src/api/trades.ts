@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import type { InventoryItem } from './inventory.ts'
 
 export type OfferState =
   | 'active'
@@ -137,45 +138,6 @@ export function warningText(warning: PartnerWarning) {
       return `Copies the name of ${warning.of}`
   }
 }
-
-export type Game = 'cs2' | 'dota2'
-
-export const GAME_NAMES: Record<Game, string> = {
-  cs2: 'Counter-Strike 2',
-  dota2: 'Dota 2',
-}
-
-export type InventoryItem = {
-  appId: number
-  contextId: string
-  assetId: string
-  name: string
-  /** What Steam calls it, like "Classified Rifle". */
-  kind: string
-  /** Steam's name for the picture, to ask `itemIcons` for. */
-  icon: string | null
-  /** Steam's hex color for the name, which marks StatTrak and the like. */
-  color: string | null
-  /** Steam's hex color for the rarity, without the `#`. */
-  rarityColor: string | null
-  /** Like "Classified" or "Base Grade". */
-  rarity: string | null
-  /** Like "Minimal Wear", for weapons and gloves. */
-  exterior: string | null
-  /** Like "M4A4", for weapons. */
-  weapon: string | null
-  amount: number
-}
-
-/** Pictures by Steam's name for them, as data URLs; failed ones are left out. */
-export const itemIcons = (accountName: string, icons: string[]) =>
-  invoke<Record<string, string>>('item_icons', { accountName, icons })
-
-/** Items that can be traded now; `held` counts the ones under a trade hold. */
-export type Tradable = { items: InventoryItem[]; held: number }
-
-export const tradableItems = (accountName: string, game: Game) =>
-  invoke<Tradable>('tradable_items', { accountName, game })
 
 export type Sent = { offerId: string; accepted: Accepted }
 

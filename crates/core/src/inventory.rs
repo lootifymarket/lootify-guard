@@ -66,15 +66,10 @@ pub struct InventoryItem {
     /// Like "M4A4", for weapons.
     pub weapon: Option<String>,
     pub amount: u32,
-}
-
-/// The items that can go into a trade now. Items still under a trade hold are
-/// counted but not listed.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Tradable {
-    pub items: Vec<InventoryItem>,
-    pub held: u32,
+    /// Can go into a trade now; false under a trade hold or for good.
+    pub tradable: bool,
+    /// Can be listed on the Steam market now.
+    pub marketable: bool,
 }
 
 #[derive(Deserialize)]
@@ -110,6 +105,8 @@ struct Description {
     name_color: Option<String>,
     #[serde(default)]
     tradable: u8,
+    #[serde(default)]
+    marketable: u8,
     #[serde(default, rename = "type")]
     kind: String,
     icon_url: Option<String>,
@@ -137,16 +134,14 @@ impl Description {
     }
 }
 
-pub fn tradable(
+/// Everything in the account's inventory for the game, sorted by name.
+pub fn items(
     account: &Account,
     proxy: Option<&ProxyAddress>,
     game: Game,
-) -> Result<(Session, Tradable), SteamError> {
+) -> Result<(Session, Vec<InventoryItem>), SteamError> {
     with_session(account, proxy, |client, _, steam_id| {
-        let mut result = Tradable {
-            items: Vec::new(),
-            held: 0,
-        };
+        let mut items = Vec::new();
         let mut start: Option<String> = None;
         for _ in 0..MAX_PAGES {
             let mut url = format!(
@@ -158,14 +153,14 @@ pub fn tradable(
                 url.push_str(&format!("&start_assetid={start}"));
             }
             let page = page_with_retries(client, &url)?;
-            let (more, next) = read_page(&page, game, &mut result)?;
+            let (more, next) = read_page(&page, game, &mut items)?;
             match (more, next) {
                 (true, Some(next)) => start = Some(next),
                 _ => break,
             }
         }
-        result.items.sort_by(|a, b| a.name.cmp(&b.name));
-        Ok(result)
+        items.sort_by(|a, b| a.name.cmp(&b.name));
+        Ok(items)
     })
 }
 
@@ -209,11 +204,11 @@ fn page_with_retries(client: &Client, url: &str) -> Result<String, SteamError> {
     community_get(client, url)
 }
 
-/// Adds one page to `result`, and says whether there's another and where it starts.
+/// Adds one page to `items`, and says whether there's another and where it starts.
 fn read_page(
     page: &str,
     game: Game,
-    result: &mut Tradable,
+    items: &mut Vec<InventoryItem>,
 ) -> Result<(bool, Option<String>), SteamError> {
     // An empty inventory comes back as `null` fields or no body at all.
     if page.trim().is_empty() || page.trim() == "null" {
@@ -240,16 +235,12 @@ fn read_page(
         else {
             continue;
         };
-        if description.tradable != 1 {
-            result.held += 1;
-            continue;
-        }
         let name = if description.market_hash_name.is_empty() {
             description.name.clone()
         } else {
             description.market_hash_name.clone()
         };
-        result.items.push(InventoryItem {
+        items.push(InventoryItem {
             app_id: game.app_id(),
             context_id: game.context_id().to_owned(),
             asset_id: asset.assetid.clone(),
@@ -262,6 +253,8 @@ fn read_page(
             exterior: description.tag_name("Exterior"),
             weapon: description.tag_name("Weapon"),
             amount: asset.amount.parse().unwrap_or(1),
+            tradable: description.tradable == 1,
+            marketable: description.marketable == 1,
         });
     }
     Ok((page.more_items == 1, page.last_assetid))
@@ -272,36 +265,37 @@ mod tests {
     use super::*;
 
     #[test]
-    fn only_tradable_items_are_listed() {
+    fn items_say_whether_they_can_be_traded() {
         let page = r#"{"assets":[
             {"appid":730,"contextid":"2","assetid":"1","classid":"10","instanceid":"0","amount":"1"},
             {"appid":730,"contextid":"2","assetid":"2","classid":"20","instanceid":"0","amount":"5"},
             {"appid":730,"contextid":"2","assetid":"3","classid":"99","instanceid":"0","amount":"1"}],
           "descriptions":[
             {"classid":"10","instanceid":"0","market_hash_name":"AK-47 | Redline (Field-Tested)","name":"AK-47 | Redline","name_color":"D2D2D2","tradable":1,
-             "type":"Classified Rifle","icon_url":"abc-_1","tags":[
+             "marketable":1,"type":"Classified Rifle","icon_url":"abc-_1","tags":[
                 {"category":"Weapon","internal_name":"weapon_ak47","localized_tag_name":"AK-47"},
                 {"category":"Rarity","internal_name":"Rarity_Legendary_Weapon","localized_tag_name":"Classified","color":"d32ce6"},
                 {"category":"Exterior","internal_name":"WearCategory2","localized_tag_name":"Field-Tested"}]},
             {"classid":"20","instanceid":"0","market_hash_name":"Revolution Case","name":"Revolution Case","tradable":0}],
           "more_items":1,"last_assetid":"3","total_inventory_count":3,"success":1}"#;
-        let mut result = Tradable {
-            items: Vec::new(),
-            held: 0,
-        };
-        let (more, next) = read_page(page, Game::Cs2, &mut result).unwrap();
+        let mut items = Vec::new();
+        let (more, next) = read_page(page, Game::Cs2, &mut items).unwrap();
         assert!(more);
         assert_eq!(next.as_deref(), Some("3"));
-        assert_eq!(result.items.len(), 1);
-        assert_eq!(result.items[0].name, "AK-47 | Redline (Field-Tested)");
-        assert_eq!(result.items[0].app_id, 730);
-        assert_eq!(result.items[0].kind, "Classified Rifle");
-        assert_eq!(result.items[0].icon.as_deref(), Some("abc-_1"));
-        assert_eq!(result.items[0].rarity_color.as_deref(), Some("d32ce6"));
-        assert_eq!(result.items[0].rarity.as_deref(), Some("Classified"));
-        assert_eq!(result.items[0].exterior.as_deref(), Some("Field-Tested"));
-        assert_eq!(result.items[0].weapon.as_deref(), Some("AK-47"));
-        assert_eq!(result.held, 1);
+        assert_eq!(items.len(), 2);
+        assert_eq!(items[0].name, "AK-47 | Redline (Field-Tested)");
+        assert_eq!(items[0].app_id, 730);
+        assert_eq!(items[0].kind, "Classified Rifle");
+        assert_eq!(items[0].icon.as_deref(), Some("abc-_1"));
+        assert_eq!(items[0].rarity_color.as_deref(), Some("d32ce6"));
+        assert_eq!(items[0].rarity.as_deref(), Some("Classified"));
+        assert_eq!(items[0].exterior.as_deref(), Some("Field-Tested"));
+        assert_eq!(items[0].weapon.as_deref(), Some("AK-47"));
+        assert!(items[0].tradable);
+        assert!(items[0].marketable);
+        assert_eq!(items[1].name, "Revolution Case");
+        assert!(!items[1].tradable);
+        assert_eq!(items[1].amount, 5);
     }
 
     #[test]
@@ -312,23 +306,20 @@ mod tests {
 
     #[test]
     fn an_empty_inventory_is_no_items() {
-        let mut result = Tradable {
-            items: Vec::new(),
-            held: 0,
-        };
+        let mut items = Vec::new();
         assert_eq!(
-            read_page("null", Game::Dota2, &mut result).unwrap(),
+            read_page("null", Game::Dota2, &mut items).unwrap(),
             (false, None)
         );
         assert_eq!(
             read_page(
                 r#"{"total_inventory_count":0,"success":1}"#,
                 Game::Dota2,
-                &mut result
+                &mut items
             )
             .unwrap(),
             (false, None)
         );
-        assert!(result.items.is_empty());
+        assert!(items.is_empty());
     }
 }

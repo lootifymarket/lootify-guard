@@ -1,0 +1,242 @@
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.subtitle {
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.total {
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.account {
+  width: 200px;
+}
+
+.game {
+  width: 170px;
+}
+
+.sort {
+  width: 190px;
+}
+
+.search {
+  flex: 1 1 180px;
+  min-width: 0;
+  /* As tall as the small dropdowns next to it. */
+  height: 34px;
+  box-sizing: border-box;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.bar {
+  min-height: 52px;
+  box-sizing: border-box;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 18px;
+  background: var(--color-panel);
+  border: 1px solid var(--color-divider);
+  border-radius: 12px;
+  font-size: 13px;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.bar[data-picked='true'] {
+  background: var(--color-danger-surface);
+  border-color: var(--color-danger-muted);
+}
+
+.barWords {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 14px;
+}
+
+.muted {
+  color: var(--color-text-faint);
+}
+
+.link {
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.link:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+.error {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 13px;
+}
+
+/* Error messages from Rust start in lower case; account names must stay as they are. */
+.reason {
+  display: inline-block;
+}
+
+.reason::first-letter {
+  text-transform: uppercase;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.reports {
+  max-height: 280px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+}
+
+.reports li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 0;
+  border-top: 1px solid var(--color-line);
+}
+
+.reportOutcome {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.reportOutcome::first-letter {
+  text-transform: uppercase;
+}
+
+.reports li[data-outcome='failed'] .reportOutcome {
+  color: var(--color-danger);
+}
+
+.reports li[data-outcome='waiting'] .reportOutcome {
+  color: var(--color-warning);
+}
+
+.reports li[data-outcome='done'] .reportOutcome {
+  color: var(--color-success);
+}
+
+.listings {
+  max-height: 340px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--color-line);
+}
+
+.listing {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 110px 130px;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-line);
+  font-size: 13px;
+}
+
+.listingWords {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.listingName {
+  overflow: hidden;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.priceField input {
+  width: 100%;
+  height: 34px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  background: var(--color-field);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  text-align: right;
+}
+
+.priceField input:focus-visible {
+  outline: none;
+  border-color: var(--color-text-muted);
+}
+
+.youGet {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  text-align: right;
+}
+
+.listingFooter {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
