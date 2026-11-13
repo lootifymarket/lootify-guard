@@ -1,12 +1,14 @@
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use aes_gcm::aead::Generate;
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use reqwest::StatusCode;
-use reqwest::blocking::{Client, Response};
-use reqwest::header::COOKIE;
+use reqwest::Url;
+use reqwest::blocking::{Client, ClientBuilder, Response};
+use reqwest::cookie::Jar;
 use serde::Deserialize;
+use sha1::{Digest, Sha1};
 use steamguard::protobufs::steammessages_auth_steamclient::{
     EAuthSessionGuardType, EAuthTokenPlatformType,
 };
@@ -31,6 +33,7 @@ const LINK_DETAILS_URL: &str =
 const AVATAR_URL: &str = "https://avatars.steamstatic.com";
 // A 64×64 JPEG is a few kilobytes; anything far bigger isn't an avatar.
 const MAX_AVATAR_LEN: usize = 256 * 1024;
+const COMMUNITY_URL: &str = "https://steamcommunity.com";
 const SERVER_INFO_URL: &str = "https://api.steampowered.com/ISteamWebAPIUtil/GetServerInfo/v1/";
 // Open-source and keyless. It sees only the proxy's IP, since the lookup goes through it.
 const COUNTRY_URL: &str = "https://api.country.is/";
@@ -66,6 +69,8 @@ pub enum SteamError {
     NotQrLink,
     #[error("couldn't reach Steam, check the connection")]
     Network,
+    #[error("Steam took too long to answer, try again")]
+    Timeout,
     #[error("couldn't reach Steam through the proxy")]
     Proxy,
     #[error("Steam answered with something unexpected ({0})")]
@@ -161,16 +166,51 @@ pub(crate) fn with_session<T>(
     let (Some(session), Some(steam_id)) = (&account.session, account.steam_id) else {
         return Err(SteamError::SessionExpired);
     };
-    let client = client(proxy)?;
     let mut session = session.clone();
+    let client = session_client(proxy, &session, steam_id)?;
     let result = match op(&client, &session, steam_id) {
         Err(SteamError::SessionExpired) => {
             session.access_token = refresh_access_token(&client, &session, steam_id)?;
+            // The cookie jar holds the old token, so the client is made anew.
+            let client = session_client(proxy, &session, steam_id)?;
             op(&client, &session, steam_id)?
         }
         result => result?,
     };
     Ok((session, result))
+}
+
+/// A client signed in to steamcommunity.com. Its cookies live in a jar rather than
+/// a fixed header, because Steam sets more of them on the way through redirects
+/// and keeps redirecting until it gets them back.
+fn session_client(
+    proxy: Option<&ProxyAddress>,
+    session: &Session,
+    steam_id: u64,
+) -> Result<Client, SteamError> {
+    let community: Url = COMMUNITY_URL.parse().expect("a valid URL");
+    let jar = Jar::default();
+    jar.add_cookie_str(
+        &format!(
+            "steamLoginSecure={steam_id}%7C%7C{}; Secure; HttpOnly",
+            session.access_token.expose()
+        ),
+        &community,
+    );
+    jar.add_cookie_str(&format!("sessionid={}", session_id(session)), &community);
+    builder(proxy)?
+        .cookie_provider(Arc::new(jar))
+        .build()
+        .map_err(|_| SteamError::Network)
+}
+
+/// Steam only checks that a form's `sessionid` matches the cookie, so any value
+/// works. It is derived from the token so that the form can name the same one.
+fn session_id(session: &Session) -> String {
+    Sha1::digest(session.access_token.expose().as_bytes())[..12]
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
 }
 
 /// Asks Steam for the account's nickname and avatar. That only works with a live
@@ -253,6 +293,10 @@ fn proxy_country(client: &Client) -> Option<String> {
 }
 
 pub(crate) fn client(proxy: Option<&ProxyAddress>) -> Result<Client, SteamError> {
+    builder(proxy)?.build().map_err(|_| SteamError::Network)
+}
+
+fn builder(proxy: Option<&ProxyAddress>) -> Result<ClientBuilder, SteamError> {
     let mut builder = Client::builder()
         .connect_timeout(CONNECT_TIMEOUT)
         .timeout(REQUEST_TIMEOUT);
@@ -260,7 +304,7 @@ pub(crate) fn client(proxy: Option<&ProxyAddress>) -> Result<Client, SteamError>
         // An explicit proxy also turns off the system one, so nothing goes around it.
         builder = builder.proxy(proxy.to_reqwest().map_err(|_| SteamError::Proxy)?);
     }
-    builder.build().map_err(|_| SteamError::Network)
+    Ok(builder)
 }
 
 /// A GET to Steam's Web API on behalf of the session.
@@ -275,7 +319,7 @@ pub(crate) fn web_api_get(
         .query(&[("access_token", session.access_token.expose())])
         .query(query)
         .send()
-        .map_err(|_| SteamError::Network)?;
+        .map_err(request_error)?;
     web_api_body(response)
 }
 
@@ -290,7 +334,7 @@ pub(crate) fn web_api_post(
         .post(url)
         .form(&[("access_token", session.access_token.expose())])
         .send()
-        .map_err(|_| SteamError::Network)?;
+        .map_err(request_error)?;
     web_api_body(response)
 }
 
@@ -307,61 +351,52 @@ fn web_api_body(response: Response) -> Result<Vec<u8>, SteamError> {
     response
         .bytes()
         .map(|body| body.to_vec())
-        .map_err(|_| SteamError::Network)
+        .map_err(request_error)
 }
 
 /// A page on steamcommunity.com, signed in with the session's web cookie. Steam
 /// sends a signed-out visitor to its login page, which means the session ended.
-pub(crate) fn community_get(
-    client: &Client,
-    url: &str,
-    session: &Session,
-    steam_id: u64,
-) -> Result<String, SteamError> {
-    let response = client
-        .get(url)
-        .header(COOKIE, community_cookie(session, steam_id, None))
-        .send()
-        .map_err(|_| SteamError::Network)?;
+/// Takes a client from `with_session`, whose cookies sign it in.
+pub(crate) fn community_get(client: &Client, url: &str) -> Result<String, SteamError> {
+    let response = client.get(url).send().map_err(request_error)?;
     community_page(response)
 }
 
-/// A form sent to steamcommunity.com. Steam checks that the form's `sessionid`
-/// matches the cookie, so a fresh one goes in both.
+/// A form sent to steamcommunity.com with a client from `with_session`.
 pub(crate) fn community_post(
     client: &Client,
     url: &str,
     session: &Session,
-    steam_id: u64,
     form: &[(&str, &str)],
 ) -> Result<String, SteamError> {
-    let session_id: String = <[u8; 12]>::generate()
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect();
+    let session_id = session_id(session);
     let mut fields = vec![("sessionid", session_id.as_str())];
     fields.extend_from_slice(form);
     let response = client
         .post(url)
-        .header(
-            COOKIE,
-            community_cookie(session, steam_id, Some(&session_id)),
-        )
         .form(&fields)
         .send()
-        .map_err(|_| SteamError::Network)?;
+        .map_err(request_error)?;
     community_page(response)
 }
 
-fn community_cookie(session: &Session, steam_id: u64, session_id: Option<&str>) -> String {
-    let mut cookie = format!(
-        "steamLoginSecure={steam_id}%7C%7C{}",
-        session.access_token.expose()
-    );
-    if let Some(session_id) = session_id {
-        cookie.push_str(&format!("; sessionid={session_id}"));
+/// Tells apart the ways a request can fail without passing on reqwest's text,
+/// which includes the URL.
+fn request_error(err: reqwest::Error) -> SteamError {
+    if err.is_timeout() {
+        SteamError::Timeout
+    } else if err.is_redirect() {
+        // Only where it ended up: the query may carry Steam's own tokens.
+        let place = err
+            .url()
+            .map(|url| format!(" to {}{}", url.host_str().unwrap_or(""), url.path()))
+            .unwrap_or_default();
+        SteamError::Steam(format!("it kept redirecting{place}"))
+    } else if err.is_body() || err.is_decode() {
+        SteamError::Steam("the answer was cut off".to_owned())
+    } else {
+        SteamError::Network
     }
-    cookie
 }
 
 fn community_page(response: Response) -> Result<String, SteamError> {
@@ -371,7 +406,7 @@ fn community_page(response: Response) -> Result<String, SteamError> {
     if !response.status().is_success() {
         return Err(SteamError::Steam(response.status().to_string()));
     }
-    response.text().map_err(|_| SteamError::Network)
+    response.text().map_err(request_error)
 }
 
 fn link_details(

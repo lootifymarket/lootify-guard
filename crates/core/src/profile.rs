@@ -25,8 +25,8 @@ pub fn trade_url(
     account: &Account,
     proxy: Option<&ProxyAddress>,
 ) -> Result<(Session, String), SteamError> {
-    with_session(account, proxy, |client, session, steam_id| {
-        let page = community_get(client, &privacy_url(steam_id), session, steam_id)?;
+    with_session(account, proxy, |client, _, steam_id| {
+        let page = community_get(client, &privacy_url(steam_id))?;
         let token = trade_token(&page)
             .ok_or_else(|| SteamError::Steam("no trade URL on the page".to_owned()))?;
         Ok(link(steam_id, token))
@@ -40,7 +40,7 @@ pub fn new_trade_url(
 ) -> Result<(Session, String), SteamError> {
     with_session(account, proxy, |client, session, steam_id| {
         let url = format!("https://steamcommunity.com/profiles/{steam_id}/tradeoffers/newtradeurl");
-        let answer = community_post(client, &url, session, steam_id, &[])?;
+        let answer = community_post(client, &url, session, &[])?;
         // Steam answers with the new token alone, as a JSON string.
         let token: String = serde_json::from_str(&answer)
             .map_err(|_| SteamError::Steam("unreadable trade token".to_owned()))?;
@@ -56,8 +56,8 @@ pub fn wallet(
     account: &Account,
     proxy: Option<&ProxyAddress>,
 ) -> Result<(Session, Option<Wallet>), SteamError> {
-    with_session(account, proxy, |client, session, steam_id| {
-        parse_wallet(&community_get(client, MARKET_URL, session, steam_id)?)
+    with_session(account, proxy, |client, _, _| {
+        parse_wallet(&community_get(client, MARKET_URL)?)
     })
 }
 

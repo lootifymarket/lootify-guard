@@ -23,22 +23,16 @@ pub fn check(
     account: &Account,
     proxy: Option<&ProxyAddress>,
 ) -> Result<(Session, Option<ApiKey>), SteamError> {
-    with_session(account, proxy, |client, session, steam_id| {
-        parse(&community_get(client, API_KEY_URL, session, steam_id)?)
+    with_session(account, proxy, |client, _, _| {
+        parse(&community_get(client, API_KEY_URL)?)
     })
 }
 
 /// Deletes the account's Web API key, then looks again to be sure it's gone.
 pub fn revoke(account: &Account, proxy: Option<&ProxyAddress>) -> Result<Session, SteamError> {
-    let (session, key) = with_session(account, proxy, |client, session, steam_id| {
-        community_post(
-            client,
-            REVOKE_URL,
-            session,
-            steam_id,
-            &[("Revoke", "Revoke")],
-        )?;
-        parse(&community_get(client, API_KEY_URL, session, steam_id)?)
+    let (session, key) = with_session(account, proxy, |client, session, _| {
+        community_post(client, REVOKE_URL, session, &[("Revoke", "Revoke")])?;
+        parse(&community_get(client, API_KEY_URL)?)
     })?;
     match key {
         None => Ok(session),
