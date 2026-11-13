@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { words } from '../i18n/index.ts'
 
 export type VaultStatus = 'missing' | 'locked' | 'unlocked'
 
@@ -73,17 +74,18 @@ export const isBiometricsOutdated = (error: unknown) =>
 
 export function errorMessage(error: unknown) {
   const commandError = error as CommandError | undefined
+  const t = words().errors
   switch (commandError?.kind) {
     case 'failed':
       return commandError.message
     case 'wrongPassword':
-      return 'Wrong password'
+      return t.wrongPassword
     case 'locked':
-      return 'The vault is locked'
+      return t.locked
     case 'biometricsOutdated':
-      return 'Biometric unlock no longer matches this vault. Use your password.'
+      return t.biometricsOutdated
     case 'cancelled':
-      return 'Cancelled'
+      return t.cancelled
     default:
       return String(error)
   }

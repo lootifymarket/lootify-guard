@@ -13,27 +13,17 @@ import Lockup from '../components/Lockup.tsx'
 import LogoMark from '../components/LogoMark.tsx'
 import TextField from '../components/TextField.tsx'
 import Toggle from '../components/Toggle.tsx'
+import { LANGUAGES, useLanguage, useT, type Language } from '../i18n/index.ts'
+import { saveLanguage } from '../api/settings.ts'
+import Dropdown from '../components/Dropdown.tsx'
 import { checkPassword } from '../lib/passwordStrength.ts'
 import styles from './Onboarding.module.css'
 
-const STEPS = ['Welcome', 'Master password']
-
-const PROMISES = [
-  {
-    title: 'Stays on your computer',
-    text: 'No cloud. Secrets are encrypted locally and never leave this device.',
-    icon: 'M3 11h18v10H3zM7 11V7a5 5 0 0 1 10 0v4',
-  },
-  {
-    title: 'Open source',
-    text: 'Every line is public on GitHub, so anyone can check what it does.',
-    icon: 'M16 18l6-6-6-6M8 6l-6 6 6 6',
-  },
-  {
-    title: 'Built for traders and farms',
-    text: 'Guard codes, confirmations, trades, proxies and bulk tasks.',
-    icon: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
-  },
+// In the order of the promises in the dictionary.
+const PROMISE_ICONS = [
+  'M3 11h18v10H3zM7 11V7a5 5 0 0 1 10 0v4',
+  'M16 18l6-6-6-6M8 6l-6 6 6 6',
+  'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
 ]
 
 const CHECK = 'M20 6L9 17l-5-5'
@@ -44,6 +34,7 @@ type Props = {
 }
 
 export default function Onboarding({ onCreated }: Props) {
+  const t = useT().onboarding
   const [step, setStep] = useState(0)
   const [biometric, setBiometric] = useState<BiometricMethod | null>(null)
 
@@ -56,7 +47,7 @@ export default function Onboarding({ onCreated }: Props) {
       <aside className={styles.aside}>
         <Lockup size="sm" />
         <ol className={styles.steps}>
-          {STEPS.map((label, i) => (
+          {t.steps.map((label, i) => (
             <li
               key={label}
               className={styles.step}
@@ -70,11 +61,8 @@ export default function Onboarding({ onCreated }: Props) {
             </li>
           ))}
         </ol>
-        <p className={styles.asideNote}>
-          Everything stays on this computer, encrypted with your master
-          password. Lootify never receives your passwords or Steam Guard
-          secrets.
-        </p>
+        <p className={styles.asideNote}>{t.asideNote}</p>
+        <LanguagePicker />
       </aside>
       <main className={styles.main}>
         <div className={styles.content}>
@@ -93,21 +81,37 @@ export default function Onboarding({ onCreated }: Props) {
   )
 }
 
+/** The language can be picked before there's a vault, from the first screen. */
+function LanguagePicker() {
+  const { language, t, setLanguage } = useLanguage()
+  return (
+    <Dropdown
+      label={t.settings.language}
+      hideLabel
+      size="sm"
+      value={language}
+      options={LANGUAGES}
+      onChange={(value) => {
+        setLanguage(value as Language)
+        void saveLanguage(value as Language)
+      }}
+    />
+  )
+}
+
 function Welcome({ onNext }: { onNext: () => void }) {
+  const t = useT().onboarding
   return (
     <div className={`${styles.stepBody} ${styles.welcome}`}>
       <LogoMark size={72} />
       <div className={styles.heading}>
-        <h1 className={styles.title}>Welcome to Lootify Guard</h1>
-        <p className={styles.lead}>
-          Steam Guard codes, trade confirmations and all your Steam accounts in
-          one encrypted vault on this computer.
-        </p>
+        <h1 className={styles.title}>{t.welcomeTitle}</h1>
+        <p className={styles.lead}>{t.welcomeLead}</p>
       </div>
       <ul className={styles.promises}>
-        {PROMISES.map((promise) => (
+        {t.promises.map((promise, i) => (
           <li key={promise.title} className={styles.promise}>
-            <Icon path={promise.icon} size={18} stroke={1.8} />
+            <Icon path={PROMISE_ICONS[i]} size={18} stroke={1.8} />
             <span className={styles.promiseWords}>
               <span className={styles.promiseTitle}>{promise.title}</span>
               <span className={styles.promiseText}>{promise.text}</span>
@@ -116,7 +120,7 @@ function Welcome({ onNext }: { onNext: () => void }) {
         ))}
       </ul>
       <div className={styles.actions}>
-        <Button onClick={onNext}>Get started</Button>
+        <Button onClick={onNext}>{t.getStarted}</Button>
       </div>
     </div>
   )
@@ -131,6 +135,8 @@ function MasterPassword({
   onBack: () => void
   onCreated: () => void
 }) {
+  const words = useT()
+  const t = words.onboarding
   const [password, setPassword] = useState('')
   const [repeat, setRepeat] = useState('')
   const [useBiometric, setUseBiometric] = useState(true)
@@ -146,18 +152,18 @@ function MasterPassword({
   const checklist = [
     {
       met: rules.length,
-      label: 'At least 12 characters',
-      missing: 'Shorter than 12 characters',
+      label: t.rules.length,
+      missing: t.rules.lengthMissing,
     },
     {
       met: rules.numberOrSymbol,
-      label: 'A number or a symbol',
-      missing: 'No numbers or symbols',
+      label: t.rules.numberOrSymbol,
+      missing: t.rules.numberOrSymbolMissing,
     },
     {
       met: rules.mixedCase,
-      label: 'Upper and lower case letters',
-      missing: 'Not mixing upper and lower case',
+      label: t.rules.mixedCase,
+      missing: t.rules.mixedCaseMissing,
     },
   ]
 
@@ -179,7 +185,7 @@ function MasterPassword({
       } catch (err) {
         // The vault itself is fine, so let the user go on without biometrics.
         setError(
-          `The vault is ready, but ${BIOMETRIC_NAMES[biometric]} couldn’t be turned on: ${errorMessage(err)}`,
+          t.biometricFailed(BIOMETRIC_NAMES[biometric], errorMessage(err)),
         )
         setBusy(false)
         return
@@ -207,16 +213,13 @@ function MasterPassword({
   return (
     <form className={styles.stepBody} onSubmit={submit}>
       <div className={styles.heading}>
-        <h1 className={styles.title}>Create a master password</h1>
-        <p className={styles.lead}>
-          It encrypts your vault, and you’ll enter it every time you open the
-          app. Nobody can read your vault without it, not even us.
-        </p>
+        <h1 className={styles.title}>{t.createTitle}</h1>
+        <p className={styles.lead}>{t.createLead}</p>
       </div>
       <div className={styles.group}>
         <TextField
           type="password"
-          label="Master password"
+          label={t.masterPassword}
           autoComplete="new-password"
           autoFocus
           value={password}
@@ -237,18 +240,18 @@ function MasterPassword({
           data-tone={!password ? 'faint' : score < 3 ? 'danger' : 'secondary'}
         >
           {!password
-            ? 'Use a long passphrase. Four or more random words work well.'
+            ? t.passphraseHint
             : score < 3
-              ? 'Weak password'
+              ? t.weak
               : score < 4
-                ? 'Good password'
-                : 'Strong password'}
+                ? t.good
+                : t.strong}
         </span>
       </div>
       <div className={styles.group}>
         <TextField
           type="password"
-          label="Repeat password"
+          label={t.repeatPassword}
           autoComplete="new-password"
           value={repeat}
           invalid={mismatch}
@@ -256,12 +259,12 @@ function MasterPassword({
         />
         {mismatch && (
           <span className={styles.hint} data-tone="danger">
-            Passwords don’t match
+            {t.mismatch}
           </span>
         )}
       </div>
       <ul className={styles.rules}>
-        <li className={styles.rulesTitle}>Recommended</li>
+        <li className={styles.rulesTitle}>{t.recommended}</li>
         {checklist.map((rule) => (
           <li key={rule.label} className={styles.rule} data-met={rule.met}>
             <Icon path={rule.met ? CHECK : DOT} size={14} stroke={2.4} />
@@ -272,15 +275,12 @@ function MasterPassword({
       {biometric && (
         <div className={styles.option}>
           <span className={styles.optionWords}>
-            <span>Unlock with {BIOMETRIC_NAMES[biometric]}</span>
-            <span className={styles.optionText}>
-              Also lets you set a new password on this computer if you forget
-              it.
-            </span>
+            <span>{t.unlockWith(BIOMETRIC_NAMES[biometric])}</span>
+            <span className={styles.optionText}>{t.unlockWithText}</span>
           </span>
           <Toggle
             on={useBiometric}
-            label={`Unlock with ${BIOMETRIC_NAMES[biometric]}`}
+            label={t.unlockWith(BIOMETRIC_NAMES[biometric])}
             onChange={setUseBiometric}
           />
         </div>
@@ -293,11 +293,11 @@ function MasterPassword({
       <div className={styles.actions}>
         {!created && (
           <Button variant="secondary" className={styles.back} onClick={onBack}>
-            Back
+            {words.common.back}
           </Button>
         )}
         <Button type="submit" busy={busy} disabled={!canCreate && !created}>
-          {created ? 'Continue' : busy ? 'Creating vault…' : 'Create vault'}
+          {created ? words.common.continue : busy ? t.creating : t.create}
         </Button>
       </div>
 
@@ -308,13 +308,9 @@ function MasterPassword({
       >
         <div className={styles.heading}>
           <h2 id="weak-title" className={styles.dialogTitle}>
-            This password is easy to guess
+            {t.weakTitle}
           </h2>
-          <p className={styles.dialogText}>
-            If malware copies your vault file, a weak password can be cracked
-            offline in hours, exposing every Steam Guard secret inside. A long
-            passphrase takes years.
-          </p>
+          <p className={styles.dialogText}>{t.weakText}</p>
         </div>
         <ul className={styles.missing}>
           {checklist
@@ -325,14 +321,14 @@ function MasterPassword({
         </ul>
         <div className={styles.dialogActions}>
           <Button variant="secondary" size="sm" onClick={() => void create()}>
-            Use it anyway
+            {t.useAnyway}
           </Button>
           <Button
             ref={strongerButton}
             size="sm"
             onClick={() => weakDialog.current?.close()}
           >
-            Make it stronger
+            {t.makeStronger}
           </Button>
         </div>
       </dialog>

@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import type { Language } from '../i18n/index.ts'
 
 /** The auto-lock choices, in minutes. */
 export const AUTO_LOCK_CHOICES = [5, 15, 60] as const
@@ -12,6 +13,7 @@ export type Settings = {
   streamerMode: boolean
   /** Closing the window leaves the app running in the tray. */
   closeToTray: boolean
+  language: Language
 }
 
 export const getSettings = () => invoke<Settings>('get_settings')
@@ -22,6 +24,9 @@ export const setAutoLock = (minutes: number | null) =>
 
 export const setStreamerMode = (on: boolean) =>
   invoke<void>('set_streamer_mode', { on })
+
+export const saveLanguage = (language: Language) =>
+  invoke<void>('set_language', { language })
 
 export const setCloseToTray = (on: boolean) =>
   invoke<void>('set_close_to_tray', { on })

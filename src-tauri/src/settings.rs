@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::sync::{Mutex, MutexGuard, PoisonError};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use lootify_guard_core::settings::{AUTO_LOCK_CHOICES, Settings};
+use lootify_guard_core::settings::{AUTO_LOCK_CHOICES, Language, Settings};
 use tauri::async_runtime::spawn_blocking;
 use tauri::{AppHandle, State, Window};
 use tauri_plugin_autostart::ManagerExt;
@@ -71,6 +71,17 @@ pub fn set_auto_lock(
 pub fn set_streamer_mode(settings: State<'_, SettingsState>, on: bool) -> Result<(), CommandError> {
     settings.save(Settings {
         streamer_mode: on,
+        ..settings.get()
+    })
+}
+
+#[tauri::command]
+pub fn set_language(
+    settings: State<'_, SettingsState>,
+    language: Language,
+) -> Result<(), CommandError> {
+    settings.save(Settings {
+        language,
         ..settings.get()
     })
 }

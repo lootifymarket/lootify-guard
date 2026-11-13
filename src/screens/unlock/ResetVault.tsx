@@ -2,22 +2,8 @@ import { useState, type FormEvent } from 'react'
 import { eraseVault, errorMessage } from '../../api/vault.ts'
 import Button from '../../components/Button.tsx'
 import TextField from '../../components/TextField.tsx'
+import { useT } from '../../i18n/index.ts'
 import styles from './Unlock.module.css'
-
-const RECOVERY_WAYS = [
-  {
-    title: 'Restore from a backup',
-    text: 'Import your .maFile files or a vault backup made in Settings.',
-  },
-  {
-    title: 'Use Steam revocation codes',
-    text: 'Each R-code removes Steam Guard from its account. Then add the account again.',
-  },
-  {
-    title: 'Contact Steam Support',
-    text: 'For accounts with neither a backup nor an R-code.',
-  },
-]
 
 type Props = {
   biometricName: string | null
@@ -26,10 +12,11 @@ type Props = {
 }
 
 export default function ResetVault({ biometricName, onErased, onBack }: Props) {
+  const t = useT().unlock
   const [confirmation, setConfirmation] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  const confirmed = confirmation.trim().toUpperCase() === 'RESET'
+  const confirmed = confirmation.trim().toUpperCase() === t.resetWord
 
   async function erase(event: FormEvent) {
     event.preventDefault()
@@ -48,19 +35,13 @@ export default function ResetVault({ biometricName, onErased, onBack }: Props) {
   return (
     <form className={`${styles.view} ${styles.reset}`} onSubmit={erase}>
       <div className={styles.heading}>
-        <h1 className={styles.title}>The vault can’t be opened</h1>
-        <p className={styles.text}>
-          Without the password{biometricName && ` or ${biometricName}`} nobody
-          can decrypt it, not even us. That’s the point of the encryption. Erase
-          it and start over; your Steam accounts aren’t lost.
-        </p>
+        <h1 className={styles.title}>{t.resetTitle}</h1>
+        <p className={styles.text}>{t.resetText(biometricName)}</p>
       </div>
       <div className={styles.ways}>
-        <span className={styles.waysTitle}>
-          Getting your accounts back after a reset
-        </span>
+        <span className={styles.waysTitle}>{t.waysTitle}</span>
         <ol className={styles.wayList}>
-          {RECOVERY_WAYS.map((way) => (
+          {t.ways.map((way) => (
             <li key={way.title} className={styles.way}>
               <span className={styles.wayTitle}>{way.title}</span>
               <span className={styles.wayText}>{way.text}</span>
@@ -69,7 +50,7 @@ export default function ResetVault({ biometricName, onErased, onBack }: Props) {
         </ol>
       </div>
       <TextField
-        label="Type RESET to erase this vault"
+        label={t.typeReset}
         autoComplete="off"
         spellCheck={false}
         autoFocus
@@ -89,10 +70,10 @@ export default function ResetVault({ biometricName, onErased, onBack }: Props) {
         disabled={!confirmed}
         className={styles.wide}
       >
-        {busy ? 'Erasing…' : 'Erase vault and start over'}
+        {busy ? t.erasing : t.erase}
       </Button>
       <button type="button" className={styles.back} onClick={onBack}>
-        ← I remembered it
+        {t.remembered}
       </button>
     </form>
   )
