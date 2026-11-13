@@ -14,7 +14,10 @@ import Button from '../../../components/Button.tsx'
 import Dialog from '../../../components/Dialog.tsx'
 import dialogStyles from '../../../components/Dialog.module.css'
 import { useT } from '../../../i18n/index.ts'
+import { useToast } from '../../../lib/toast.ts'
 import styles from './Inventory.module.css'
+import Private from '../../../components/Private.tsx'
+import { MASK } from '../../../lib/streamer.ts'
 
 type Props = {
   open: boolean
@@ -55,6 +58,7 @@ function Form({ game, picked, onClose, onListed }: Props) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [reports, setReports] = useState<ListingReport[] | null>(null)
+  const toast = useToast()
   // Kept from before listing, as the inventory reloads without the listed items.
   const [names, setNames] = useState<Record<string, string>>({})
   const namesKey = rows.map((row) => row.name).join('\n')
@@ -107,16 +111,21 @@ function Form({ game, picked, onClose, onListed }: Props) {
     }
     setNames(listed)
     try {
-      setReports(
-        await listOnMarket(
-          currency,
-          Object.entries(groups).map(([accountName, listings]) => ({
-            accountName,
-            listings,
-          })),
-        ),
+      const done = await listOnMarket(
+        currency,
+        Object.entries(groups).map(([accountName, listings]) => ({
+          accountName,
+          listings,
+        })),
       )
       onListed()
+      // Only listings left waiting or failed are worth a closer look.
+      if (done.every((report) => report.outcome === 'done')) {
+        toast(t.listedToast(done.length))
+        onClose()
+      } else {
+        setReports(done)
+      }
     } catch (err) {
       setError(errorMessage(err))
     }
@@ -152,19 +161,21 @@ function Form({ game, picked, onClose, onListed }: Props) {
                     <span className={styles.muted}> × {amount}</span>
                   )}
                 </span>
-                <span className={styles.muted} data-private>
-                  {!prices && !priceError
-                    ? t.asking
-                    : price
-                      ? [
-                          price.lowest !== null &&
-                            t.lowest(formatMoney(price.lowest, currency)),
-                          price.median !== null &&
-                            t.median(formatMoney(price.median, currency)),
-                        ]
-                          .filter(Boolean)
-                          .join(' · ')
-                      : t.noPrice}
+                <span className={styles.muted}>
+                  <Private mask={MASK.money}>
+                    {!prices && !priceError
+                      ? t.asking
+                      : price
+                        ? [
+                            price.lowest !== null &&
+                              t.lowest(formatMoney(price.lowest, currency)),
+                            price.median !== null &&
+                              t.median(formatMoney(price.median, currency)),
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')
+                        : t.noPrice}
+                  </Private>
                 </span>
               </span>
               <label className={styles.priceField}>
@@ -182,10 +193,12 @@ function Form({ game, picked, onClose, onListed }: Props) {
                   }
                 />
               </label>
-              <span className={styles.youGet} data-private>
-                {own !== null
-                  ? t.youGet(formatMoney(sellerGets(own), currency))
-                  : ''}
+              <span className={styles.youGet}>
+                <Private mask={own !== null ? MASK.money : ''}>
+                  {own !== null
+                    ? t.youGet(formatMoney(sellerGets(own), currency))
+                    : ''}
+                </Private>
               </span>
             </div>
           )
@@ -197,8 +210,10 @@ function Form({ game, picked, onClose, onListed }: Props) {
         </p>
       )}
       <div className={styles.listingFooter}>
-        <span className={styles.muted} data-private>
-          {count > 0 && t.youGetTotal(formatMoney(total, currency))}
+        <span className={styles.muted}>
+          <Private mask={count > 0 ? MASK.money : ''}>
+            {count > 0 && t.youGetTotal(formatMoney(total, currency))}
+          </Private>
         </span>
         <span className={dialogStyles.actions}>
           <Button variant="secondary" size="sm" onClick={onClose}>

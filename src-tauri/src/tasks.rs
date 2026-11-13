@@ -599,6 +599,9 @@ fn save(state: &VaultState, accounts: &[&Account]) -> Result<(), Failed> {
         if account.profile.is_some() {
             stored.profile = account.profile.clone();
         }
+        if account.last_check.is_some() {
+            stored.last_check = account.last_check.clone();
+        }
     }
     vault.save_data(contents.to_bytes())?;
     Ok(())

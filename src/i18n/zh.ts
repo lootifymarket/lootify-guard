@@ -46,7 +46,7 @@ export const zh: Dictionary = {
   },
 
   onboarding: {
-    steps: ['欢迎', '主密码'],
+    steps: ['欢迎', '主密码', '偏好设置'],
     promises: [
       {
         title: '数据留在你的电脑上',
@@ -97,6 +97,8 @@ export const zh: Dictionary = {
       '如果恶意软件复制了你的保险库文件，弱密码可能在几小时内被离线破解，里面所有的 Steam 令牌密钥都会泄露。长密码短语则需要数年。',
     useAnyway: '仍然使用',
     makeStronger: '加强密码',
+    prefsTitle: '一些偏好设置',
+    prefsLead: '这些稍后都可以在设置中更改。',
   },
 
   unlock: {
@@ -150,6 +152,11 @@ export const zh: Dictionary = {
     remembered: '← 我想起来了',
   },
 
+  splash: {
+    steps: ['正在检查完整性', '正在加载设置', '完成'],
+    by: 'Lootify Market 出品',
+  },
+
   sidebar: {
     menu: '主菜单',
     accounts: '账户',
@@ -163,6 +170,9 @@ export const zh: Dictionary = {
     vaultUnlocked: '保险库已解锁',
     locksIn: (minutes) => `${minutes} 分钟后锁定`,
     lock: '锁定',
+    streamerOn: '主播模式已开启',
+    streamerOff: '关闭主播模式',
+    version: (version) => `v${version} · 开源`,
   },
 
   settings: {
@@ -170,8 +180,7 @@ export const zh: Dictionary = {
     display: '显示',
     language: '语言',
     streamer: '主播模式',
-    streamerHint:
-      '模糊显示 Steam 令牌代码、SteamID、交易链接、余额和价格，适合直播和截图。',
+    streamerHint: '隐藏余额、价格、Steam 令牌代码、SteamID 和交易链接。',
     security: '安全',
     autoLock: '自动锁定',
     autoLockHint: '无操作超过这段时间后锁定保险库。自动确认只在解锁时运行。',

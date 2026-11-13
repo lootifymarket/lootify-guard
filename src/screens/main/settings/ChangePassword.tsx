@@ -38,7 +38,7 @@ function Form({ biometricName, onClose, onChanged }: Props) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
-  const { strong } = checkPassword(password)
+  const { score } = checkPassword(password)
   const mismatch = repeat.length > 0 && repeat !== password
   const canSave =
     current.length > 0 && password.length > 0 && repeat === password
@@ -61,6 +61,7 @@ function Form({ biometricName, onClose, onChanged }: Props) {
     <form className={styles.form} onSubmit={save}>
       <TextField
         type="password"
+        className={styles.passwordInput}
         label={t.current}
         autoComplete="current-password"
         autoFocus
@@ -69,30 +70,49 @@ function Form({ biometricName, onClose, onChanged }: Props) {
       />
       <TextField
         type="password"
+        className={styles.passwordInput}
         label={t.new}
         autoComplete="new-password"
         value={password}
         onChange={(event) => setPassword(event.target.value)}
       />
+      <div className={styles.meter} aria-hidden="true">
+        {[0, 1, 2, 3].map((i) => (
+          <span
+            key={i}
+            className={styles.bar}
+            data-filled={i < score}
+            data-weak={score < 3}
+          />
+        ))}
+      </div>
+      <p
+        className={styles.hint}
+        data-tone={password && score < 3 ? 'danger' : undefined}
+      >
+        {!password
+          ? words.onboarding.rules.length
+          : score < 3
+            ? t.weak
+            : score < 4
+              ? words.onboarding.good
+              : words.onboarding.strong}
+      </p>
       <TextField
         type="password"
+        className={styles.passwordInput}
         label={t.repeat}
         autoComplete="new-password"
         value={repeat}
         invalid={mismatch}
         onChange={(event) => setRepeat(event.target.value)}
       />
-      <p
-        className={styles.hint}
-        data-tone={mismatch || (password && !strong) ? 'danger' : undefined}
-      >
+      <p className={styles.hint} data-tone={mismatch ? 'danger' : undefined}>
         {mismatch
           ? t.mismatch
-          : password && !strong
-            ? t.weak
-            : biometricName
-              ? t.movesBiometric(biometricName)
-              : t.reencrypted}
+          : biometricName
+            ? t.movesBiometric(biometricName)
+            : t.reencrypted}
       </p>
       {error && (
         <p className={dialogStyles.error} role="alert">

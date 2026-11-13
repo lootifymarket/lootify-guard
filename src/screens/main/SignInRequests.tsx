@@ -10,7 +10,9 @@ import Button from '../../components/Button.tsx'
 import Dialog from '../../components/Dialog.tsx'
 import dialogStyles from '../../components/Dialog.module.css'
 import Icon from '../../components/Icon.tsx'
+import Skeleton from '../../components/Skeleton.tsx'
 import { useT } from '../../i18n/index.ts'
+import { useToast } from '../../lib/toast.ts'
 import { fromAccounts, type AccountFailure } from './fromAccounts.ts'
 import QrSignIn from './QrSignIn.tsx'
 import styles from './SignInRequests.module.css'
@@ -40,7 +42,7 @@ export default function SignInRequests({ accounts, onChanged }: Props) {
   const [itemError, setItemError] = useState<{ id: string; text: string }>()
   const [denied, setDenied] = useState<string | null>(null)
   const [qrOpen, setQrOpen] = useState(false)
-  const [status, setStatus] = useState('')
+  const toast = useToast()
   const changed = useEffectEvent(onChanged)
 
   useEffect(() => {
@@ -60,7 +62,6 @@ export default function SignInRequests({ accounts, onChanged }: Props) {
   async function answer(item: Item, allow: boolean) {
     setBusy(item.clientId)
     setItemError(undefined)
-    setStatus('')
     try {
       await answerSignIn(item.accountName, item, allow)
     } catch (err) {
@@ -71,7 +72,7 @@ export default function SignInRequests({ accounts, onChanged }: Props) {
     }
     setBusy(null)
     setItems((all) => all?.filter((other) => other !== item) ?? null)
-    if (allow) setStatus(t.allowed(item.accountName))
+    if (allow) toast(t.allowed(item.accountName))
     else setDenied(item.accountName)
   }
 
@@ -108,24 +109,19 @@ export default function SignInRequests({ accounts, onChanged }: Props) {
         </div>
       </div>
 
-      {status && (
-        <p className={styles.status} role="status">
-          {status}
-        </p>
-      )}
       {failures.map((failure) => (
         <p key={failure.accountName} className={styles.failure} role="alert">
           {failure.accountName}:{' '}
           <span className={styles.reason}>{failure.reason}</span>
         </p>
       ))}
-      {loading && <p className={styles.note}>{words.guard.loading}</p>}
+      {loading && <Skeleton height={74} radius={12} />}
       {items?.length === 0 && failures.length === 0 && (
         <p className={styles.note}>{t.noRequests}</p>
       )}
 
       {items?.map((item) => (
-        <div key={item.clientId} className={styles.card}>
+        <div key={item.clientId} className={`${styles.card} rise`}>
           <div className={styles.words}>
             <span className={styles.who}>
               {item.accountName} ·{' '}
@@ -154,14 +150,15 @@ export default function SignInRequests({ accounts, onChanged }: Props) {
             >
               {t.notMe}
             </button>
-            <Button
-              size="sm"
-              busy={busy === item.clientId}
+            <button
+              type="button"
+              className={styles.allow}
+              aria-busy={busy === item.clientId || undefined}
               disabled={busy !== null}
               onClick={() => void answer(item, true)}
             >
               {t.allow}
-            </Button>
+            </button>
           </div>
         </div>
       ))}
@@ -172,7 +169,7 @@ export default function SignInRequests({ accounts, onChanged }: Props) {
         onClose={() => setQrOpen(false)}
         onAllowed={(accountName) => {
           setQrOpen(false)
-          setStatus(t.allowed(accountName))
+          toast(t.allowed(accountName))
         }}
       />
       <Dialog

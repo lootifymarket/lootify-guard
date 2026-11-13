@@ -13,11 +13,20 @@ import styles from './Proxies.module.css'
 
 type Props = {
   proxy: Proxy
+  /** A check of it is under way. */
+  checking: boolean
   onClose: () => void
+  onCheck: () => void
   onRemoved: () => void
 }
 
-export default function ProxyDetails({ proxy, onClose, onRemoved }: Props) {
+export default function ProxyDetails({
+  proxy,
+  checking,
+  onClose,
+  onCheck,
+  onRemoved,
+}: Props) {
   const t = useT().proxies.details
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -37,8 +46,9 @@ export default function ProxyDetails({ proxy, onClose, onRemoved }: Props) {
   }
 
   return (
-    <Dialog open title={proxy.address} onClose={onClose}>
-      <span className={styles.muted}>
+    <Dialog open title={proxy.name ?? proxy.address} onClose={onClose}>
+      <span className={styles.detailsAddress}>
+        {proxy.name && `${proxy.address} · `}
         {PROXY_KIND_NAMES[proxy.kind]}
         {proxy.hasLogin && t.withLogin}
       </span>
@@ -52,6 +62,14 @@ export default function ProxyDetails({ proxy, onClose, onRemoved }: Props) {
         <p className={dialogStyles.text}>{t.noAccounts}</p>
       )}
       {used > 0 && <p className={dialogStyles.text}>{t.deleteWarning(used)}</p>}
+      <button
+        type="button"
+        className={styles.delete}
+        disabled={busy}
+        onClick={() => void remove()}
+      >
+        {t.delete}
+      </button>
       {error && (
         <p className={dialogStyles.error} role="alert">
           {error}
@@ -61,14 +79,8 @@ export default function ProxyDetails({ proxy, onClose, onRemoved }: Props) {
         <Button variant="secondary" size="sm" onClick={onClose}>
           {t.close}
         </Button>
-        <Button
-          variant="danger"
-          size="sm"
-          busy={busy}
-          disabled={busy}
-          onClick={() => void remove()}
-        >
-          {t.delete}
+        <Button size="sm" busy={checking} disabled={checking} onClick={onCheck}>
+          {t.check}
         </Button>
       </div>
     </Dialog>

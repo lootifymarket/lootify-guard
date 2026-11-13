@@ -14,13 +14,17 @@ export const proxies = {
     accounts: 'Accounts',
     status: 'Status',
   },
-  checkOne: (proxy: string) => `Check ${proxy}`,
-  check: 'Check',
   empty: 'No proxies yet. Add one, or paste a list on the right.',
   ms: (ms: number) => `${ms} ms`,
   notChecked: 'Not checked',
   working: 'Working',
   notResponding: 'Not responding',
+  notRespondingCount: (n: number) => `${n} not responding`,
+  allWorking: 'all working',
+  checked: (n: number) => `Checked ${n} ${n === 1 ? 'proxy' : 'proxies'}`,
+  checkComplete: 'Check complete',
+  added: 'Proxy added',
+  deleted: 'Proxy deleted',
 
   details: {
     withLogin: ' · with login',
@@ -31,6 +35,7 @@ export const proxies = {
         : 'If you delete it, these accounts can’t reach Steam until you give them another proxy. Nothing goes out from your own IP instead.',
     close: 'Close',
     delete: 'Delete proxy',
+    check: 'Check',
   },
 
   bulk: {
@@ -38,7 +43,7 @@ export const proxies = {
     import: 'Import',
     importLines: (n: number) => `Import ${n}`,
     added: (n: number) => `Added ${n}`,
-    alreadyAdded: (n: number) => ` · ${n} already in the list`,
+    alreadyAdded: (n: number) => `${n} already in the list`,
     line: (line: number, reason: string) => `Line ${line}: ${reason}`,
   },
 

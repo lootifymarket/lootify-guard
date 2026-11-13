@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { CODE_PERIOD_SECS, type AccountList } from '../../api/accounts.ts'
 import { useT } from '../../i18n/index.ts'
+import { MASK, useStreamerMode } from '../../lib/streamer.ts'
 import { useCopy } from '../../lib/useCopy.ts'
 import AutoConfirm from './AutoConfirm.tsx'
 import Confirmations from './Confirmations.tsx'
@@ -8,6 +9,7 @@ import SignInRequests from './SignInRequests.tsx'
 import { matchesQuery, useCodeSecondsLeft } from './useAccounts.ts'
 import layout from './layout.module.css'
 import styles from './SteamGuard.module.css'
+import Private from '../../components/Private.tsx'
 
 type Props = {
   list: AccountList
@@ -20,6 +22,8 @@ export default function SteamGuard({ list, onChanged }: Props) {
   const [query, setQuery] = useState('')
   const [confirmationsKey, setConfirmationsKey] = useState(0)
   const { copy, label } = useCopy()
+  const streamer = useStreamerMode()
+  const idleHint = streamer.on ? t.hiddenClickToCopy : t.clickToCopy
   const secondsLeft = useCodeSecondsLeft(list.codesExpireAt)
   const shown = list.accounts.filter((account) => matchesQuery(account, query))
 
@@ -56,12 +60,15 @@ export default function SteamGuard({ list, onChanged }: Props) {
             >
               <span className={styles.who}>
                 <span className={styles.login}>{account.accountName}</span>
-                <span className={styles.hint}>
-                  {label(account.accountName, t.clickToCopy)}
+                <span
+                  className={styles.hint}
+                  data-copied={label(account.accountName, '') !== ''}
+                >
+                  {label(account.accountName, idleHint)}
                 </span>
               </span>
-              <span className={styles.value} data-private>
-                {account.code}
+              <span className={styles.value}>
+                <Private mask={MASK.code}>{account.code}</Private>
               </span>
             </button>
           ))}

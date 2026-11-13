@@ -9,6 +9,82 @@
   width: 240px;
 }
 
+.streamer {
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.streamer[aria-pressed='true'] {
+  background: rgb(229 37 42 / 0.12);
+  border-color: rgb(229 37 42 / 0.5);
+  color: var(--color-danger);
+}
+
+/* The four figures above the list. */
+.summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  border-top: 1px solid var(--color-divider);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.stat {
+  padding: 20px 0 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: transparent;
+  border: 0;
+  border-left: 1px solid var(--color-divider);
+  text-align: left;
+}
+
+.stat:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+button.stat {
+  cursor: pointer;
+}
+
+.statLabel {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.statValue {
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.balance {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.otherCurrencies {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.statValue[data-tone='danger'] {
+  color: var(--color-danger);
+}
+
 .body {
   display: flex;
   flex-wrap: wrap;
@@ -16,61 +92,131 @@
   gap: 28px;
 }
 
-.list {
-  flex: 999 1 420px;
+.main {
+  flex: 999 1 600px;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  border-bottom: 1px solid var(--color-line);
+  gap: 14px;
+}
+
+.tabsRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px;
+}
+
+.tab {
+  height: 40px;
+  margin-bottom: -1px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  color: var(--color-text-faint);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.tab[aria-selected='true'] {
+  border-bottom-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.groupLinks {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.groupLink {
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.groupLink:hover {
+  color: var(--color-text);
+}
+
+.scroll {
+  overflow-x: auto;
+}
+
+.table {
+  min-width: 740px;
+}
+
+.head,
+.row {
+  display: grid;
+  grid-template-columns:
+    minmax(170px, 1.6fr) minmax(96px, 1fr) minmax(120px, 1.2fr)
+    100px minmax(100px, 1fr) 56px;
+  column-gap: 14px;
+  align-items: center;
+}
+
+.head {
+  padding: 10px 12px;
+  color: var(--color-text-faint);
+  font-size: 12px;
 }
 
 .row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding-right: 12px;
+  position: relative;
+  padding: 14px 12px;
   border-top: 1px solid var(--color-line);
+  font-size: 13px;
 }
 
 .row[data-selected='true'] {
   background: var(--color-row-selected);
 }
 
-.select {
-  flex: 1;
+/* The whole row picks the account; the cells over it let clicks through. */
+.pick {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.row > [role='cell'] {
+  position: relative;
   min-width: 0;
+  pointer-events: none;
+}
+
+.row > .viewCell {
+  pointer-events: auto;
+}
+
+.pick:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: -2px;
+}
+
+.who {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 12px;
-  background: transparent;
-  border: 0;
-  font-size: 13px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.view,
-.copy {
-  height: 28px;
-  padding: 0 10px;
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.select:focus-visible {
-  outline: 2px solid var(--color-text);
-  outline-offset: -2px;
-}
-
-.view:focus-visible,
-.copy:focus-visible {
-  outline: 2px solid var(--color-text);
-  outline-offset: -2px;
 }
 
 .names {
@@ -95,10 +241,105 @@
   text-overflow: ellipsis;
 }
 
-.steamId {
+.muted {
+  color: var(--color-text-secondary);
+}
+
+.ellipsis {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 50%;
+  background: var(--color-text-faint);
+}
+
+.status[data-tone='on'] .dot {
+  background: var(--color-text);
+}
+
+.status[data-tone='off'] {
   color: var(--color-text-muted);
+}
+
+.status[data-tone='error'] {
+  color: var(--color-danger);
+}
+
+.status[data-tone='error'] .dot {
+  background: var(--color-danger);
+}
+
+.money {
   font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.row .money,
+.right {
+  justify-self: end;
+  text-align: right;
+}
+
+.note {
+  color: var(--color-text-muted);
   font-size: 12px;
+}
+
+.note[data-tone='danger'] {
+  color: var(--color-danger);
+}
+
+.viewCell {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.view,
+.copy {
+  height: 28px;
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.view {
+  width: 52px;
+  padding: 0;
+}
+
+.view:focus-visible,
+.copy:focus-visible,
+.tab:focus-visible,
+.groupLink:focus-visible,
+.streamer:focus-visible,
+button.stat:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+.nothing {
+  margin: 0;
+  padding: 32px 12px;
+  border-top: 1px solid var(--color-line);
+  color: var(--color-text-faint);
+  font-size: 13px;
 }
 
 .details {
@@ -124,6 +365,12 @@
   font-weight: 600;
   letter-spacing: -0.01em;
   overflow-wrap: anywhere;
+}
+
+.steamId {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
 }
 
 .guard {
@@ -155,6 +402,44 @@
   font-size: 12px;
 }
 
+.rule {
+  height: 1px;
+  background: var(--color-line-strong);
+}
+
+.facts {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.fact {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.fact dt {
+  color: var(--color-text-muted);
+}
+
+.fact dd {
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.pending {
+  color: var(--color-text-faint);
+  font-size: 12px;
+}
+
 .empty {
   max-width: 440px;
   padding-top: 24px;
@@ -175,76 +460,4 @@
   color: var(--color-text-muted);
   font-size: 13px;
   line-height: 1.55;
-}
-
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.chip {
-  height: 30px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 12px;
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  color: var(--color-text-secondary);
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.chip[aria-pressed='true'] {
-  background: var(--color-selected);
-  border-color: var(--color-text-faint);
-  color: var(--color-text);
-}
-
-.chipCount {
-  color: var(--color-text-faint);
-  font-family: var(--font-mono);
-  font-size: 12px;
-}
-
-.newGroup,
-.editGroup {
-  height: 30px;
-  padding: 0 6px;
-  background: transparent;
-  border: 0;
-  color: var(--color-text-muted);
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.editGroup {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.chip:focus-visible,
-.newGroup:focus-visible,
-.editGroup:focus-visible {
-  outline: 2px solid var(--color-text);
-  outline-offset: 2px;
-}
-
-.groupTag,
-.playingTag {
-  margin-left: 8px;
-  padding: 1px 7px;
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  color: var(--color-text-faint);
-  font-size: 11px;
-  font-weight: 400;
-}
-
-.playingTag {
-  border-color: var(--color-success);
-  color: var(--color-success);
 }

@@ -6,6 +6,8 @@ export const trades = {
   loading: 'Loading…',
   reload: 'Reload',
   newTrade: 'New trade',
+  account: 'Account',
+  allAccounts: 'All accounts',
   offersLabel: 'Offers',
   tabs: {
     incoming: 'Incoming',
@@ -21,8 +23,8 @@ export const trades = {
     parties: 'From → to',
     give: 'You give',
     get: 'You get',
+    check: 'Check',
   },
-  askingSteam: 'Asking Steam…',
   notShown: (names: string) =>
     `Not shown, as they aren’t signed in to Steam: ${names}`,
   partnerSteamId: (id: string) => `Steam ID ${id}`,
@@ -64,6 +66,11 @@ export const trades = {
     accept: 'Accept',
     confirm: 'Confirm',
     cancel: 'Cancel',
+    cancelOffer: 'Cancel offer',
+    accepted: 'Offer accepted',
+    declined: 'Offer declined',
+    canceled: 'Offer canceled',
+    confirmed: 'Offer confirmed',
     confirmTitle: 'Accept the trade?',
     risky: (warnings: string) => `The sender looks risky. ${warnings}`,
     itemsLeave: (account: string) =>

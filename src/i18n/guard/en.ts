@@ -7,9 +7,9 @@ export const guard = {
   codes: 'Codes',
   findAccount: 'Find account',
   clickToCopy: 'Click to copy',
+  hiddenClickToCopy: 'Hidden · click to copy',
   noAccounts: 'No accounts yet. Import .maFile files on the Accounts screen.',
   nothingFound: 'Nothing found.',
-  loading: 'Loading…',
   refresh: 'Refresh',
 
   confirmations: {
@@ -21,6 +21,10 @@ export const guard = {
     nothing: 'Nothing to confirm.',
     confirm: 'Confirm',
     decline: 'Decline',
+    refreshed: 'Confirmations refreshed',
+    confirmed: 'Confirmed',
+    declined: 'Declined',
+    confirmedCount: (n: number) => `Confirmed: ${n}`,
     confirmAllTitle: 'Confirm everything?',
     confirmAllText: (operations: number, accounts: number) =>
       `${count(operations, 'operation', 'operations')} on ${count(accounts, 'account', 'accounts')} will be confirmed. Review them first if you’re not sure what they are.`,
@@ -64,6 +68,8 @@ export const guard = {
       `On for ${on} of ${count(total, 'account', 'accounts')}: ${names}`,
     offForAll: 'Off for every account. Choose what to confirm with Rules.',
     pausedNote: 'Paused. Nothing is confirmed automatically until you resume.',
+    pausedToast: 'Auto-confirm paused',
+    resumedToast: 'Auto-confirm resumed',
     confirmedLog: 'Confirmed automatically',
     nothingYet: 'Nothing confirmed automatically since the vault was unlocked.',
     footnote:
@@ -81,6 +87,8 @@ export const guard = {
     account: 'Account',
     all: (n: number) => `All ${n}`,
     forEvery: (rule: string) => `${rule} for every account`,
+    toggledForAll: (rule: string, on: boolean, n: number) =>
+      `${rule}: ${on ? 'on' : 'off'} for ${count(n, 'account', 'accounts')}`,
     notSignedIn: 'Not signed in',
     risky: (names: string, n: number) =>
       `Any market listing is on for ${names}. Listings made by anyone who gets into ${n === 1 ? 'that Steam session' : 'those Steam sessions'} are confirmed too.`,

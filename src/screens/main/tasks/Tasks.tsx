@@ -8,6 +8,7 @@ import Dropdown from '../../../components/Dropdown.tsx'
 import TextField from '../../../components/TextField.tsx'
 import Toggle from '../../../components/Toggle.tsx'
 import { useT } from '../../../i18n/index.ts'
+import { useToast } from '../../../lib/toast.ts'
 import layout from '../layout.module.css'
 import ProfileOptions, { type ProfileChoice } from './ProfileOptions.tsx'
 import Queue from './Queue.tsx'
@@ -29,6 +30,8 @@ const KINDS: Kind[] = [
 ]
 
 const MAX_AVATAR_BYTES = 1024 * 1024
+// The group's members are listed by name up to this many, then counted.
+const MEMBERS_SHOWN = 4
 
 const AT_ONCE = [1, 2, 3, 5, 10]
 
@@ -50,6 +53,7 @@ type Props = {
 /** Runs one action on many accounts, with limits and random pauses. */
 export default function Tasks({ accounts, groups }: Props) {
   const t = useT().tasks
+  const toast = useToast()
   const [target, setTarget] = useState<Target>('all')
   const [kind, setKind] = useState<Kind>('check')
   const [onlyOwn, setOnlyOwn] = useState(true)
@@ -142,14 +146,16 @@ export default function Tasks({ accounts, groups }: Props) {
     setBusy(true)
     setError('')
     try {
+      const title = kind === 'moveToStorage' ? t.moveTo(storage) : task.name
       await startTask({
         task: await input(),
-        title: kind === 'moveToStorage' ? t.moveTo(storage) : task.name,
+        title,
         target: chosen.name,
         accountNames: runOn.map((account) => account.accountName),
         pacing: { atOnce, pauseMin: range.min, pauseMax: range.max, retry },
       })
       setStarted((n) => n + 1)
+      toast(t.started(title, chosen.name))
     } catch (err) {
       setError(errorMessage(err))
     }
@@ -186,9 +192,12 @@ export default function Tasks({ accounts, groups }: Props) {
         </section>
 
         <section className={styles.setup} aria-labelledby="setup-title">
-          <h2 id="setup-title" className={styles.sectionTitle}>
-            {chosen.name}
-          </h2>
+          <div className={styles.setupHead}>
+            <h2 id="setup-title" className={styles.groupName}>
+              {chosen.name}
+            </h2>
+            <span className={styles.members}>{members(chosen.accounts)}</span>
+          </div>
           <div className={styles.tasks} role="radiogroup" aria-label={t.task}>
             {KINDS.map((item) => (
               <button
@@ -199,7 +208,10 @@ export default function Tasks({ accounts, groups }: Props) {
                 className={styles.task}
                 onClick={() => setKind(item)}
               >
-                <span className={styles.taskName}>{t.kinds[item].name}</span>
+                <span className={styles.taskName}>
+                  <span className={styles.taskDot} />
+                  {t.kinds[item].name}
+                </span>
                 <span className={styles.taskText}>{t.kinds[item].text}</span>
               </button>
             ))}
@@ -323,7 +335,7 @@ export default function Tasks({ accounts, groups }: Props) {
               onChange={setPause}
             />
           </div>
-          <div className={styles.option}>
+          <div className={`${styles.option} ${styles.retry}`}>
             <span>{t.retry}</span>
             <Toggle on={retry} label={t.retryLabel} onChange={setRetry} />
           </div>
@@ -335,6 +347,8 @@ export default function Tasks({ accounts, groups }: Props) {
           )}
           <div className={styles.run}>
             <Button
+              size="sm"
+              className={styles.runButton}
               busy={busy}
               disabled={busy || !ready || runOn.length === 0}
               onClick={() => void run()}
@@ -348,4 +362,13 @@ export default function Tasks({ accounts, groups }: Props) {
       </div>
     </>
   )
+}
+
+/** The group's logins, the first few by name and the rest as a count. */
+function members(accounts: Account[]) {
+  const names = accounts
+    .slice(0, MEMBERS_SHOWN)
+    .map((account) => account.accountName)
+  const rest = accounts.length - names.length
+  return rest > 0 ? `${names.join(', ')} +${rest}` : names.join(', ')
 }

@@ -20,6 +20,7 @@ import Button from '../../../components/Button.tsx'
 import { useT, type Dictionary } from '../../../i18n/index.ts'
 import Dropdown from '../../../components/Dropdown.tsx'
 import TextField from '../../../components/TextField.tsx'
+import { useToast } from '../../../lib/toast.ts'
 import GamePicker from './GamePicker.tsx'
 import styles from './PlayingTab.module.css'
 
@@ -33,6 +34,7 @@ type Props = {
 /** Games the account plays on its own Steam connection, for hours and a status. */
 export default function PlayingTab({ accountName, signedIn }: Props) {
   const t = useT().account.playing
+  const toast = useToast()
   const [draft, setDraft] = useState<PlayingList>({
     games: [],
     status: null,
@@ -94,11 +96,13 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
       (player.status ?? null) !== status ||
       player.presence !== draft.presence)
 
-  async function act(action: () => Promise<void>) {
+  /** Runs the action, then says how it went in a toast when there's `done` to say. */
+  async function act(action: () => Promise<void>, done?: string) {
     setBusy(true)
     setError('')
     try {
       await action()
+      if (done) toast(done)
       await refresh()
     } catch (err) {
       setError(errorMessage(err))
@@ -107,12 +111,14 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
   }
 
   const start = () =>
-    act(() =>
-      startPlaying(accountName, {
-        games: draft.games.slice(0, room),
-        status,
-        presence: draft.presence,
-      }),
+    act(
+      () =>
+        startPlaying(accountName, {
+          games: draft.games.slice(0, room),
+          status,
+          presence: draft.presence,
+        }),
+      running ? t.applied : t.nowPlaying,
     )
 
   return (
@@ -132,7 +138,9 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
               variant="secondary"
               size="sm"
               disabled={busy}
-              onClick={() => void act(() => stopPlaying(accountName))}
+              onClick={() =>
+                void act(() => stopPlaying(accountName), t.stopped)
+              }
             >
               {t.stop}
             </Button>

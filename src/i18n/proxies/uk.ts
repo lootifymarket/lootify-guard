@@ -17,13 +17,17 @@ export const proxies: typeof en = {
     accounts: 'Акаунти',
     status: 'Статус',
   },
-  checkOne: (proxy) => `Перевірити ${proxy}`,
-  check: 'Перевірити',
   empty: 'Проксі поки немає. Додайте один або вставте список праворуч.',
   ms: (ms) => `${ms} мс`,
   notChecked: 'Не перевірено',
   working: 'Працює',
   notResponding: 'Не відповідає',
+  notRespondingCount: (n) => `не відповідають: ${n}`,
+  allWorking: 'усі працюють',
+  checked: (n) => `Перевірено проксі: ${n}`,
+  checkComplete: 'Перевірку завершено',
+  added: 'Проксі додано',
+  deleted: 'Проксі видалено',
 
   details: {
     withLogin: ' · з логіном',
@@ -34,6 +38,7 @@ export const proxies: typeof en = {
         : 'Якщо видалити його, ці акаунти не зможуть звертатися до Steam, доки ви не дасте їм інший проксі. Через ваш власний IP нічого не піде.',
     close: 'Закрити',
     delete: 'Видалити проксі',
+    check: 'Перевірити',
   },
 
   bulk: {
@@ -41,7 +46,7 @@ export const proxies: typeof en = {
     import: 'Імпорт',
     importLines: (n) => `Імпортувати ${n}`,
     added: (n) => `Додано: ${n}`,
-    alreadyAdded: (n) => ` · ${n} уже в списку`,
+    alreadyAdded: (n) => `${n} уже в списку`,
     line: (line, reason) => `Рядок ${line}: ${reason}`,
   },
 

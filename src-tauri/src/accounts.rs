@@ -3,7 +3,9 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use lootify_guard_core::contents::{Account, AutoConfirm, Contents, Session};
+use lootify_guard_core::contents::{
+    Account, AutoConfirm, Contents, LastCheck, Session, StoredWallet,
+};
 use lootify_guard_core::guard;
 use lootify_guard_core::mafile;
 use lootify_guard_core::proxy::ProxyAddress;
@@ -49,6 +51,10 @@ pub struct AccountSummary {
     auto_confirm: AutoConfirm,
     /// Whether the account has a game connection up or coming up.
     playing: bool,
+    note: Option<String>,
+    /// As Steam last showed it.
+    wallet: Option<StoredWallet>,
+    last_check: Option<LastCheck>,
 }
 
 #[derive(Default, Serialize)]
@@ -101,6 +107,9 @@ pub fn list_accounts(
                 group_id: account.group,
                 auto_confirm: account.auto_confirm,
                 playing: players.is_playing(&account.account_name),
+                note: account.note.clone(),
+                wallet: account.wallet.clone(),
+                last_check: account.last_check.clone(),
             })
         })
         .collect::<Result<_, CommandError>>()?;
@@ -360,6 +369,33 @@ pub(crate) fn account_and_proxy(
         .proxy_of(account)?
         .map(|proxy| proxy.address.clone());
     Ok((account.clone(), proxy))
+}
+
+/// Notes are for the list, so they're kept short.
+const MAX_NOTE: usize = 120;
+
+/// An empty note removes it.
+#[tauri::command]
+pub fn set_account_note(
+    state: State<'_, VaultState>,
+    account_name: String,
+    note: String,
+) -> Result<(), CommandError> {
+    let note = note.trim();
+    if note.chars().count() > MAX_NOTE {
+        return Err(CommandError::Failed(format!(
+            "keep the note under {MAX_NOTE} characters"
+        )));
+    }
+    let mut unlocked = state.unlocked();
+    let vault = unlocked.as_mut().ok_or(CommandError::Locked)?;
+    let mut contents = Contents::from_bytes(vault.data())?;
+    contents
+        .account_mut(&account_name)
+        .ok_or_else(no_such_account)?
+        .note = (!note.is_empty()).then(|| note.to_owned());
+    vault.save_data(contents.to_bytes())?;
+    Ok(())
 }
 
 #[tauri::command]

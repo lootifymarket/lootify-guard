@@ -12,8 +12,11 @@ import {
 import type { Account } from '../../../api/accounts.ts'
 import { errorMessage } from '../../../api/vault.ts'
 import Button from '../../../components/Button.tsx'
+import Dropdown from '../../../components/Dropdown.tsx'
+import Skeleton from '../../../components/Skeleton.tsx'
 import { useT, type Dictionary } from '../../../i18n/index.ts'
 import { ago } from '../../../lib/ago.ts'
+import { useToast } from '../../../lib/toast.ts'
 import layout from '../layout.module.css'
 import NewTrade from './NewTrade.tsx'
 import OfferActions from './OfferActions.tsx'
@@ -24,6 +27,8 @@ import styles from './Trades.module.css'
 type Tab = 'incoming' | 'outgoing' | 'history'
 
 const TABS: Tab[] = ['incoming', 'outgoing', 'history']
+
+const SKELETON_ROWS = 4
 
 const tabOf = (offer: TradeOffer): Tab =>
   !isOpen(offer.state) ? 'history' : offer.sent ? 'outgoing' : 'incoming'
@@ -37,9 +42,11 @@ type Props = {
 /** Trade offers of every signed-in account in one list. */
 export default function Trades({ accounts, onChanged }: Props) {
   const t = useT().trades
+  const toast = useToast()
   const [tab, setTab] = useState<Tab>('incoming')
+  // A login, or empty for every account.
+  const [accountFilter, setAccountFilter] = useState('')
   const [creating, setCreating] = useState(false)
-  const [sentNote, setSentNote] = useState('')
   const [trades, setTrades] = useState<TradeList | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -67,10 +74,14 @@ export default function Trades({ accounts, onChanged }: Props) {
     void listTradeOffers().then(loadedOnOpen, failedOnOpen)
   }, [])
 
-  const shown = trades?.offers.filter((offer) => tabOf(offer) === tab) ?? []
+  const offers =
+    trades?.offers.filter(
+      (offer) => !accountFilter || offer.accountName === accountFilter,
+    ) ?? []
+  const shown = offers.filter((offer) => tabOf(offer) === tab)
   const known = knownPeople(accounts, trades?.offers ?? [])
   const count = (id: Tab) =>
-    trades?.offers.filter((offer) => tabOf(offer) === id).length ?? 0
+    offers.filter((offer) => tabOf(offer) === id).length
 
   return (
     <>
@@ -80,6 +91,25 @@ export default function Trades({ accounts, onChanged }: Props) {
           <span className={styles.subtitle}>{t.subtitle}</span>
         </div>
         <div className={styles.tools}>
+          <div className={styles.account}>
+            <Dropdown
+              label={t.account}
+              hideLabel
+              size="sm"
+              value={accountFilter}
+              options={[
+                { value: '', label: t.allAccounts },
+                ...accounts
+                  .filter((account) => account.signedIn)
+                  .map((account) => ({
+                    value: account.accountName,
+                    label: account.personaName || account.accountName,
+                    hint: account.personaName ? account.accountName : undefined,
+                  })),
+              ]}
+              onChange={setAccountFilter}
+            />
+          </div>
           <Button
             variant="secondary"
             size="sm"
@@ -117,18 +147,13 @@ export default function Trades({ accounts, onChanged }: Props) {
         onClose={() => setCreating(false)}
         onSent={(note) => {
           setCreating(false)
-          setSentNote(note)
+          toast(note)
           setTab('outgoing')
           load()
         }}
       />
 
       <div role="tabpanel" className={styles.panel}>
-        {sentNote && (
-          <p className={styles.sent} role="status">
-            {sentNote}
-          </p>
-        )}
         {error && (
           <p className={styles.error} role="alert">
             {error}
@@ -140,28 +165,37 @@ export default function Trades({ accounts, onChanged }: Props) {
             <span className={styles.reason}>{failure.reason}</span>
           </p>
         ))}
-        {trades && shown.length > 0 && (
+        <div className={styles.scroll}>
           <div className={styles.table}>
             <div className={styles.head} aria-hidden="true">
               <span>{t.columns.parties}</span>
               <span>{t.columns.give}</span>
               <span>{t.columns.get}</span>
+              <span>{t.columns.check}</span>
+              <span />
             </div>
-            {shown.map((offer) => (
-              <OfferRow
-                key={`${offer.accountName}-${offer.id}`}
-                offer={offer}
-                known={known}
-                pastTrades={pastTrades(trades.offers, offer.partnerId)}
-                onDone={load}
-              />
-            ))}
+            {loading ? (
+              <Loading />
+            ) : (
+              trades && (
+                <div className="rise">
+                  {shown.map((offer) => (
+                    <OfferRow
+                      key={`${offer.accountName}-${offer.id}`}
+                      offer={offer}
+                      known={known}
+                      pastTrades={pastTrades(trades.offers, offer.partnerId)}
+                      onDone={load}
+                    />
+                  ))}
+                  {shown.length === 0 && (
+                    <p className={styles.empty}>{t.empty[tab]}</p>
+                  )}
+                </div>
+              )
+            )}
           </div>
-        )}
-        {trades && shown.length === 0 && (
-          <p className={layout.note}>{t.empty[tab]}</p>
-        )}
-        {!trades && !error && <p className={layout.note}>{t.askingSteam}</p>}
+        </div>
         {trades && trades.signedOut.length > 0 && (
           <p className={styles.footnote}>
             {t.notShown(trades.signedOut.join(', '))}
@@ -170,6 +204,25 @@ export default function Trades({ accounts, onChanged }: Props) {
       </div>
     </>
   )
+}
+
+/** The table's shape while Steam is asked. */
+function Loading() {
+  return Array.from({ length: SKELETON_ROWS }, (_, i) => (
+    <div key={i} className={`${styles.row} ${styles.skeletonRow}`}>
+      <span className={styles.who}>
+        <Skeleton width={140} height={13} />
+        <Skeleton width={60} height={10} />
+      </span>
+      <Skeleton width={130} height={13} />
+      <Skeleton width={120} height={13} />
+      <Skeleton width={150} height={12} />
+      <span className={styles.actions}>
+        <Skeleton width={90} height={32} />
+        <Skeleton width={90} height={32} />
+      </span>
+    </div>
+  ))
 }
 
 function OfferRow({

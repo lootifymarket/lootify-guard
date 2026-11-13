@@ -17,6 +17,12 @@ export const account: typeof en = {
     security: 'Безопасность',
   },
 
+  status: {
+    playing: 'в игре',
+    signedIn: 'вход выполнен',
+    notSignedIn: 'нет входа',
+  },
+
   security: {
     title: 'Безопасность',
     steamSession: 'Сессия Steam',
@@ -37,6 +43,9 @@ export const account: typeof en = {
     noProxy: 'Без прокси',
     deletedProxy: 'Удалённый прокси',
     group: 'Группа',
+    note: 'Заметка',
+    notePlaceholder: 'Видна только вам',
+    noteSaved: 'Заметка сохранена',
     noGroup: 'Без группы',
     steamId: 'Steam ID',
     appearsAfterSignIn: 'Появится после входа',
@@ -61,6 +70,8 @@ export const account: typeof en = {
   },
 
   autoConfirm: {
+    ruleOn: (label) => `${label}: вкл.`,
+    ruleOff: (label) => `${label}: выкл.`,
     title: 'Автоподтверждение',
     setForMany: 'Настроить для нескольких аккаунтов',
     notUntilSignedIn:
@@ -174,10 +185,14 @@ export const account: typeof en = {
   },
 
   profile: {
+    urlCopied: 'Трейд-ссылка скопирована',
+    urlMade: 'Создана новая трейд-ссылка',
+    historyCleared: 'История никнеймов очищена',
+    avatarUpdated: 'Аватар обновлён',
     signInFirst:
       'Войдите в Steam на вкладке «Безопасность», чтобы увидеть профиль.',
     loading: 'Загружаем профиль…',
-    saved: 'Сохранено в Steam.',
+    saved: 'Профиль обновлён в Steam',
     nickname: 'Никнейм',
     url: 'Ссылка на профиль',
     notSet: 'Не задана',
@@ -213,6 +228,7 @@ export const account: typeof en = {
   },
 
   playing: {
+    applied: 'Игры обновлены',
     label: 'Игры',
     signInFirst:
       'Войдите в Steam на вкладке «Безопасность», чтобы запускать игры.',

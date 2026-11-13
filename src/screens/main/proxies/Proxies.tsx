@@ -3,15 +3,15 @@ import {
   checkProxy,
   listProxies,
   PROXY_KIND_NAMES,
-  proxyTitle,
   type CheckResult,
   type Proxy,
 } from '../../../api/proxies.ts'
 import { errorMessage } from '../../../api/vault.ts'
 import Button from '../../../components/Button.tsx'
 import Flag from '../../../components/Flag.tsx'
-import Icon from '../../../components/Icon.tsx'
+import Skeleton from '../../../components/Skeleton.tsx'
 import { useT, type Dictionary } from '../../../i18n/index.ts'
+import { useToast } from '../../../lib/toast.ts'
 import layout from '../layout.module.css'
 import AddProxy from './AddProxy.tsx'
 import BulkImport from './BulkImport.tsx'
@@ -23,14 +23,13 @@ type Check =
   | ({ state: 'ok' } & CheckResult)
   | { state: 'failed'; reason: string }
 
-const REFRESH =
-  'M23 4v6h-6M1 20v-6h6M3.5 9a9 9 0 0 1 14.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15'
-
 // Each check holds a connection open for up to half a minute on a dead proxy.
 const PARALLEL_CHECKS = 8
+const SKELETON_ROWS = 4
 
 export default function Proxies() {
   const t = useT().proxies
+  const toast = useToast()
   const [proxies, setProxies] = useState<Proxy[] | null>(null)
   const [error, setError] = useState('')
   const [revision, setRevision] = useState(0)
@@ -66,38 +65,34 @@ export default function Proxies() {
   }
 
   async function checkAll() {
-    const queue = (proxies ?? []).map((proxy) => proxy.id)
+    const ids = (proxies ?? []).map((proxy) => proxy.id)
+    const queue = [...ids]
     const worker = async () => {
       for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
         await check(id)
       }
     }
     await Promise.all(Array.from({ length: PARALLEL_CHECKS }, worker))
+    toast(t.checked(ids.length))
   }
 
-  if (!proxies) {
-    return error ? <p className={styles.error}>{error}</p> : null
-  }
-
-  const checking = Object.values(checks).some((c) => c.state === 'checking')
-  const assigned = proxies.reduce((sum, p) => sum + p.accounts.length, 0)
-  const open = proxies.find((proxy) => proxy.id === openId)
-
-  return (
-    <>
-      <div className={layout.header}>
-        <div className={styles.heading}>
-          <h1 className={layout.title}>{t.title}</h1>
-          <span className={styles.summary}>
-            {t.summary(proxies.length, assigned)}
-          </span>
-        </div>
+  const header = (tools: boolean) => (
+    <div className={layout.header}>
+      <div className={styles.heading}>
+        <h1 className={layout.title}>{t.title}</h1>
+        {proxies ? (
+          <span className={styles.summary}>{summary(t, proxies, checks)}</span>
+        ) : (
+          <Skeleton width={180} height={13} />
+        )}
+      </div>
+      {tools && (
         <div className={styles.tools}>
           <Button
             variant="secondary"
             size="sm"
             busy={checking}
-            disabled={checking || proxies.length === 0}
+            disabled={checking || !proxies || proxies.length === 0}
             onClick={() => void checkAll()}
           >
             {checking ? t.checking : t.checkAll}
@@ -106,65 +101,95 @@ export default function Proxies() {
             {t.add}
           </Button>
         </div>
-      </div>
+      )}
+    </div>
+  )
+
+  const checking = Object.values(checks).some((c) => c.state === 'checking')
+
+  if (!proxies) {
+    return (
+      <>
+        {header(false)}
+        {error ? (
+          <p className={styles.error}>{error}</p>
+        ) : (
+          <div className={styles.body}>
+            <section className={styles.table}>
+              <Head />
+              {Array.from({ length: SKELETON_ROWS }, (_, i) => (
+                <div key={i} className={styles.row}>
+                  <Skeleton width={180} height={12} />
+                  <Skeleton width={56} height={12} />
+                  <Skeleton width={64} height={12} />
+                  <Skeleton width={44} height={12} />
+                  <Skeleton width={24} height={12} />
+                  <Skeleton width={90} height={12} />
+                </div>
+              ))}
+            </section>
+            <BulkImport onImported={reload} />
+          </div>
+        )}
+      </>
+    )
+  }
+
+  const open = proxies.find((proxy) => proxy.id === openId)
+
+  return (
+    <>
+      {header(true)}
 
       <div className={styles.body}>
         <section className={styles.table} aria-label={t.list}>
-          <div className={`${styles.row} ${styles.head}`}>
-            <span>{t.columns.proxy}</span>
-            <span>{t.columns.type}</span>
-            <span>{t.columns.country}</span>
-            <span>{t.columns.ping}</span>
-            <span>{t.columns.accounts}</span>
-            <span>{t.columns.status}</span>
-          </div>
-          {proxies.map((proxy) => {
-            const last = checks[proxy.id]
-            const country =
-              (last?.state === 'ok' ? last.country : null) ?? proxy.country
-            return (
-              <div key={proxy.id} className={styles.row}>
+          <Head />
+          <div className="rise">
+            {proxies.map((proxy) => {
+              const last = checks[proxy.id]
+              const country =
+                (last?.state === 'ok' ? last.country : null) ?? proxy.country
+              return (
                 <button
+                  key={proxy.id}
                   type="button"
-                  className={styles.open}
+                  className={`${styles.row} ${styles.open}`}
                   onClick={() => setOpenId(proxy.id)}
                 >
-                  <span className={styles.title}>{proxyTitle(proxy)}</span>
-                  {proxy.name && (
-                    <span className={styles.address}>{proxy.address}</span>
-                  )}
-                </button>
-                <span className={styles.muted}>
-                  {PROXY_KIND_NAMES[proxy.kind]}
-                </span>
-                <span className={styles.country}>
-                  {country ? (
-                    <>
-                      <Flag code={country} />
-                      {country}
-                    </>
+                  <span className={styles.names}>
+                    {proxy.name ? (
+                      <>
+                        <span className={styles.title}>{proxy.name}</span>
+                        <span className={styles.address}>{proxy.address}</span>
+                      </>
+                    ) : (
+                      <span className={styles.address}>{proxy.address}</span>
+                    )}
+                  </span>
+                  <span className={styles.muted}>
+                    {PROXY_KIND_NAMES[proxy.kind]}
+                  </span>
+                  <span className={styles.country}>
+                    {country ? (
+                      <>
+                        <Flag code={country} />
+                        {country}
+                      </>
+                    ) : (
+                      '—'
+                    )}
+                  </span>
+                  {last?.state === 'checking' ? (
+                    <Skeleton width={44} height={12} />
                   ) : (
-                    '—'
+                    <span className={styles.mono}>{ping(t, last)}</span>
                   )}
-                </span>
-                <span className={styles.mono}>{ping(t, last)}</span>
-                <span className={styles.mono}>{proxy.accounts.length}</span>
-                <span className={styles.statusCell}>
+                  <span className={styles.mono}>{proxy.accounts.length}</span>
                   <Status check={last} />
-                  <button
-                    type="button"
-                    className={styles.refresh}
-                    aria-label={t.checkOne(proxyTitle(proxy))}
-                    title={t.check}
-                    disabled={last?.state === 'checking'}
-                    onClick={() => void check(proxy.id)}
-                  >
-                    <Icon path={REFRESH} size={14} stroke={2} />
-                  </button>
-                </span>
-              </div>
-            )
-          })}
+                </button>
+              )
+            })}
+          </div>
           {proxies.length === 0 && <p className={layout.note}>{t.empty}</p>}
         </section>
         <BulkImport onImported={reload} />
@@ -176,20 +201,58 @@ export default function Proxies() {
         onAdded={() => {
           setAdding(false)
           reload()
+          toast(t.added)
         }}
       />
       {open && (
         <ProxyDetails
           proxy={open}
+          checking={checks[open.id]?.state === 'checking'}
           onClose={() => setOpenId(null)}
+          onCheck={() => {
+            setOpenId(null)
+            void check(open.id).then(() => toast(t.checkComplete))
+          }}
           onRemoved={() => {
             setOpenId(null)
             reload()
+            toast(t.deleted)
           }}
         />
       )}
     </>
   )
+}
+
+function Head() {
+  const t = useT().proxies
+  return (
+    <div className={`${styles.row} ${styles.head}`}>
+      <span>{t.columns.proxy}</span>
+      <span>{t.columns.type}</span>
+      <span>{t.columns.country}</span>
+      <span>{t.columns.ping}</span>
+      <span>{t.columns.accounts}</span>
+      <span>{t.columns.status}</span>
+    </div>
+  )
+}
+
+/** How many there are, and how the last checks went. */
+function summary(
+  t: Dictionary['proxies'],
+  proxies: Proxy[],
+  checks: Record<number, Check>,
+) {
+  const assigned = proxies.reduce((sum, p) => sum + p.accounts.length, 0)
+  const results = Object.values(checks)
+  const failed = results.filter((check) => check.state === 'failed').length
+  const base = t.summary(proxies.length, assigned)
+  if (failed > 0) return `${base} · ${t.notRespondingCount(failed)}`
+  const allChecked =
+    proxies.length > 0 &&
+    proxies.every((proxy) => checks[proxy.id]?.state === 'ok')
+  return allChecked ? `${base} · ${t.allWorking}` : base
 }
 
 function ping(t: Dictionary['proxies'], check: Check | undefined) {

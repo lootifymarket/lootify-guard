@@ -39,7 +39,7 @@ export default function ApiKeyAlert({ accountName, apiKey, onChanged }: Props) {
 
   return (
     <>
-      <div className={styles.alert} role="alert">
+      <div className={`${styles.alert} rise`} role="alert">
         <div className={styles.alertWords}>
           <span className={styles.alertTitle}>{t.found}</span>
           <span className={styles.alertText}>{t.domain(apiKey.domain)}</span>

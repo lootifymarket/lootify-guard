@@ -1,0 +1,17 @@
+.place {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 120;
+  pointer-events: none;
+}
+
+.toast {
+  display: block;
+  padding: 12px 16px;
+  background: var(--color-toast);
+  border-radius: 10px;
+  color: var(--color-on-toast);
+  font-size: 13px;
+  font-weight: 500;
+}

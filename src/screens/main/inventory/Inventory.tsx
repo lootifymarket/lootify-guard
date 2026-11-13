@@ -9,6 +9,7 @@ import {
 import { errorMessage } from '../../../api/vault.ts'
 import Button from '../../../components/Button.tsx'
 import Dropdown from '../../../components/Dropdown.tsx'
+import Skeleton from '../../../components/Skeleton.tsx'
 import Toggle from '../../../components/Toggle.tsx'
 import { useT } from '../../../i18n/index.ts'
 import ItemCard from '../items/ItemCard.tsx'
@@ -20,6 +21,8 @@ import styles from './Inventory.module.css'
 type Sort = 'name' | 'rarity' | 'account'
 
 const SORTS: Sort[] = ['rarity', 'name', 'account']
+
+const SKELETON_CARDS = 10
 
 // Rarity names differ by game and item kind; these put them on one scale.
 const RARITY_TIER: Record<string, number> = {
@@ -153,7 +156,10 @@ export default function Inventory({ accounts, groups, onChanged }: Props) {
           <h1 className={layout.title}>{t.title}</h1>
           <span className={styles.subtitle}>{t.subtitle}</span>
         </div>
-        <span className={styles.total}>{t.items(shown.length)}</span>
+        <span className={styles.total}>
+          <span className={styles.totalLabel}>{t.shownItems}</span>
+          <span className={styles.totalValue}>{shown.length}</span>
+        </span>
       </div>
 
       <div className={styles.filters}>
@@ -298,7 +304,18 @@ export default function Inventory({ accounts, groups, onChanged }: Props) {
         </p>
       ))}
 
-      {shown.length > 0 ? (
+      {shown.length === 0 && waiting > 0 ? (
+        <div className={styles.grid}>
+          {Array.from({ length: SKELETON_CARDS }, (_, i) => (
+            <div key={i} className={styles.skeletonCard}>
+              <Skeleton height={88} />
+              <Skeleton width="80%" height={12} />
+              <Skeleton width="50%" height={10} />
+              <Skeleton width="40%" height={13} />
+            </div>
+          ))}
+        </div>
+      ) : shown.length > 0 ? (
         <div className={styles.grid}>
           {shown.map((owned) => (
             <ItemCard

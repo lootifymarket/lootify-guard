@@ -7,9 +7,9 @@ import {
 } from '../../api/autoConfirm.ts'
 import { confirmationKindName } from '../../api/confirmations.ts'
 import { errorMessage } from '../../api/vault.ts'
-import Button from '../../components/Button.tsx'
 import { useT } from '../../i18n/index.ts'
 import { ago } from '../../lib/ago.ts'
+import { useToast } from '../../lib/toast.ts'
 import AutoConfirmRules from './AutoConfirmRules.tsx'
 import styles from './AutoConfirm.module.css'
 
@@ -40,6 +40,7 @@ export default function AutoConfirm({
   const [pausing, setPausing] = useState(false)
   const [rulesOpen, setRulesOpen] = useState(false)
   const [error, setError] = useState('')
+  const toast = useToast()
   const newest = useRef<string | null>(null)
   const failures = useRef<string | null>(null)
   const changed = useEffectEvent(onChanged)
@@ -87,6 +88,7 @@ export default function AutoConfirm({
     setError('')
     try {
       await setAutoConfirmPaused(!log.paused)
+      toast(log.paused ? t.resumedToast : t.pausedToast)
     } catch (err) {
       setError(errorMessage(err))
     }
@@ -120,21 +122,21 @@ export default function AutoConfirm({
           )}
         </span>
         <div className={styles.tools}>
-          <Button
-            variant="secondary"
-            size="sm"
+          <button
+            type="button"
+            className={styles.pause}
             disabled={!log || pausing}
             onClick={() => void togglePause()}
           >
             {log?.paused ? t.resume : t.pause}
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
+          </button>
+          <button
+            type="button"
+            className={styles.rules}
             onClick={() => setRulesOpen(true)}
           >
             {t.rules}
-          </Button>
+          </button>
         </div>
       </div>
 
@@ -147,7 +149,7 @@ export default function AutoConfirm({
             )
           : t.offForAll}
       </p>
-      {log?.paused && <p className={styles.paused}>{t.pausedNote}</p>}
+      {log?.paused && <p className={`${styles.paused} rise`}>{t.pausedNote}</p>}
       {error && (
         <p className={styles.failure} role="alert">
           <span className={styles.reason}>{error}</span>
@@ -161,7 +163,7 @@ export default function AutoConfirm({
       ))}
 
       {log && log.accepted.length > 0 && (
-        <ul className={styles.log} aria-label={t.confirmedLog}>
+        <ul className={`${styles.log} rise`} aria-label={t.confirmedLog}>
           {log.accepted.map((entry) => (
             <li
               key={`${entry.accountName}\n${entry.confirmation.id}`}

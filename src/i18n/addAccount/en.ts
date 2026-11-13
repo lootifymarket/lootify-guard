@@ -62,4 +62,5 @@ export const addAccount = {
     `Steam sent an SMS to ${phone}. Once you enter it, Guard stops working on the phone.`,
   smsNew: (phone: string) =>
     `Steam sent an SMS to ${phone}. Enter it to turn on the new authenticator.`,
+  guardAdded: 'Steam Guard added',
 }

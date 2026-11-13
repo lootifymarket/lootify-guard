@@ -14,6 +14,7 @@ import Button from '../../../components/Button.tsx'
 import Dialog from '../../../components/Dialog.tsx'
 import dialogStyles from '../../../components/Dialog.module.css'
 import { useT } from '../../../i18n/index.ts'
+import { useToast } from '../../../lib/toast.ts'
 import styles from './Trades.module.css'
 
 type Props = {
@@ -27,17 +28,17 @@ type Props = {
 /** What can be done with an open offer, by which side sent it. */
 export default function OfferActions({ offer, warnings, onDone }: Props) {
   const t = useT().trades
+  const toast = useToast()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [note, setNote] = useState('')
   const [confirming, setConfirming] = useState(false)
 
-  async function run(action: () => Promise<string | void>) {
+  /** Runs the action and says how it went; the action may word it itself. */
+  async function run(action: () => Promise<string | void>, done: string) {
     setBusy(true)
     setError('')
     try {
-      const message = await action()
-      if (message) setNote(message)
+      toast((await action()) || done)
       onDone()
     } catch (err) {
       setError(errorMessage(err))
@@ -52,7 +53,7 @@ export default function OfferActions({ offer, warnings, onDone }: Props) {
       if (accepted === 'needsEmail') {
         return t.actions.emailSent
       }
-    })
+    }, t.actions.accepted)
   }
 
   return (
@@ -62,13 +63,17 @@ export default function OfferActions({ offer, warnings, onDone }: Props) {
           <Button
             variant="secondary"
             size="sm"
+            className={styles.compact}
             disabled={busy}
-            onClick={() => void run(() => declineTradeOffer(offer))}
+            onClick={() =>
+              void run(() => declineTradeOffer(offer), t.actions.declined)
+            }
           >
             {t.actions.decline}
           </Button>
           <Button
             size="sm"
+            className={`${styles.compact} ${styles.light}`}
             busy={busy}
             disabled={busy}
             // Taking items costs nothing, so only a trade that gives some is asked about.
@@ -83,9 +88,12 @@ export default function OfferActions({ offer, warnings, onDone }: Props) {
       {offer.sent && offer.state === 'needsConfirmation' && (
         <Button
           size="sm"
+          className={`${styles.compact} ${styles.light}`}
           busy={busy}
           disabled={busy}
-          onClick={() => void run(() => confirmTradeOffer(offer))}
+          onClick={() =>
+            void run(() => confirmTradeOffer(offer), t.actions.confirmed)
+          }
         >
           {t.actions.confirm}
         </Button>
@@ -94,20 +102,18 @@ export default function OfferActions({ offer, warnings, onDone }: Props) {
         <Button
           variant="secondary"
           size="sm"
+          className={styles.compact}
           disabled={busy}
-          onClick={() => void run(() => cancelTradeOffer(offer))}
+          onClick={() =>
+            void run(() => cancelTradeOffer(offer), t.actions.canceled)
+          }
         >
-          {t.actions.cancel}
+          {t.actions.cancelOffer}
         </Button>
       )}
       {error && (
         <span className={styles.actionError} role="alert">
           {error}
-        </span>
-      )}
-      {note && (
-        <span className={styles.actionNote} role="status">
-          {note}
         </span>
       )}
       <Dialog

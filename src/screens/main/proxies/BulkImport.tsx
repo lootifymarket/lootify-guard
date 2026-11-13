@@ -3,6 +3,7 @@ import { addProxies, type AddReport } from '../../../api/proxies.ts'
 import { errorMessage } from '../../../api/vault.ts'
 import Button from '../../../components/Button.tsx'
 import { useT } from '../../../i18n/index.ts'
+import { useToast } from '../../../lib/toast.ts'
 import styles from './Proxies.module.css'
 
 type Props = {
@@ -11,6 +12,7 @@ type Props = {
 
 export default function BulkImport({ onImported }: Props) {
   const t = useT().proxies.bulk
+  const toast = useToast()
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const [report, setReport] = useState<AddReport | null>(null)
@@ -27,7 +29,10 @@ export default function BulkImport({ onImported }: Props) {
       setReport(next)
       // Lines that failed stay, so they can be fixed and imported again.
       if (next.failed.length === 0) setText('')
-      if (next.added > 0) onImported()
+      if (next.added > 0) {
+        onImported()
+        toast(t.added(next.added))
+      }
     } catch (err) {
       setError(errorMessage(err))
     } finally {
@@ -42,7 +47,7 @@ export default function BulkImport({ onImported }: Props) {
       </label>
       <textarea
         id={id}
-        rows={6}
+        rows={5}
         className={styles.textarea}
         placeholder={
           'socks5://user:pass@host:port\nhttp://host:port\nhost:port:user:pass'
@@ -61,12 +66,11 @@ export default function BulkImport({ onImported }: Props) {
       >
         {lines > 0 ? t.importLines(lines) : t.import}
       </Button>
-      {report && (
+      {report && (report.alreadyAdded > 0 || report.failed.length > 0) && (
         <div className={styles.bulkReport} role="status">
-          <span>
-            {t.added(report.added)}
-            {report.alreadyAdded > 0 && t.alreadyAdded(report.alreadyAdded)}
-          </span>
+          {report.alreadyAdded > 0 && (
+            <span>{t.alreadyAdded(report.alreadyAdded)}</span>
+          )}
           {report.failed.map((failure) => (
             <span key={failure.line} className={styles.error}>
               {t.line(failure.line, failure.reason)}

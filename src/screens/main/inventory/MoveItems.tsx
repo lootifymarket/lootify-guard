@@ -11,6 +11,7 @@ import Dialog from '../../../components/Dialog.tsx'
 import dialogStyles from '../../../components/Dialog.module.css'
 import Dropdown from '../../../components/Dropdown.tsx'
 import { useT } from '../../../i18n/index.ts'
+import { useToast } from '../../../lib/toast.ts'
 import styles from './Inventory.module.css'
 
 type Props = {
@@ -46,6 +47,7 @@ function Form({ accounts, picked, onClose, onMoved }: Props) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [reports, setReports] = useState<MoveReport[] | null>(null)
+  const toast = useToast()
 
   const moving = holders.filter(([account]) => account !== target)
   const count = moving.reduce((sum, [, items]) => sum + items.length, 0)
@@ -55,13 +57,18 @@ function Form({ accounts, picked, onClose, onMoved }: Props) {
     setBusy(true)
     setError('')
     try {
-      setReports(
-        await moveItems(
-          target,
-          moving.map(([accountName, items]) => ({ accountName, items })),
-        ),
+      const done = await moveItems(
+        target,
+        moving.map(([accountName, items]) => ({ accountName, items })),
       )
       onMoved()
+      // Only what didn't go through is worth a closer look.
+      if (done.every((report) => report.outcome === 'done')) {
+        toast(t.movedTo(count, target))
+        onClose()
+      } else {
+        setReports(done)
+      }
     } catch (err) {
       setError(errorMessage(err))
     }

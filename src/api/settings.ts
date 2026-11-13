@@ -18,6 +18,8 @@ export type Settings = {
 
 export const getSettings = () => invoke<Settings>('get_settings')
 
+export const appVersion = () => invoke<string>('app_version')
+
 /** Takes effect at once, counting from the last activity. */
 export const setAutoLock = (minutes: number | null) =>
   invoke<void>('set_auto_lock', { minutes })

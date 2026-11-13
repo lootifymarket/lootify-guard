@@ -16,13 +16,17 @@ export const proxies: typeof en = {
     accounts: '账户',
     status: '状态',
   },
-  checkOne: (proxy) => `检查 ${proxy}`,
-  check: '检查',
   empty: '还没有代理。添加一个，或在右侧粘贴列表。',
   ms: (ms) => `${ms} 毫秒`,
   notChecked: '未检查',
   working: '正常',
   notResponding: '无响应',
+  notRespondingCount: (n) => `${n} 个无响应`,
+  allWorking: '全部正常',
+  checked: (n) => `已检查 ${n} 个代理`,
+  checkComplete: '检查完成',
+  added: '代理已添加',
+  deleted: '代理已删除',
 
   details: {
     withLogin: ' · 带登录信息',
@@ -33,6 +37,7 @@ export const proxies: typeof en = {
         : '删除后，这些账户将无法连接 Steam，直到你为它们指定另一个代理。不会改用你自己的 IP 发送任何请求。',
     close: '关闭',
     delete: '删除代理',
+    check: '检查',
   },
 
   bulk: {
@@ -40,7 +45,7 @@ export const proxies: typeof en = {
     import: '导入',
     importLines: (n) => `导入 ${n} 个`,
     added: (n) => `已添加 ${n} 个`,
-    alreadyAdded: (n) => ` · ${n} 个已在列表中`,
+    alreadyAdded: (n) => `${n} 个已在列表中`,
     line: (line, reason) => `第 ${line} 行：${reason}`,
   },
 

@@ -47,7 +47,7 @@ export const uk: Dictionary = {
   },
 
   onboarding: {
-    steps: ['Вітання', 'Майстер-пароль'],
+    steps: ['Вітання', 'Майстер-пароль', 'Налаштування'],
     promises: [
       {
         title: 'Усе залишається на комп’ютері',
@@ -100,6 +100,8 @@ export const uk: Dictionary = {
       'Якщо шкідлива програма скопіює файл сховища, слабкий пароль підберуть за кілька годин, і всі секрети Steam Guard опиняться в них. Довгу фразу підбирають роками.',
     useAnyway: 'Однаково залишити',
     makeStronger: 'Зробити надійнішим',
+    prefsTitle: 'Кілька налаштувань',
+    prefsLead: 'Усе це можна змінити пізніше в налаштуваннях.',
   },
 
   unlock: {
@@ -153,6 +155,11 @@ export const uk: Dictionary = {
     remembered: '← Я згадав пароль',
   },
 
+  splash: {
+    steps: ['Перевіряємо цілісність', 'Завантажуємо налаштування', 'Готово'],
+    by: 'від Lootify Market',
+  },
+
   sidebar: {
     menu: 'Головне меню',
     accounts: 'Акаунти',
@@ -166,6 +173,9 @@ export const uk: Dictionary = {
     vaultUnlocked: 'Сховище відкрите',
     locksIn: (minutes) => `Закриється за ${minutes} хв`,
     lock: 'Заблокувати',
+    streamerOn: 'Режим стрімера ввімкнено',
+    streamerOff: 'Вимкнути режим стрімера',
+    version: (version) => `v${version} · відкритий код`,
   },
 
   settings: {
@@ -174,7 +184,7 @@ export const uk: Dictionary = {
     language: 'Мова',
     streamer: 'Режим стрімера',
     streamerHint:
-      'Розмиває коди Steam Guard, SteamID, трейд-посилання, баланси й ціни — для стрімів і скриншотів.',
+      'Приховує баланси, ціни, коди Steam Guard, SteamID і трейд-посилання.',
     security: 'Безпека',
     autoLock: 'Автоблокування',
     autoLockHint:

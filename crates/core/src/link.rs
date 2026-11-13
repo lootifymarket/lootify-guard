@@ -242,6 +242,9 @@ fn to_account(
         device_names: BTreeMap::new(),
         client_token: None,
         playing: PlayingList::default(),
+        note: None,
+        wallet: None,
+        last_check: None,
     })
 }
 

@@ -35,7 +35,18 @@ export default function Main({ onLock, onAutoLocked }: Props) {
   }
 
   function content() {
-    if (!list) return null
+    if (!list) {
+      return section === 'accounts' ? (
+        <Accounts
+          list={null}
+          onImported={reload}
+          onChanged={reload}
+          onOpen={setOpenName}
+          onAdd={() => select('add')}
+          onGuard={() => select('guard')}
+        />
+      ) : null
+    }
     if (section === 'guard') {
       return <SteamGuard list={list} onChanged={reload} />
     }
@@ -98,6 +109,7 @@ export default function Main({ onLock, onAutoLocked }: Props) {
         onChanged={reload}
         onOpen={setOpenName}
         onAdd={() => select('add')}
+        onGuard={() => select('guard')}
       />
     )
   }

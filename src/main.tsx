@@ -15,7 +15,10 @@ void getSettings().then((settings) => {
   setWordsFor(settings.language)
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <App initialLanguage={settings.language} />
+      <App
+        initialLanguage={settings.language}
+        initialStreamer={settings.streamerMode}
+      />
     </StrictMode>,
   )
 })

@@ -19,6 +19,28 @@ export type Account = {
   autoConfirm: AutoConfirm
   /** Whether the account has a game connection up or coming up. */
   playing: boolean
+  /** What the user wrote about it; never sent to Steam. */
+  note: string | null
+  /** As Steam last showed it. */
+  wallet: StoredWallet | null
+  lastCheck: LastCheck | null
+}
+
+export type StoredWallet = {
+  /** ISO 4217, or `null` for a currency the app doesn't know. */
+  currency: string | null
+  /** In hundredths of the currency. */
+  balance: number
+  pending: number
+  /** When it was read, in Unix seconds. */
+  at: number
+}
+
+export type LastCheck = {
+  /** Unix seconds. */
+  at: number
+  /** In the backend's English; empty when all was clear. */
+  problems: string[]
 }
 
 export type Group = {
@@ -89,6 +111,10 @@ export function describe(account: Account) {
   ].filter(Boolean)
   return { title, details: details.join(' · ') }
 }
+
+/** An empty note removes it. */
+export const setAccountNote = (accountName: string, note: string) =>
+  invoke<void>('set_account_note', { accountName, note })
 
 export const setAccountProxy = (accountName: string, proxyId: number | null) =>
   invoke<void>('set_account_proxy', { accountName, proxyId })

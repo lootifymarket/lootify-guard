@@ -82,6 +82,7 @@ export const tasks = {
   retry: 'Retry failed accounts (up to 3 times)',
   retryLabel: 'Retry failed accounts',
   runOn: (target: string, n: number) => `Run on ${target} (${n})`,
+  started: (task: string, target: string) => `“${task}” started on ${target}`,
 
   profile: {
     nickname: 'Nickname',
@@ -107,8 +108,11 @@ export const tasks = {
     stopped: 'Stopped',
     done: 'Done',
     toLookAt: (n: number) => `${n} to look at`,
-    hideAccounts: 'Hide accounts',
-    showAccounts: 'Show accounts',
+    error: 'Error',
+    of: (done: number, total: number) => `${done} of ${total}`,
+    stoppedToast: 'Task stopped',
+    close: 'Close',
+    ok: 'OK',
     stop: 'Stop',
     waitingRetry: (tries: number) => `Waiting to try again (${tries} of 3)`,
     waiting: 'Waiting',

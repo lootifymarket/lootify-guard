@@ -1,4 +1,5 @@
 import type { Bans, Standing } from '../../../api/security.ts'
+import Skeleton from '../../../components/Skeleton.tsx'
 import { useT, type Dictionary } from '../../../i18n/index.ts'
 import styles from './AccountPage.module.css'
 
@@ -10,10 +11,12 @@ type Props = {
   /** `undefined` until Steam was asked. */
   standing: Standing | undefined
   signedIn: boolean
+  /** Steam is being asked. */
+  loading: boolean
 }
 
 /** Rows of the account's facts about what Steam holds against it. */
-export default function StandingFacts({ standing, signedIn }: Props) {
+export default function StandingFacts({ standing, signedIn, loading }: Props) {
   const t = useT().account.standing
   // `null` until Steam has told.
   const rows: [string, Fact | null][] = [
@@ -24,7 +27,11 @@ export default function StandingFacts({ standing, signedIn }: Props) {
   return rows.map(([label, fact]) => (
     <div key={label} className={styles.fact}>
       <dt>{label}</dt>
-      {signedIn ? (
+      {signedIn && loading ? (
+        <dd>
+          <Skeleton width={90} height={12} />
+        </dd>
+      ) : signedIn ? (
         <dd
           className={
             fact === null

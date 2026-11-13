@@ -11,6 +11,12 @@ export const account = {
     security: 'Security',
   },
 
+  status: {
+    playing: 'playing',
+    signedIn: 'signed in',
+    notSignedIn: 'not signed in',
+  },
+
   security: {
     title: 'Security',
     steamSession: 'Steam session',
@@ -31,6 +37,9 @@ export const account = {
     noProxy: 'No proxy',
     deletedProxy: 'Deleted proxy',
     group: 'Group',
+    note: 'Note',
+    notePlaceholder: 'Only you see it',
+    noteSaved: 'Note saved',
     noGroup: 'No group',
     steamId: 'Steam ID',
     appearsAfterSignIn: 'Appears after you sign in',
@@ -58,6 +67,8 @@ export const account = {
   },
 
   autoConfirm: {
+    ruleOn: (label: string) => `${label}: on`,
+    ruleOff: (label: string) => `${label}: off`,
     title: 'Auto-confirm',
     setForMany: 'Set for many accounts',
     notUntilSignedIn:
@@ -167,9 +178,13 @@ export const account = {
   },
 
   profile: {
+    urlCopied: 'Trade URL copied',
+    urlMade: 'New trade URL created',
+    historyCleared: 'Nickname history cleared',
+    avatarUpdated: 'Avatar updated',
     signInFirst: 'Sign in to Steam on the Security tab to see the profile.',
     loading: 'Loading the profile…',
-    saved: 'Saved in Steam.',
+    saved: 'Profile updated on Steam',
     nickname: 'Nickname',
     url: 'Profile URL',
     notSet: 'Not set',
@@ -204,6 +219,7 @@ export const account = {
   },
 
   playing: {
+    applied: 'Games updated',
     label: 'Playing',
     signInFirst: 'Sign in to Steam on the Security tab to play games.',
     applyChanges: 'Apply changes',
