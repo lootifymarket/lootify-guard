@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { CODE_PERIOD_SECS, type AccountList } from '../../api/accounts.ts'
 import { useCopy } from '../../lib/useCopy.ts'
+import AutoConfirm from './AutoConfirm.tsx'
 import Confirmations from './Confirmations.tsx'
 import SignInRequests from './SignInRequests.tsx'
 import { matchesQuery, useCodeSecondsLeft } from './useAccounts.ts'
@@ -15,6 +16,7 @@ type Props = {
 
 export default function SteamGuard({ list, onChanged }: Props) {
   const [query, setQuery] = useState('')
+  const [confirmationsKey, setConfirmationsKey] = useState(0)
   const { copy, label } = useCopy()
   const secondsLeft = useCodeSecondsLeft(list.codesExpireAt)
   const shown = list.accounts.filter((account) => matchesQuery(account, query))
@@ -68,8 +70,17 @@ export default function SteamGuard({ list, onChanged }: Props) {
           )}
         </section>
         <div className={styles.side}>
-          <Confirmations accounts={list.accounts} onChanged={onChanged} />
+          <Confirmations
+            accounts={list.accounts}
+            reloadKey={confirmationsKey}
+            onChanged={onChanged}
+          />
           <SignInRequests accounts={list.accounts} onChanged={onChanged} />
+          <AutoConfirm
+            accounts={list.accounts}
+            onChanged={onChanged}
+            onConfirmed={() => setConfirmationsKey((key) => key + 1)}
+          />
         </div>
       </div>
     </>

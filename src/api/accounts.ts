@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import type { AutoConfirm } from './autoConfirm.ts'
 
 export const CODE_PERIOD_SECS = 30
 
@@ -13,6 +14,7 @@ export type Account = {
   /** A data URL, or null before the profile was fetched. */
   avatar: string | null
   proxyId: number | null
+  autoConfirm: AutoConfirm
 }
 
 export type AccountList = {

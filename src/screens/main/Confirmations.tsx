@@ -1,12 +1,13 @@
 import { useEffect, useEffectEvent, useState } from 'react'
 import type { Account } from '../../api/accounts.ts'
 import {
+  CONFIRMATION_KIND_NAMES,
   listConfirmations,
   respondToConfirmations,
   type Confirmation,
-  type ConfirmationKind,
 } from '../../api/confirmations.ts'
 import { errorMessage } from '../../api/vault.ts'
+import { ago } from '../../lib/ago.ts'
 import Button from '../../components/Button.tsx'
 import Dialog from '../../components/Dialog.tsx'
 import dialogStyles from '../../components/Dialog.module.css'
@@ -16,23 +17,22 @@ import styles from './Confirmations.module.css'
 
 type Item = Confirmation & { accountName: string }
 
-const KIND_NAMES: Record<ConfirmationKind, string> = {
-  trade: 'Trade',
-  marketListing: 'Market',
-  apiKey: 'API key',
-  other: 'Other',
-}
-
 const REFRESH =
   'M23 4v6h-6M1 20v-6h6M3.5 9a9 9 0 0 1 14.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15'
 
 type Props = {
   accounts: Account[]
+  /** Changing it loads the list again, as after auto-confirm took some items. */
+  reloadKey: number
   onChanged: () => void
 }
 
 /** Pending trade and market confirmations across every signed-in account. */
-export default function Confirmations({ accounts, onChanged }: Props) {
+export default function Confirmations({
+  accounts,
+  reloadKey,
+  onChanged,
+}: Props) {
   const signedIn = accounts
     .filter((account) => account.signedIn)
     .map((account) => account.accountName)
@@ -58,7 +58,7 @@ export default function Confirmations({ accounts, onChanged }: Props) {
     return () => {
       active = false
     }
-  }, [signedInKey, revision])
+  }, [signedInKey, revision, reloadKey])
 
   async function respond(targets: Item[], accept: boolean) {
     const ids = targets.map((item) => item.id)
@@ -149,7 +149,7 @@ export default function Confirmations({ accounts, onChanged }: Props) {
               )}
             </span>
             <span className={styles.meta}>
-              {item.accountName} · {KIND_NAMES[item.kind]} ·{' '}
+              {item.accountName} · {CONFIRMATION_KIND_NAMES[item.kind]} ·{' '}
               {ago(item.createdAt)}
             </span>
           </div>
@@ -217,15 +217,4 @@ export default function Confirmations({ accounts, onChanged }: Props) {
 
 function count(n: number, noun: string) {
   return `${n} ${noun}${n === 1 ? '' : 's'}`
-}
-
-function ago(unixSeconds: number) {
-  const minutes = Math.max(
-    0,
-    Math.round((Date.now() / 1000 - unixSeconds) / 60),
-  )
-  if (minutes < 1) return 'just now'
-  if (minutes < 60) return `${minutes} min`
-  const hours = Math.round(minutes / 60)
-  return hours < 24 ? `${hours} h` : `${Math.round(hours / 24)} d`
 }

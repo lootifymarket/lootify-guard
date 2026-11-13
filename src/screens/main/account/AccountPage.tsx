@@ -9,6 +9,11 @@ import {
   type Account,
 } from '../../../api/accounts.ts'
 import {
+  AUTO_CONFIRM_RULES,
+  setAutoConfirmRule,
+  type AutoConfirmRule,
+} from '../../../api/autoConfirm.ts'
+import {
   listProxies,
   PROXY_KIND_NAMES,
   proxyTitle,
@@ -23,8 +28,10 @@ import Avatar from '../../../components/Avatar.tsx'
 import Button from '../../../components/Button.tsx'
 import Dropdown, { type DropdownOption } from '../../../components/Dropdown.tsx'
 import Flag from '../../../components/Flag.tsx'
+import Toggle from '../../../components/Toggle.tsx'
 import { useCopy } from '../../../lib/useCopy.ts'
 import { useCodeSecondsLeft } from '../useAccounts.ts'
+import AutoConfirmRules from '../AutoConfirmRules.tsx'
 import layout from '../layout.module.css'
 import ConfirmOwner from './ConfirmOwner.tsx'
 import RemoveAccount from './RemoveAccount.tsx'
@@ -33,16 +40,19 @@ import styles from './AccountPage.module.css'
 
 type Props = {
   account: Account
+  /** Every account, for setting auto-confirm rules on many at once. */
+  accounts: Account[]
   codesExpireAt: number
   onBack: () => void
   onChanged: () => void
   onRemoved: () => void
 }
 
-type OpenDialog = 'signIn' | 'reveal' | 'export' | 'remove' | null
+type OpenDialog = 'signIn' | 'reveal' | 'export' | 'remove' | 'rules' | null
 
 export default function AccountPage({
   account,
+  accounts,
   codesExpireAt,
   onBack,
   onChanged,
@@ -54,6 +64,7 @@ export default function AccountPage({
   const [biometric, setBiometric] = useState<BiometricMethod | null>(null)
   const [proxies, setProxies] = useState<Proxy[]>([])
   const [proxyError, setProxyError] = useState('')
+  const [ruleError, setRuleError] = useState('')
   const [checking, setChecking] = useState(false)
   const [checked, setChecked] = useState<{ ok: boolean; text: string } | null>(
     null,
@@ -99,6 +110,16 @@ export default function AccountPage({
       await setAccountProxy(name, value === '' ? null : Number(value))
     } catch (err) {
       setProxyError(errorMessage(err))
+    }
+    onChanged()
+  }
+
+  async function changeRule(rule: AutoConfirmRule, on: boolean) {
+    setRuleError('')
+    try {
+      await setAutoConfirmRule([name], rule, on)
+    } catch (err) {
+      setRuleError(errorMessage(err))
     }
     onChanged()
   }
@@ -298,6 +319,50 @@ export default function AccountPage({
         )}
       </section>
 
+      <section className={styles.section} aria-labelledby="auto-confirm-title">
+        <div className={styles.sectionHead}>
+          <h2 id="auto-confirm-title" className={styles.sectionTitle}>
+            Auto-confirm
+          </h2>
+          <button
+            type="button"
+            className={styles.link}
+            onClick={() => setDialog('rules')}
+          >
+            Set for many accounts
+          </button>
+        </div>
+        <div className={styles.rules}>
+          {AUTO_CONFIRM_RULES.map(({ rule, label, hint, warning }) => (
+            <div key={rule} className={styles.rule}>
+              <div className={styles.ruleWords}>
+                <span className={styles.ruleLabel}>{label}</span>
+                <span className={styles.ruleHint}>{hint}</span>
+                {warning && account.autoConfirm[rule] && (
+                  <span className={styles.ruleWarning}>{warning}</span>
+                )}
+              </div>
+              <Toggle
+                on={account.autoConfirm[rule]}
+                label={label}
+                onChange={(on) => void changeRule(rule, on)}
+              />
+            </div>
+          ))}
+        </div>
+        {ruleError && (
+          <p className={styles.error} role="alert">
+            {ruleError}
+          </p>
+        )}
+        <p className={styles.muted}>
+          {!account.signedIn &&
+          AUTO_CONFIRM_RULES.some(({ rule }) => account.autoConfirm[rule])
+            ? 'Nothing is confirmed until the account is signed in to Steam.'
+            : 'Checked every minute while the vault is unlocked. API keys, phone changes and account recovery are never confirmed automatically.'}
+        </p>
+      </section>
+
       <ConfirmOwner
         open={dialog === 'reveal'}
         title="Show revocation code"
@@ -326,6 +391,12 @@ export default function AccountPage({
           setDialog(null)
           void checkSession()
         }}
+      />
+      <AutoConfirmRules
+        open={dialog === 'rules'}
+        accounts={accounts}
+        onClose={() => setDialog(null)}
+        onChanged={onChanged}
       />
       <RemoveAccount
         open={dialog === 'remove'}

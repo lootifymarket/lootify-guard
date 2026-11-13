@@ -64,6 +64,51 @@
   font-weight: 500;
 }
 
+.sectionHead {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.rules {
+  border-bottom: 1px solid var(--color-line);
+}
+
+.rule {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  padding: 14px 0;
+  border-top: 1px solid var(--color-line);
+}
+
+.ruleWords {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ruleLabel {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.ruleHint {
+  color: var(--color-text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.ruleWarning {
+  color: var(--color-danger-soft);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .guard {
   display: flex;
   justify-content: space-between;

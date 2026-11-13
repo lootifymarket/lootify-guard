@@ -15,6 +15,9 @@ pub struct Contents {
     /// end up on a new one by accident.
     #[serde(default)]
     last_proxy_id: u32,
+    /// Stops every auto-confirm rule at once, and stays that way across restarts.
+    #[serde(default)]
+    pub auto_confirm_paused: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -29,6 +32,42 @@ pub struct Account {
     pub profile: Option<Profile>,
     /// The id of the proxy every request for this account goes through.
     pub proxy: Option<u32>,
+    #[serde(default)]
+    pub auto_confirm: AutoConfirm,
+}
+
+/// What the app may confirm for the account without asking. Everything is off until
+/// the user turns it on.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AutoConfirm {
+    /// Only trades whose other side is an account in this vault. Steam asks to
+    /// confirm a trade only when items leave the account, so a rule for any trade
+    /// would hand them to whoever swapped an offer through a stolen API key.
+    pub trades_to_own_accounts: bool,
+    /// Every listing, wherever it was made, so also one made by someone who got
+    /// into the account's Steam session.
+    pub any_market_listing: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum AutoConfirmRule {
+    TradesToOwnAccounts,
+    AnyMarketListing,
+}
+
+impl AutoConfirm {
+    pub fn any(&self) -> bool {
+        self.trades_to_own_accounts || self.any_market_listing
+    }
+
+    pub fn set(&mut self, rule: AutoConfirmRule, on: bool) {
+        match rule {
+            AutoConfirmRule::TradesToOwnAccounts => self.trades_to_own_accounts = on,
+            AutoConfirmRule::AnyMarketListing => self.any_market_listing = on,
+        }
+    }
 }
 
 /// What Steam shows for the account, kept so the list doesn't ask Steam each time.
@@ -220,6 +259,7 @@ mod tests {
             password: Some("steam-password-1".to_owned().into()),
             profile: None,
             proxy: None,
+            auto_confirm: AutoConfirm::default(),
         }
     }
 
@@ -266,6 +306,26 @@ mod tests {
             restored.authenticator.device_id,
             original.authenticator.device_id
         );
+    }
+
+    #[test]
+    fn accounts_saved_before_auto_confirm_load_with_it_off() {
+        let mut json: serde_json::Value = serde_json::from_slice(
+            &Contents {
+                accounts: vec![account()],
+                ..Contents::default()
+            }
+            .to_bytes(),
+        )
+        .unwrap();
+        json["accounts"][0]
+            .as_object_mut()
+            .unwrap()
+            .remove("auto_confirm")
+            .unwrap();
+
+        let restored = Contents::from_bytes(json.to_string().as_bytes()).unwrap();
+        assert_eq!(restored.accounts[0].auto_confirm, AutoConfirm::default());
     }
 
     #[test]

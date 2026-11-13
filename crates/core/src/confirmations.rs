@@ -1,14 +1,19 @@
-use serde::Serialize;
+use reqwest::blocking::Client;
+use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 use steamguard::token::Tokens;
 use steamguard::transport::WebApiTransport;
 use steamguard::{
-    ConfirmationId, ConfirmationType, Confirmer, ConfirmerError, SecretString, SteamGuardAccount,
+    Confirmation, ConfirmationId, ConfirmationType, Confirmer, ConfirmerError, SecretString,
+    SteamGuardAccount,
 };
 
-use crate::contents::{Account, Session};
+use crate::contents::{Account, AutoConfirm, Session};
+use crate::mafile::USER_ID_HIGH;
 use crate::proxy::ProxyAddress;
-use crate::steam::{SteamError, with_session};
+use crate::steam::{SteamError, web_api_get, with_session};
+
+const TRADE_OFFER_URL: &str = "https://api.steampowered.com/IEconService/GetTradeOffer/v1/";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -44,22 +49,114 @@ pub fn list(
             .get_confirmations()
             .map_err(confirmer_error)?
             .into_iter()
-            .map(|confirmation| PendingConfirmation {
-                kind: match confirmation.conf_type {
-                    ConfirmationType::Trade => ConfirmationKind::Trade,
-                    ConfirmationType::MarketSell => ConfirmationKind::MarketListing,
-                    ConfirmationType::ApiKeyCreation => ConfirmationKind::ApiKey,
-                    _ => ConfirmationKind::Other,
-                },
-                id: confirmation.id,
-                nonce: confirmation.nonce,
-                type_name: confirmation.type_name,
-                headline: confirmation.headline,
-                summary: confirmation.summary,
-                created_at: confirmation.creation_time,
-            })
+            .map(pending)
             .collect())
     })
+}
+
+/// Accepts what the account's auto-confirm rules allow and leaves the rest to the
+/// user. `own_accounts` are the Steam IDs of every account in the vault. Returns the
+/// session, which may have been renewed, and what was accepted.
+pub fn auto_confirm(
+    account: &Account,
+    proxy: Option<&ProxyAddress>,
+    own_accounts: &[u64],
+) -> Result<(Session, Vec<PendingConfirmation>), SteamError> {
+    with_session(account, proxy, |client, session, steam_id| {
+        let guard_account = guard_account(account, session, steam_id);
+        let confirmer = Confirmer::new(WebApiTransport::new(client.clone()), &guard_account);
+        let mut accepted = Vec::new();
+        for confirmation in confirmer.get_confirmations().map_err(confirmer_error)? {
+            let partner = || trade_partner(client, session, &confirmation.creator_id);
+            if !allowed(
+                account.auto_confirm,
+                confirmation.conf_type,
+                own_accounts,
+                partner,
+            )? {
+                continue;
+            }
+            confirmer
+                .accept_confirmation(ConfirmationId::new(&confirmation.id, &confirmation.nonce))
+                .map_err(confirmer_error)?;
+            accepted.push(pending(confirmation));
+        }
+        Ok(accepted)
+    })
+}
+
+/// Whether the rules let a confirmation through. `partner` looks up the other side
+/// of a trade, and is called only when the answer depends on it.
+fn allowed(
+    rules: AutoConfirm,
+    kind: ConfirmationType,
+    own_accounts: &[u64],
+    partner: impl FnOnce() -> Result<Option<u64>, SteamError>,
+) -> Result<bool, SteamError> {
+    Ok(match kind {
+        ConfirmationType::MarketSell => rules.any_market_listing,
+        ConfirmationType::Trade if rules.trades_to_own_accounts => {
+            partner()?.is_some_and(|partner| own_accounts.contains(&partner))
+        }
+        _ => false,
+    })
+}
+
+#[derive(Deserialize)]
+struct TradeOfferAnswer {
+    response: TradeOfferResponse,
+}
+
+#[derive(Deserialize)]
+struct TradeOfferResponse {
+    offer: Option<TradeOffer>,
+}
+
+#[derive(Deserialize)]
+struct TradeOffer {
+    accountid_other: u32,
+}
+
+/// The Steam ID on the other side of a trade offer, asked of Steam rather than read
+/// from the confirmation's text, which the other side partly writes.
+fn trade_partner(
+    client: &Client,
+    session: &Session,
+    offer_id: &str,
+) -> Result<Option<u64>, SteamError> {
+    let body = web_api_get(
+        client,
+        TRADE_OFFER_URL,
+        session,
+        &[("tradeofferid", offer_id)],
+    )?;
+    partner_of(&body)
+}
+
+fn partner_of(body: &[u8]) -> Result<Option<u64>, SteamError> {
+    let answer: TradeOfferAnswer = serde_json::from_slice(body)
+        .map_err(|_| SteamError::Steam("unreadable trade offer".to_owned()))?;
+    Ok(answer
+        .response
+        .offer
+        .map(|offer| USER_ID_HIGH << 32 | u64::from(offer.accountid_other)))
+}
+
+fn pending(confirmation: Confirmation) -> PendingConfirmation {
+    PendingConfirmation {
+        kind: match confirmation.conf_type {
+            ConfirmationType::Trade => ConfirmationKind::Trade,
+            ConfirmationType::MarketSell => ConfirmationKind::MarketListing,
+            ConfirmationType::ApiKeyCreation => ConfirmationKind::ApiKey,
+            _ => ConfirmationKind::Other,
+        },
+        id: confirmation.id,
+        nonce: confirmation.nonce,
+        type_name: confirmation.type_name,
+        headline: confirmation.headline,
+        summary: confirmation.summary,
+        created_at: confirmation.creation_time,
+    }
 }
 
 /// Accepts or declines confirmations given as `(id, nonce)` pairs. Each goes in its
@@ -170,6 +267,91 @@ mod tests {
             file["device_id"] = id.into();
         }
         mafile::parse(file.to_string().as_bytes()).unwrap()
+    }
+
+    const OWN: u64 = 76561198000000001;
+    const STRANGER: u64 = 76561198000000002;
+
+    fn rules(any_market_listing: bool, trades_to_own_accounts: bool) -> AutoConfirm {
+        AutoConfirm {
+            trades_to_own_accounts,
+            any_market_listing,
+        }
+    }
+
+    fn check(rules: AutoConfirm, kind: ConfirmationType, partner: Option<u64>) -> bool {
+        allowed(rules, kind, &[OWN], || Ok(partner)).unwrap()
+    }
+
+    #[test]
+    fn market_rule_covers_only_market_listings() {
+        let market = rules(true, false);
+        assert!(check(market, ConfirmationType::MarketSell, None));
+        assert!(!check(market, ConfirmationType::Trade, Some(OWN)));
+        assert!(!check(market, ConfirmationType::ApiKeyCreation, None));
+    }
+
+    #[test]
+    fn trade_rule_covers_only_trades_with_own_accounts() {
+        let trades = rules(false, true);
+        assert!(check(trades, ConfirmationType::Trade, Some(OWN)));
+        assert!(!check(trades, ConfirmationType::Trade, Some(STRANGER)));
+        assert!(!check(trades, ConfirmationType::Trade, None));
+        assert!(!check(trades, ConfirmationType::MarketSell, None));
+    }
+
+    #[test]
+    fn nothing_is_confirmed_without_rules() {
+        for kind in [
+            ConfirmationType::Trade,
+            ConfirmationType::MarketSell,
+            ConfirmationType::ApiKeyCreation,
+            ConfirmationType::PhoneNumberChange,
+            ConfirmationType::AccountRecovery,
+        ] {
+            assert!(!check(AutoConfirm::default(), kind, Some(OWN)), "{kind:?}");
+        }
+        assert!(!check(
+            rules(true, true),
+            ConfirmationType::ApiKeyCreation,
+            None
+        ));
+        assert!(!check(
+            rules(true, true),
+            ConfirmationType::AccountRecovery,
+            None
+        ));
+    }
+
+    #[test]
+    fn the_trade_partner_is_looked_up_only_when_it_decides() {
+        let unreachable = || -> Result<Option<u64>, SteamError> { panic!("looked up") };
+        assert!(
+            !allowed(
+                rules(true, false),
+                ConfirmationType::Trade,
+                &[OWN],
+                unreachable
+            )
+            .unwrap()
+        );
+        assert!(
+            allowed(
+                rules(true, true),
+                ConfirmationType::MarketSell,
+                &[OWN],
+                unreachable
+            )
+            .unwrap()
+        );
+    }
+
+    #[test]
+    fn trade_partner_comes_from_the_offer() {
+        let body = br#"{"response":{"offer":{"tradeofferid":"7","accountid_other":39734273,"trade_offer_state":9}}}"#;
+        assert_eq!(partner_of(body).unwrap(), Some(OWN));
+        assert_eq!(partner_of(br#"{"response":{}}"#).unwrap(), None);
+        assert!(partner_of(b"<html>").is_err());
     }
 
     #[test]

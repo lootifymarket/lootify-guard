@@ -3,7 +3,7 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use lootify_guard_core::contents::{Account, Contents, Session};
+use lootify_guard_core::contents::{Account, AutoConfirm, Contents, Session};
 use lootify_guard_core::guard;
 use lootify_guard_core::mafile;
 use lootify_guard_core::proxy::ProxyAddress;
@@ -42,6 +42,7 @@ pub struct AccountSummary {
     /// A data URL, so the page can show it without fetching anything itself.
     avatar: Option<String>,
     proxy_id: Option<u32>,
+    auto_confirm: AutoConfirm,
 }
 
 #[derive(Default, Serialize)]
@@ -88,6 +89,7 @@ pub fn list_accounts(state: State<'_, VaultState>) -> Result<AccountList, Comman
                     .and_then(|profile| profile.avatar.as_ref())
                     .map(|avatar| format!("data:image/jpeg;base64,{avatar}")),
                 proxy_id: account.proxy,
+                auto_confirm: account.auto_confirm,
             })
         })
         .collect::<Result<_, CommandError>>()?;
