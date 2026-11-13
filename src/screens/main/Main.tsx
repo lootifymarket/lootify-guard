@@ -35,7 +35,9 @@ export default function Main({ onLock, onAutoLocked }: Props) {
     if (section === 'guard') {
       return <SteamGuard list={list} onChanged={reload} />
     }
-    if (section === 'trades') return <Trades onChanged={reload} />
+    if (section === 'trades') {
+      return <Trades accounts={list.accounts} onChanged={reload} />
+    }
     if (section === 'proxies') return <Proxies />
     if (section === 'add') {
       return (

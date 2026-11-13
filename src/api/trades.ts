@@ -91,3 +91,49 @@ export const confirmTradeOffer = (offer: TradeOffer) =>
     accountName: offer.accountName,
     offerId: offer.id,
   })
+
+export type PartnerWarning =
+  | { kind: 'newAccount'; days: number }
+  | { kind: 'noLevel' }
+  | { kind: 'vacBanned' }
+  | { kind: 'tradeBanned' }
+  | { kind: 'tradeProbation' }
+  | { kind: 'privateProfile' }
+  | { kind: 'copiesName'; of: string }
+
+export type PartnerCheck = {
+  name: string | null
+  /** Days since the account was made, when the profile shows it. */
+  ageDays: number | null
+  level: number | null
+  warnings: PartnerWarning[]
+}
+
+/** Someone the user already knows by name, whom a scammer may copy. */
+export type Known = { id: string; name: string }
+
+export const checkTradePartner = (offer: TradeOffer, known: Known[]) =>
+  invoke<PartnerCheck>('check_trade_partner', {
+    accountName: offer.accountName,
+    partnerId: offer.partnerId,
+    known,
+  })
+
+export function warningText(warning: PartnerWarning) {
+  switch (warning.kind) {
+    case 'newAccount':
+      return `Account is ${warning.days} ${warning.days === 1 ? 'day' : 'days'} old`
+    case 'noLevel':
+      return 'Steam level 0'
+    case 'vacBanned':
+      return 'VAC banned'
+    case 'tradeBanned':
+      return 'Trade banned'
+    case 'tradeProbation':
+      return 'On trade probation'
+    case 'privateProfile':
+      return 'Private profile'
+    case 'copiesName':
+      return `Copies the name of ${warning.of}`
+  }
+}

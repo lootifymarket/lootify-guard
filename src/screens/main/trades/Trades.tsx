@@ -3,15 +3,20 @@ import {
   isOpen,
   listTradeOffers,
   OFFER_STATE_NAMES,
+  warningText,
   type Item,
+  type Known,
   type TradeOffer,
   type Trades as TradeList,
 } from '../../../api/trades.ts'
+import type { Account } from '../../../api/accounts.ts'
 import { errorMessage } from '../../../api/vault.ts'
 import Button from '../../../components/Button.tsx'
 import { ago } from '../../../lib/ago.ts'
 import layout from '../layout.module.css'
 import OfferActions from './OfferActions.tsx'
+import PartnerDialog from './PartnerCheck.tsx'
+import { usePartnerCheck } from './usePartnerCheck.ts'
 import styles from './Trades.module.css'
 
 type Tab = 'incoming' | 'outgoing' | 'history'
@@ -26,12 +31,13 @@ const tabOf = (offer: TradeOffer): Tab =>
   !isOpen(offer.state) ? 'history' : offer.sent ? 'outgoing' : 'incoming'
 
 type Props = {
+  accounts: Account[]
   /** Steam turned a session down, so the account list is out of date. */
   onChanged: () => void
 }
 
 /** Trade offers of every signed-in account in one list. */
-export default function Trades({ onChanged }: Props) {
+export default function Trades({ accounts, onChanged }: Props) {
   const [tab, setTab] = useState<Tab>('incoming')
   const [trades, setTrades] = useState<TradeList | null>(null)
   const [loading, setLoading] = useState(true)
@@ -61,6 +67,7 @@ export default function Trades({ onChanged }: Props) {
   }, [])
 
   const shown = trades?.offers.filter((offer) => tabOf(offer) === tab) ?? []
+  const known = knownPeople(accounts, trades?.offers ?? [])
   const count = (id: Tab) =>
     trades?.offers.filter((offer) => tabOf(offer) === id).length ?? 0
 
@@ -123,6 +130,8 @@ export default function Trades({ onChanged }: Props) {
               <OfferRow
                 key={`${offer.accountName}-${offer.id}`}
                 offer={offer}
+                known={known}
+                pastTrades={pastTrades(trades.offers, offer.partnerId)}
                 onDone={load}
               />
             ))}
@@ -147,11 +156,18 @@ export default function Trades({ onChanged }: Props) {
 
 function OfferRow({
   offer,
+  known,
+  pastTrades,
   onDone,
 }: {
   offer: TradeOffer
+  known: Known[]
+  pastTrades: number
   onDone: () => void
 }) {
+  const result = usePartnerCheck(offer, known)
+  const [checking, setChecking] = useState(false)
+  const warnings = result && 'check' in result ? result.check.warnings : []
   const partner =
     offer.partnerAccount ?? offer.partnerName ?? `Steam ID ${offer.partnerId}`
   const [from, to] = offer.sent
@@ -171,16 +187,64 @@ function OfferRow({
       <Items items={offer.give} />
       <Items items={offer.get} />
       <span className={styles.note}>
+        {warnings.length > 0 && (
+          <span className={styles.risk}>
+            {warnings.map(warningText).join(' · ')}
+          </span>
+        )}
         {offer.message && <q className={styles.message}>{offer.message}</q>}
         <span>{status(offer)}</span>
+        {result && (
+          <button
+            type="button"
+            className={styles.check}
+            onClick={() => setChecking(true)}
+          >
+            Check sender
+          </button>
+        )}
+        <PartnerDialog
+          open={checking}
+          offer={offer}
+          result={result}
+          pastTrades={pastTrades}
+          onClose={() => setChecking(false)}
+        />
       </span>
       {isOpen(offer.state) ? (
-        <OfferActions offer={offer} onDone={onDone} />
+        <OfferActions offer={offer} warnings={warnings} onDone={onDone} />
       ) : (
         <span />
       )}
     </div>
   )
+}
+
+/** People a scammer may copy: the user's own accounts and partners named in the list. */
+function knownPeople(accounts: Account[], offers: TradeOffer[]): Known[] {
+  const known: Known[] = []
+  for (const account of accounts) {
+    if (!account.steamId) continue
+    known.push({ id: account.steamId, name: account.accountName })
+    if (account.personaName) {
+      known.push({ id: account.steamId, name: account.personaName })
+    }
+  }
+  for (const offer of offers) {
+    if (offer.partnerName) {
+      known.push({ id: offer.partnerId, name: offer.partnerName })
+    }
+  }
+  return known
+}
+
+/** Trades with this partner that went through, among the ones listed. */
+function pastTrades(offers: TradeOffer[], partnerId: string) {
+  return offers.filter(
+    (offer) =>
+      offer.partnerId === partnerId &&
+      (offer.state === 'accepted' || offer.state === 'onHold'),
+  ).length
 }
 
 function Items({ items }: { items: Item[] }) {

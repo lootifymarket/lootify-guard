@@ -5,6 +5,7 @@ pub mod guard;
 pub mod idle;
 pub mod link;
 pub mod mafile;
+pub mod partner;
 pub mod profile;
 pub mod profile_settings;
 pub mod proxy;

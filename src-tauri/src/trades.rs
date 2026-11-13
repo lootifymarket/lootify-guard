@@ -2,6 +2,7 @@ use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use lootify_guard_core::contents::{Account, Contents};
+use lootify_guard_core::partner::{self, Known, PartnerCheck};
 use lootify_guard_core::proxy::ProxyAddress;
 use lootify_guard_core::steam::SteamError;
 use lootify_guard_core::trades::{self, Accepted, TradeOffer};
@@ -74,10 +75,7 @@ pub async fn list_trade_offers(state: State<'_, VaultState>) -> Result<TradesVie
         (jobs, own, signed_out, failures)
     };
 
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_err(|_| CommandError::Failed("the system clock is set before 1970".to_owned()))?
-        .as_secs();
+    let now = unix_now()?;
     let results = spawn_blocking(move || {
         let mut results = Vec::new();
         for batch in jobs.chunks(AT_ONCE) {
@@ -192,4 +190,30 @@ pub async fn confirm_trade_offer(
         spawn_blocking(move || trades::confirm(&account, proxy.as_ref(), &offer_id)).await?;
     let session = settle(&state, &account_name, result)?;
     store_session(&state, &account_name, Some(session))
+}
+
+/// Looks up the other side of an offer and weighs it against `known`: the user's
+/// other partners and own accounts, which a scammer may be copying.
+#[tauri::command]
+pub async fn check_trade_partner(
+    state: State<'_, VaultState>,
+    account_name: String,
+    partner_id: String,
+    known: Vec<Known>,
+) -> Result<PartnerCheck, CommandError> {
+    let (account, proxy) = account_and_proxy(&state, &account_name)?;
+    let now = unix_now()?;
+    let result =
+        spawn_blocking(move || partner::check(&account, proxy.as_ref(), &partner_id, &known, now))
+            .await?;
+    let (session, check) = settle(&state, &account_name, result)?;
+    store_session(&state, &account_name, Some(session))?;
+    Ok(check)
+}
+
+fn unix_now() -> Result<u64, CommandError> {
+    Ok(SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| CommandError::Failed("the system clock is set before 1970".to_owned()))?
+        .as_secs())
 }

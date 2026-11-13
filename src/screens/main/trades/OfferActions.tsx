@@ -4,7 +4,9 @@ import {
   cancelTradeOffer,
   confirmTradeOffer,
   declineTradeOffer,
+  warningText,
   type Item,
+  type PartnerWarning,
   type TradeOffer,
 } from '../../../api/trades.ts'
 import { errorMessage } from '../../../api/vault.ts'
@@ -15,12 +17,14 @@ import styles from './Trades.module.css'
 
 type Props = {
   offer: TradeOffer
+  /** What the sender check found, shown again before items leave. */
+  warnings: PartnerWarning[]
   /** The offer changed in Steam, so the list should be asked for again. */
   onDone: () => void
 }
 
 /** What can be done with an open offer, by which side sent it. */
-export default function OfferActions({ offer, onDone }: Props) {
+export default function OfferActions({ offer, warnings, onDone }: Props) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [note, setNote] = useState('')
@@ -109,6 +113,11 @@ export default function OfferActions({ offer, onDone }: Props) {
         title="Accept the trade?"
         onClose={() => setConfirming(false)}
       >
+        {warnings.length > 0 && (
+          <p className={styles.scam}>
+            The sender looks risky. {warnings.map(warningText).join(' · ')}
+          </p>
+        )}
         <p className={dialogStyles.text}>
           Guard confirms it right away, and the items leave {offer.accountName}.
         </p>
