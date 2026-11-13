@@ -1,13 +1,11 @@
 import { invoke } from '@tauri-apps/api/core'
+import { words } from '../i18n/index.ts'
 
 export type ConfirmationKind = 'trade' | 'marketListing' | 'apiKey' | 'other'
 
-export const CONFIRMATION_KIND_NAMES: Record<ConfirmationKind, string> = {
-  trade: 'Trade',
-  marketListing: 'Market',
-  apiKey: 'API key',
-  other: 'Other',
-}
+/** What kind of confirmation it is, in a word, in the language in use. */
+export const confirmationKindName = (kind: ConfirmationKind) =>
+  words().guard.confirmations.kinds[kind]
 
 export type Confirmation = {
   id: string

@@ -8,6 +8,7 @@ import { errorMessage } from '../../../api/vault.ts'
 import Button from '../../../components/Button.tsx'
 import Dialog from '../../../components/Dialog.tsx'
 import dialogStyles from '../../../components/Dialog.module.css'
+import { useT } from '../../../i18n/index.ts'
 import styles from './Proxies.module.css'
 
 type Props = {
@@ -17,6 +18,7 @@ type Props = {
 }
 
 export default function ProxyDetails({ proxy, onClose, onRemoved }: Props) {
+  const t = useT().proxies.details
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const used = proxy.accounts.length
@@ -38,7 +40,7 @@ export default function ProxyDetails({ proxy, onClose, onRemoved }: Props) {
     <Dialog open title={proxy.address} onClose={onClose}>
       <span className={styles.muted}>
         {PROXY_KIND_NAMES[proxy.kind]}
-        {proxy.hasLogin && ' · with login'}
+        {proxy.hasLogin && t.withLogin}
       </span>
       {used > 0 ? (
         <ul className={styles.accounts}>
@@ -47,15 +49,9 @@ export default function ProxyDetails({ proxy, onClose, onRemoved }: Props) {
           ))}
         </ul>
       ) : (
-        <p className={dialogStyles.text}>No accounts use this proxy.</p>
+        <p className={dialogStyles.text}>{t.noAccounts}</p>
       )}
-      {used > 0 && (
-        <p className={dialogStyles.text}>
-          If you delete it, {used === 1 ? 'this account' : 'these accounts'}{' '}
-          can’t reach Steam until you give {used === 1 ? 'it' : 'them'} another
-          proxy. Nothing goes out from your own IP instead.
-        </p>
-      )}
+      {used > 0 && <p className={dialogStyles.text}>{t.deleteWarning(used)}</p>}
       {error && (
         <p className={dialogStyles.error} role="alert">
           {error}
@@ -63,7 +59,7 @@ export default function ProxyDetails({ proxy, onClose, onRemoved }: Props) {
       )}
       <div className={dialogStyles.actions}>
         <Button variant="secondary" size="sm" onClick={onClose}>
-          Close
+          {t.close}
         </Button>
         <Button
           variant="danger"
@@ -72,7 +68,7 @@ export default function ProxyDetails({ proxy, onClose, onRemoved }: Props) {
           disabled={busy}
           onClick={() => void remove()}
         >
-          Delete proxy
+          {t.delete}
         </Button>
       </div>
     </Dialog>

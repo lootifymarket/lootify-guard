@@ -7,6 +7,7 @@ import {
   type Run,
 } from '../../../api/tasks.ts'
 import { errorMessage } from '../../../api/vault.ts'
+import { useT, type Dictionary } from '../../../i18n/index.ts'
 import styles from './Tasks.module.css'
 
 // Jobs move a few seconds per account, so this keeps up without much asking.
@@ -18,6 +19,7 @@ type Props = {
 }
 
 export default function Queue({ started }: Props) {
+  const t = useT().tasks.queue
   const [jobs, setJobs] = useState<Job[]>([])
   const [error, setError] = useState('')
   const [open, setOpen] = useState<number | null>(null)
@@ -49,7 +51,7 @@ export default function Queue({ started }: Props) {
     <section className={styles.queue} aria-labelledby="queue-title">
       <div className={styles.queueHead}>
         <h2 id="queue-title" className={styles.sectionTitle}>
-          Queue
+          {t.title}
         </h2>
         {finished && (
           <button
@@ -59,7 +61,7 @@ export default function Queue({ started }: Props) {
               void clearFinishedTasks().then(() => setRevision((n) => n + 1))
             }
           >
-            Clear finished
+            {t.clearFinished}
           </button>
         )}
       </div>
@@ -68,7 +70,7 @@ export default function Queue({ started }: Props) {
           {error}
         </p>
       )}
-      {jobs.length === 0 && <p className={styles.hint}>Nothing has run yet.</p>}
+      {jobs.length === 0 && <p className={styles.hint}>{t.empty}</p>}
       {jobs.map((job) => (
         <JobCard
           key={job.id}
@@ -95,24 +97,25 @@ function JobCard({
   onToggle: () => void
   onCancel: () => void
 }) {
+  const t = useT().tasks.queue
   const done = job.runs.filter((run) => isOver(run)).length
   const problems = job.runs.filter(
     (run) => run.state === 'failed' || run.state === 'warning',
   ).length
   const skipped = job.runs.some((run) => run.state === 'skipped')
   const state =
-    job.finishedAt === null ? 'Running' : skipped ? 'Stopped' : 'Done'
+    job.finishedAt === null ? 'running' : skipped ? 'stopped' : 'done'
   return (
-    <div className={styles.job} data-state={state.toLowerCase()}>
+    <div className={styles.job} data-state={state}>
       <div className={styles.jobHead}>
         <span className={styles.jobWords}>
           <span className={styles.jobName}>{job.title}</span>
           <span className={styles.hint}>
             {job.target} · {done} / {job.runs.length}
-            {problems > 0 && ` · ${problems} to look at`}
+            {problems > 0 && ` · ${t.toLookAt(problems)}`}
           </span>
         </span>
-        <span className={styles.jobState}>{state}</span>
+        <span className={styles.jobState}>{t[state]}</span>
       </div>
       <span className={styles.bar}>
         <span
@@ -127,11 +130,11 @@ function JobCard({
           aria-expanded={open}
           onClick={onToggle}
         >
-          {open ? 'Hide accounts' : 'Show accounts'}
+          {open ? t.hideAccounts : t.showAccounts}
         </button>
         {job.finishedAt === null && (
           <button type="button" className={styles.link} onClick={onCancel}>
-            Stop
+            {t.stop}
           </button>
         )}
       </div>
@@ -140,7 +143,7 @@ function JobCard({
           {job.runs.map((run) => (
             <li key={run.accountName} data-state={run.state}>
               <span className={styles.runName}>{run.accountName}</span>
-              <span className={styles.runNote}>{note(run)}</span>
+              <span className={styles.runNote}>{note(t, run)}</span>
             </li>
           ))}
         </ul>
@@ -151,20 +154,18 @@ function JobCard({
 
 const isOver = (run: Run) => run.state !== 'waiting' && run.state !== 'running'
 
-function note(run: Run) {
+function note(t: Dictionary['tasks']['queue'], run: Run) {
   switch (run.state) {
     case 'waiting':
-      return run.tries > 0
-        ? `Waiting to try again (${run.tries} of 3)`
-        : 'Waiting'
+      return run.tries > 0 ? t.waitingRetry(run.tries) : t.waiting
     case 'running':
-      return 'Running…'
+      return t.runningAccount
     case 'done':
     case 'warning':
       return run.note
     case 'failed':
       return run.reason
     case 'skipped':
-      return 'Skipped'
+      return t.skipped
   }
 }

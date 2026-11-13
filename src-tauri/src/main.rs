@@ -118,6 +118,7 @@ fn main() {
             settings::get_settings,
             settings::set_auto_lock,
             settings::set_streamer_mode,
+            settings::set_language,
             settings::set_close_to_tray,
             settings::launch_at_startup,
             settings::set_launch_at_startup,

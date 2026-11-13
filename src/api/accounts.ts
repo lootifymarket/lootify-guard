@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { fromBackend } from '../i18n/backend/index.ts'
 import type { AutoConfirm } from './autoConfirm.ts'
 
 export const CODE_PERIOD_SECS = 30
@@ -43,7 +44,17 @@ export type ImportReport = {
 export const listAccounts = () => invoke<AccountList>('list_accounts')
 
 /** Resolves to `null` when the file picker is closed without choosing anything. */
-export const importMaFiles = () => invoke<ImportReport | null>('import_mafiles')
+export const importMaFiles = () =>
+  invoke<ImportReport | null>('import_mafiles').then(
+    (report) =>
+      report && {
+        ...report,
+        failed: report.failed.map((failure) => ({
+          ...failure,
+          reason: fromBackend(failure.reason),
+        })),
+      },
+  )
 
 /** Without a password, the backend asks for biometrics instead. */
 export const revealRevocationCode = (

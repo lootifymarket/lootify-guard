@@ -8,6 +8,7 @@ import {
 } from '../../api/vault.ts'
 import Button from '../../components/Button.tsx'
 import TextField from '../../components/TextField.tsx'
+import { useT } from '../../i18n/index.ts'
 import styles from './Unlock.module.css'
 
 type Props = {
@@ -23,6 +24,7 @@ export default function UnlockForm({
   onForgot,
   onBiometricsOutdated,
 }: Props) {
+  const t = useT().unlock
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState<'password' | 'biometric' | null>(null)
@@ -31,7 +33,7 @@ export default function UnlockForm({
     event.preventDefault()
     if (busy) return
     if (!password) {
-      setError('Enter your password')
+      setError(t.enterPassword)
       return
     }
     setBusy('password')
@@ -61,16 +63,12 @@ export default function UnlockForm({
 
   return (
     <form className={styles.view} onSubmit={submit}>
-      <p className={styles.subtitle}>
-        {busy
-          ? 'Decrypting your vault…'
-          : 'Enter your master password to open the vault.'}
-      </p>
+      <p className={styles.subtitle}>{busy ? t.decrypting : t.prompt}</p>
       <TextField
         type="password"
-        label="Master password"
+        label={t.masterPassword}
         hideLabel
-        placeholder="Master password"
+        placeholder={t.masterPassword}
         autoComplete="current-password"
         autoFocus
         value={password}
@@ -86,7 +84,7 @@ export default function UnlockForm({
         </span>
       )}
       <Button type="submit" busy={busy === 'password'} className={styles.wide}>
-        {busy === 'password' ? 'Opening…' : 'Unlock'}
+        {busy === 'password' ? t.opening : t.unlock}
       </Button>
       {biometricName && (
         <Button
@@ -95,7 +93,7 @@ export default function UnlockForm({
           className={`${styles.wide} ${styles.biometric}`}
           onClick={() => void unlockWithBiometric()}
         >
-          Unlock with {biometricName}
+          {t.unlockWith(biometricName)}
         </Button>
       )}
       <button
@@ -103,7 +101,7 @@ export default function UnlockForm({
         className={`${styles.link} ${styles.forgot}`}
         onClick={onForgot}
       >
-        Forgot password?
+        {t.forgot}
       </button>
     </form>
   )

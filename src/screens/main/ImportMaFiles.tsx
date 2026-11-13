@@ -4,6 +4,7 @@ import { errorMessage } from '../../api/vault.ts'
 import Button from '../../components/Button.tsx'
 import Dialog from '../../components/Dialog.tsx'
 import dialogStyles from '../../components/Dialog.module.css'
+import { useT } from '../../i18n/index.ts'
 import styles from './ImportMaFiles.module.css'
 
 type Result = { report: ImportReport } | { error: string }
@@ -15,6 +16,7 @@ type Props = {
 
 /** The import button and the dialog that reports what came of it. */
 export default function ImportMaFiles({ variant, onImported }: Props) {
+  const t = useT().accounts
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<Result | null>(null)
 
@@ -43,11 +45,11 @@ export default function ImportMaFiles({ variant, onImported }: Props) {
         disabled={busy}
         onClick={() => void start()}
       >
-        Import .maFile
+        {t.importButton}
       </Button>
       <Dialog
         open={result !== null}
-        title="Import .maFile"
+        title={t.importTitle}
         onClose={() => setResult(null)}
       >
         {result && 'error' in result && (
@@ -56,7 +58,7 @@ export default function ImportMaFiles({ variant, onImported }: Props) {
         {result && 'report' in result && <Report report={result.report} />}
         <div className={dialogStyles.actions}>
           <Button size="sm" onClick={() => setResult(null)}>
-            Done
+            {t.done}
           </Button>
         </div>
       </Dialog>
@@ -65,25 +67,24 @@ export default function ImportMaFiles({ variant, onImported }: Props) {
 }
 
 function Report({ report }: { report: ImportReport }) {
+  const t = useT().accounts
   const added = report.added.length
   return (
     <>
       <p className={dialogStyles.text}>
-        {added > 0
-          ? `Added ${added} ${added === 1 ? 'account' : 'accounts'}.`
-          : 'No new accounts were added.'}
+        {added > 0 ? t.added(added) : t.noneAdded}
       </p>
       <ul className={styles.files}>
         {report.added.map((name) => (
           <li key={`added-${name}`} className={styles.file}>
             <span>{name}</span>
-            <span>Added</span>
+            <span>{t.fileAdded}</span>
           </li>
         ))}
         {report.alreadyAdded.map((name) => (
           <li key={`already-${name}`} className={styles.file}>
             <span>{name}</span>
-            <span className={styles.faint}>Already added</span>
+            <span className={styles.faint}>{t.fileAlreadyAdded}</span>
           </li>
         ))}
         {report.failed.map((failure) => (

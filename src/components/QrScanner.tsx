@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import jsQR from 'jsqr'
 import Dropdown from './Dropdown.tsx'
+import { useT, words } from '../i18n/index.ts'
 import styles from './QrScanner.module.css'
 
 type Props = {
@@ -17,6 +18,7 @@ const SCAN_WIDTH = 640
  * too (Continuity Camera), so it's in the list without any extra setup.
  */
 export default function QrScanner({ onScan }: Props) {
+  const t = useT().guard.scanner
   const video = useRef<HTMLVideoElement>(null)
   const [requestedId, setRequestedId] = useState('')
   const [activeId, setActiveId] = useState('')
@@ -89,29 +91,25 @@ export default function QrScanner({ onScan }: Props) {
       </div>
       {cameras.length > 1 && (
         <Dropdown
-          label="Camera"
+          label={t.camera}
           size="sm"
           value={activeId}
           options={cameras.map((camera, index) => ({
             value: camera.deviceId,
-            label: camera.label || `Camera ${index + 1}`,
+            label: camera.label || t.cameraNumber(index + 1),
           }))}
           onChange={setRequestedId}
         />
       )}
-      <span className={styles.hint}>
-        Hold the QR code up to the camera. On a Mac, an iPhone nearby can be
-        picked as a camera too.
-      </span>
+      <span className={styles.hint}>{t.hint}</span>
     </div>
   )
 }
 
 function cameraError(err: unknown) {
+  const t = words().guard.scanner
   const name = err instanceof DOMException ? err.name : ''
-  if (name === 'NotAllowedError') {
-    return 'Camera access is off. Turn it on for Lootify Guard in your system’s privacy settings.'
-  }
-  if (name === 'NotFoundError') return 'No camera found.'
-  return 'Couldn’t start the camera.'
+  if (name === 'NotAllowedError') return t.cameraOff
+  if (name === 'NotFoundError') return t.noCamera
+  return t.cameraFailed
 }

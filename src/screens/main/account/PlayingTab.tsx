@@ -17,6 +17,7 @@ import {
 } from '../../../api/playing.ts'
 import { errorMessage } from '../../../api/vault.ts'
 import Button from '../../../components/Button.tsx'
+import { useT, type Dictionary } from '../../../i18n/index.ts'
 import Dropdown from '../../../components/Dropdown.tsx'
 import TextField from '../../../components/TextField.tsx'
 import GamePicker from './GamePicker.tsx'
@@ -31,6 +32,7 @@ type Props = {
 
 /** Games the account plays on its own Steam connection, for hours and a status. */
 export default function PlayingTab({ accountName, signedIn }: Props) {
+  const t = useT().account.playing
   const [draft, setDraft] = useState<PlayingList>({
     games: [],
     status: null,
@@ -76,11 +78,7 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
   }, [accountName, signedIn])
 
   if (!signedIn) {
-    return (
-      <p className={styles.muted}>
-        Sign in to Steam on the Security tab to play games.
-      </p>
-    )
+    return <p className={styles.muted}>{t.signInFirst}</p>
   }
 
   const names = new Map(owned?.map((game) => [game.appId, game.name]))
@@ -118,15 +116,15 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
     )
 
   return (
-    <section className={styles.tab} aria-label="Playing">
+    <section className={styles.tab} aria-label={t.label}>
       <div className={styles.run}>
         <span className={styles.runWords}>
-          <RunTitle player={player} now={now} />
+          <RunTitle t={t} player={player} now={now} />
         </span>
         <span className={styles.runActions}>
           {changed && (
             <Button size="sm" busy={busy} disabled={busy} onClick={start}>
-              Apply changes
+              {t.applyChanges}
             </Button>
           )}
           {running ? (
@@ -136,7 +134,7 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
               disabled={busy}
               onClick={() => void act(() => stopPlaying(accountName))}
             >
-              Stop
+              {t.stop}
             </Button>
           ) : (
             <Button
@@ -145,7 +143,7 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
               disabled={busy || (draft.games.length === 0 && !status)}
               onClick={start}
             >
-              Start
+              {t.start}
             </Button>
           )}
         </span>
@@ -158,9 +156,9 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
 
       <div className={styles.run}>
         <span className={styles.runWords}>
-          <span className={styles.runTitle}>Card farming</span>
+          <span className={styles.runTitle}>{t.cardFarming}</span>
           <span className={styles.runText}>
-            <FarmText farm={farm} now={now} />
+            <FarmText t={t} farm={farm} now={now} />
           </span>
         </span>
         {farming ? (
@@ -170,7 +168,7 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
             disabled={busy}
             onClick={() => void act(() => stopPlaying(accountName))}
           >
-            Stop
+            {t.stop}
           </Button>
         ) : (
           <Button
@@ -180,24 +178,24 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
             disabled={busy}
             onClick={() => void act(() => startFarming(accountName))}
           >
-            Farm cards
+            {t.farmCards}
           </Button>
         )}
       </div>
 
       <div className={styles.field}>
         <span className={styles.label}>
-          Games · {draft.games.length} of {room}
-          {status && ' (the status takes one place)'}
+          {t.games(draft.games.length, room)}
+          {status && t.statusTakesPlace}
         </span>
         <div className={styles.chips}>
           {draft.games.map((id) => (
             <span key={id} className={styles.chip}>
-              {names.get(id) || `App ${id}`}
+              {names.get(id) || t.app(id)}
               <button
                 type="button"
                 className={styles.remove}
-                aria-label={`Remove ${names.get(id) || `app ${id}`}`}
+                aria-label={t.remove(names.get(id) || t.app(id))}
                 onClick={() =>
                   setDraft({
                     ...draft,
@@ -214,15 +212,15 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
             className={styles.add}
             onClick={() => setPicking(true)}
           >
-            + Game
+            {t.addGame}
           </button>
         </div>
         {ownedError && <p className={styles.muted}>{ownedError}</p>}
       </div>
 
       <TextField
-        label="Custom status (shown on the profile instead of a game)"
-        placeholder="Trading on Lootify Market"
+        label={t.status}
+        placeholder={t.statusPlaceholder}
         maxLength={64}
         value={draft.status ?? ''}
         onChange={(event) =>
@@ -230,7 +228,7 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
         }
       />
       <Dropdown
-        label="Presence"
+        label={t.presence}
         size="sm"
         value={draft.presence}
         options={(Object.keys(PRESENCE_NAMES) as Presence[]).map((value) => ({
@@ -241,10 +239,7 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
           setDraft({ ...draft, presence: value as Presence })
         }
       />
-      <p className={styles.muted}>
-        Steam counts hours only for games the account owns. Playing here while
-        someone plays on another device pauses until they stop.
-      </p>
+      <p className={styles.muted}>{t.hint}</p>
 
       <GamePicker
         open={picking}
@@ -261,26 +256,33 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
   )
 }
 
-function RunTitle({ player, now }: { player: Player | null; now: number }) {
+type Words = Dictionary['account']['playing']
+
+function RunTitle({
+  t,
+  player,
+  now,
+}: {
+  t: Words
+  player: Player | null
+  now: number
+}) {
   const [title, text] = (() => {
     switch (player?.state) {
       case undefined:
-        return ['Not playing', 'Start to show the games on the profile']
+        return [t.notPlaying, t.startHint]
       case 'stopped':
-        return ['Stopped playing', player.reason]
+        return [t.stopped, player.reason]
       case 'connecting':
-        return ['Connecting…', 'Signing in to Steam as the client']
+        return [t.connecting, t.connectingText]
       case 'playing':
-        return ['Now playing', elapsed(now - player.since)]
+        return [t.nowPlaying, elapsed(t, now - player.since)]
       case 'blocked':
-        return [
-          'Paused',
-          'Someone is playing on another device; hours resume when they stop',
-        ]
+        return [t.paused, t.pausedText]
       case 'reconnecting':
         return [
-          'Reconnecting',
-          `${player.reason}. Trying again in ${Math.max(0, player.at - now)} s`,
+          t.reconnecting,
+          t.tryingAgain(player.reason, Math.max(0, player.at - now)),
         ]
     }
   })()
@@ -292,14 +294,22 @@ function RunTitle({ player, now }: { player: Player | null; now: number }) {
   )
 }
 
-function FarmText({ farm, now }: { farm: Farm | null; now: number }) {
+function FarmText({
+  t,
+  farm,
+  now,
+}: {
+  t: Words
+  farm: Farm | null
+  now: number
+}) {
   switch (farm?.state) {
     case undefined:
-      return 'Plays the games that still drop cards until they run out'
+      return t.farmIdle
     case 'checking':
-      return 'Reading the badges…'
+      return t.farmChecking
     case 'done':
-      return 'No card drops left'
+      return t.farmDone
     case 'stopped':
       return farm.reason
     case 'farming': {
@@ -309,22 +319,22 @@ function FarmText({ farm, now }: { farm: Farm | null; now: number }) {
         .map((game) => game.name)
       const minutes = Math.max(1, Math.ceil((farm.nextCheck - now) / 60))
       return [
-        `${drops} drops left in ${farm.games.length} games`,
+        t.dropsLeft(drops, farm.games.length),
         playing.length === 1
-          ? `playing ${playing[0]}`
-          : `building hours in ${playing.length} games`,
-        farm.problem ?? `next check in ${minutes} min`,
+          ? t.farmPlaying(playing[0])
+          : t.buildingHours(playing.length),
+        farm.problem ?? t.nextCheck(minutes),
       ].join(' · ')
     }
   }
 }
 
-function elapsed(seconds: number) {
+function elapsed(t: Words, seconds: number) {
   const hours = Math.floor(seconds / 3600)
   const minutes = Math.floor((seconds % 3600) / 60)
   const rest = seconds % 60
   const pad = (n: number) => String(n).padStart(2, '0')
   return hours > 0
-    ? `${hours} h ${pad(minutes)} min`
-    : `${minutes} min ${pad(rest)} s`
+    ? t.elapsedHours(hours, pad(minutes))
+    : t.elapsedMinutes(minutes, pad(rest))
 }

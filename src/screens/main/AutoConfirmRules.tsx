@@ -10,6 +10,7 @@ import Button from '../../components/Button.tsx'
 import Dialog from '../../components/Dialog.tsx'
 import Dropdown from '../../components/Dropdown.tsx'
 import dialogStyles from '../../components/Dialog.module.css'
+import { useT } from '../../i18n/index.ts'
 import { groupOptions, inGroup } from './groups/groupFilter.ts'
 import styles from './AutoConfirmRules.module.css'
 
@@ -32,16 +33,17 @@ export default function AutoConfirmRules({
   onClose,
   onChanged,
 }: Props) {
+  const t = useT().guard.rulesDialog
   const [groupFilter, setGroupFilter] = useState('')
   const shown = accounts.filter((account) =>
     inGroup(account.groupId, groupFilter),
   )
   return (
-    <Dialog open={open} title="Auto-confirm rules" wide onClose={onClose}>
+    <Dialog open={open} title={t.title} wide onClose={onClose}>
       {groups.length > 0 && (
         <div className={styles.groupFilter}>
           <Dropdown
-            label="Group"
+            label={t.group}
             hideLabel
             size="sm"
             value={groupFilter}
@@ -52,12 +54,9 @@ export default function AutoConfirmRules({
       )}
       <Table accounts={shown} onChanged={onChanged} />
       <div className={styles.footer}>
-        <span className={styles.never}>
-          API keys, phone changes and account recovery are never confirmed
-          automatically.
-        </span>
+        <span className={styles.never}>{t.never}</span>
         <Button size="sm" onClick={onClose}>
-          Done
+          {t.done}
         </Button>
       </div>
     </Dialog>
@@ -71,6 +70,8 @@ function Table({
   accounts: Account[]
   onChanged: () => void
 }) {
+  const words = useT()
+  const t = words.guard.rulesDialog
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -87,11 +88,7 @@ function Table({
   }
 
   if (accounts.length === 0) {
-    return (
-      <p className={dialogStyles.text}>
-        No accounts yet. Import .maFile files on the Accounts screen.
-      </p>
-    )
+    return <p className={dialogStyles.text}>{words.guard.noAccounts}</p>
   }
 
   const names = accounts.map((account) => account.accountName)
@@ -101,15 +98,13 @@ function Table({
 
   return (
     <>
-      <p className={dialogStyles.text}>
-        Changes apply right away. Each account’s page has the same switches.
-      </p>
+      <p className={dialogStyles.text}>{t.applyNow}</p>
       <div className={styles.scroll}>
         <table className={styles.table}>
           <thead>
             <tr>
               <th scope="col" className={styles.accountHead}>
-                Account
+                {t.account}
               </th>
               {AUTO_CONFIRM_RULES.map(({ rule, short, warning }) => (
                 <th
@@ -125,7 +120,7 @@ function Table({
           <tbody>
             <tr className={styles.allRow}>
               <th scope="row" className={styles.allLabel}>
-                All {accounts.length}
+                {t.all(accounts.length)}
               </th>
               {AUTO_CONFIRM_RULES.map(({ rule, label }) => {
                 const on = accounts.filter(
@@ -136,7 +131,7 @@ function Table({
                   <td key={rule} className={styles.cell}>
                     <Check
                       checked={all ? true : on > 0 ? 'mixed' : false}
-                      label={`${label} for every account`}
+                      label={t.forEvery(label)}
                       disabled={busy}
                       onClick={() => void set(names, rule, !all)}
                     />
@@ -149,7 +144,7 @@ function Table({
                 <th scope="row" className={styles.account}>
                   <span className={styles.login}>{account.accountName}</span>
                   {!account.signedIn && (
-                    <span className={styles.notSignedIn}>Not signed in</span>
+                    <span className={styles.notSignedIn}>{t.notSignedIn}</span>
                   )}
                 </th>
                 {AUTO_CONFIRM_RULES.map(({ rule, label }) => (
@@ -175,10 +170,7 @@ function Table({
       </div>
       {risky.length > 0 && (
         <p className={styles.warning}>
-          Any market listing is on for {risky.join(', ')}. Listings made by
-          anyone who gets into{' '}
-          {risky.length === 1 ? 'that Steam session' : 'those Steam sessions'}{' '}
-          are confirmed too.
+          {t.risky(risky.join(', '), risky.length)}
         </p>
       )}
       {error && (

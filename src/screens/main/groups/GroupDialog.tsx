@@ -11,6 +11,7 @@ import Button from '../../../components/Button.tsx'
 import Dialog from '../../../components/Dialog.tsx'
 import dialogStyles from '../../../components/Dialog.module.css'
 import TextField from '../../../components/TextField.tsx'
+import { useT } from '../../../i18n/index.ts'
 import { matchesQuery } from '../useAccounts.ts'
 import styles from './GroupDialog.module.css'
 
@@ -26,11 +27,12 @@ type Props = {
 }
 
 export default function GroupDialog(props: Props) {
+  const t = useT().groups
   const nameField = useRef<HTMLInputElement>(null)
   return (
     <Dialog
       open={props.open}
-      title={props.group ? 'Edit group' : 'New group'}
+      title={props.group ? t.editGroup : t.newGroup}
       onClose={props.onClose}
       initialFocus={nameField}
     >
@@ -47,6 +49,8 @@ function Form({
   onSaved,
   nameField,
 }: Props & { nameField: RefObject<HTMLInputElement | null> }) {
+  const words = useT()
+  const t = words.groups
   const members = (id: number | null) =>
     accounts
       .filter((account) => id !== null && account.groupId === id)
@@ -105,8 +109,7 @@ function Form({
     return (
       <>
         <p className={dialogStyles.text}>
-          {group.name} goes away. Its {group.count}{' '}
-          {group.count === 1 ? 'account stays' : 'accounts stay'}, in no group.
+          {t.deleteText(group.name, group.count)}
         </p>
         {error && (
           <p className={dialogStyles.error} role="alert">
@@ -119,7 +122,7 @@ function Form({
             size="sm"
             onClick={() => setDeleting(false)}
           >
-            Back
+            {words.common.back}
           </Button>
           <Button
             variant="danger"
@@ -128,7 +131,7 @@ function Form({
             disabled={busy}
             onClick={() => void run(() => removeGroup(group.id), true)}
           >
-            Delete group
+            {t.deleteGroup}
           </Button>
         </div>
       </>
@@ -139,18 +142,18 @@ function Form({
     <form className={styles.form} onSubmit={save}>
       <TextField
         ref={nameField}
-        label="Name"
-        placeholder="Farm, Storage, Market makers…"
+        label={t.name}
+        placeholder={t.namePlaceholder}
         value={name}
         onChange={(event) => setName(event.target.value)}
       />
       <div className={styles.picker}>
         <div className={styles.pickerHead}>
-          <span className={styles.label}>Accounts · {picked.size}</span>
+          <span className={styles.label}>{t.accounts(picked.size)}</span>
           <input
             type="search"
-            aria-label="Find account"
-            placeholder="Find account"
+            aria-label={t.findAccount}
+            placeholder={t.findAccount}
             className={styles.search}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -173,8 +176,8 @@ function Form({
                 {elsewhere && (
                   <span className={styles.elsewhere}>
                     {picked.has(account.accountName)
-                      ? `moves from ${elsewhere}`
-                      : `in ${elsewhere}`}
+                      ? t.movesFrom(elsewhere)
+                      : t.inGroup(elsewhere)}
                   </span>
                 )}
               </label>
@@ -190,12 +193,12 @@ function Form({
       <div className={styles.actions}>
         {group && (
           <Button variant="danger" size="sm" onClick={() => setDeleting(true)}>
-            Delete
+            {t.delete}
           </Button>
         )}
         <span className={dialogStyles.actions}>
           <Button variant="secondary" size="sm" onClick={onClose}>
-            Cancel
+            {words.common.cancel}
           </Button>
           <Button
             type="submit"
@@ -203,7 +206,7 @@ function Form({
             busy={busy}
             disabled={busy || !name.trim()}
           >
-            {group ? 'Save' : 'Create group'}
+            {group ? words.common.save : t.createGroup}
           </Button>
         </span>
       </div>

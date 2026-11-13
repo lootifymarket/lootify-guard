@@ -3,6 +3,7 @@ import { changeAvatar, newTradeUrl, tradeUrl } from '../../../api/profile.ts'
 import { errorMessage } from '../../../api/vault.ts'
 import Avatar from '../../../components/Avatar.tsx'
 import Button from '../../../components/Button.tsx'
+import { useT } from '../../../i18n/index.ts'
 import Dialog from '../../../components/Dialog.tsx'
 import dialogStyles from '../../../components/Dialog.module.css'
 import { useCopy } from '../../../lib/useCopy.ts'
@@ -26,6 +27,7 @@ export default function ProfileTab({
   signedIn,
   onChanged,
 }: Props) {
+  const t = useT().account
   const [url, setUrl] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [confirming, setConfirming] = useState(false)
@@ -40,11 +42,7 @@ export default function ProfileTab({
   }, [accountName, signedIn])
 
   if (!signedIn) {
-    return (
-      <p className={styles.muted}>
-        Sign in to Steam on the Security tab to see the profile.
-      </p>
-    )
+    return <p className={styles.muted}>{t.profile.signInFirst}</p>
   }
 
   return (
@@ -61,11 +59,11 @@ export default function ProfileTab({
       />
       <section className={styles.section} aria-labelledby="trade-url-title">
         <h2 id="trade-url-title" className={styles.sectionTitle}>
-          Trade URL
+          {t.profile.tradeUrl}
         </h2>
         <div className={styles.tradeUrl}>
           <span className={styles.tradeUrlText} data-private>
-            {url ?? 'Loading…'}
+            {url ?? t.profile.loadingUrl}
           </span>
           <Button
             variant="secondary"
@@ -73,7 +71,7 @@ export default function ProfileTab({
             disabled={!url}
             onClick={() => url && copy('url', url)}
           >
-            {label('url', 'Copy')}
+            {label('url', t.copy)}
           </Button>
           <Button
             variant="secondary"
@@ -81,12 +79,10 @@ export default function ProfileTab({
             disabled={!url}
             onClick={() => setConfirming(true)}
           >
-            Refresh
+            {t.profile.refresh}
           </Button>
         </div>
-        <span className={styles.muted}>
-          Anyone with this link can send the account trade offers.
-        </span>
+        <span className={styles.muted}>{t.profile.tradeUrlHint}</span>
         {error && (
           <p className={styles.error} role="alert">
             {error}
@@ -94,7 +90,7 @@ export default function ProfileTab({
         )}
         <Dialog
           open={confirming}
-          title="New trade URL"
+          title={t.profile.newTradeUrl}
           onClose={() => setConfirming(false)}
         >
           <Refresh
@@ -120,6 +116,8 @@ function Refresh({
   onCancel: () => void
   onMade: (url: string) => void
 }) {
+  const words = useT()
+  const t = words.account.profile
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -136,10 +134,7 @@ function Refresh({
 
   return (
     <>
-      <p className={dialogStyles.text}>
-        The old link stops working and offers sent to it won’t arrive. Update it
-        on Lootify and with your partners.
-      </p>
+      <p className={dialogStyles.text}>{t.newTradeUrlText}</p>
       {error && (
         <p className={dialogStyles.error} role="alert">
           {error}
@@ -147,7 +142,7 @@ function Refresh({
       )}
       <div className={dialogStyles.actions}>
         <Button variant="secondary" size="sm" onClick={onCancel}>
-          Cancel
+          {words.common.cancel}
         </Button>
         <Button
           size="sm"
@@ -155,7 +150,7 @@ function Refresh({
           disabled={busy}
           onClick={() => void make()}
         >
-          Refresh
+          {t.refresh}
         </Button>
       </div>
     </>
@@ -171,6 +166,7 @@ function AvatarPicker({
   avatar: string | null
   onChanged: () => void
 }) {
+  const t = useT().account.profile
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -196,9 +192,9 @@ function AvatarPicker({
           disabled={busy}
           onClick={() => void pick()}
         >
-          {busy ? 'Uploading…' : 'Change avatar'}
+          {busy ? t.uploading : t.changeAvatar}
         </Button>
-        <span className={styles.muted}>JPG, PNG or GIF, up to 1 MB.</span>
+        <span className={styles.muted}>{t.avatarHint}</span>
         {error && (
           <span className={styles.error} role="alert">
             {error}

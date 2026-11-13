@@ -1,4 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
+import { fromBackend } from '../i18n/backend/index.ts'
+import { words } from '../i18n/index.ts'
 
 /** Steam plays at most this many at once; a status counts as one. */
 export const MAX_GAMES = 32
@@ -6,11 +8,20 @@ export const MAX_GAMES = 32
 /** How the account shows to friends while connected. */
 export type Presence = 'online' | 'away' | 'busy' | 'invisible'
 
+// Getters, so each read is in the language picked at that moment.
 export const PRESENCE_NAMES: Record<Presence, string> = {
-  online: 'Online',
-  away: 'Away',
-  busy: 'Do not disturb',
-  invisible: 'Invisible',
+  get online() {
+    return words().account.playing.presences.online
+  },
+  get away() {
+    return words().account.playing.presences.away
+  },
+  get busy() {
+    return words().account.playing.presences.busy
+  },
+  get invisible() {
+    return words().account.playing.presences.invisible
+  },
 }
 
 export type PlayingList = {
@@ -40,7 +51,14 @@ export type PlayState =
 export type Player = { accountName: string } & PlayingList & PlayState
 
 /** Every account with a game connection, playing or trying to. */
-export const playingNow = () => invoke<Player[]>('playing_now')
+export const playingNow = () =>
+  invoke<Player[]>('playing_now').then((players) =>
+    players.map((player) =>
+      player.state === 'reconnecting' || player.state === 'stopped'
+        ? { ...player, reason: fromBackend(player.reason) }
+        : player,
+    ),
+  )
 
 /** What the account plays when started, as saved with it. */
 export const playingList = (accountName: string) =>
@@ -86,4 +104,15 @@ export type Farm = { accountName: string } & (
 export const startFarming = (accountName: string) =>
   invoke<void>('start_farming', { accountName })
 
-export const farmingNow = () => invoke<Farm[]>('farming_now')
+export const farmingNow = () =>
+  invoke<Farm[]>('farming_now').then((farms) =>
+    farms.map((farm) => {
+      if (farm.state === 'stopped') {
+        return { ...farm, reason: fromBackend(farm.reason) }
+      }
+      if (farm.state === 'farming' && farm.problem) {
+        return { ...farm, problem: fromBackend(farm.problem) }
+      }
+      return farm
+    }),
+  )

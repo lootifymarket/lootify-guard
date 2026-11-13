@@ -11,6 +11,7 @@ import { errorMessage } from '../../../api/vault.ts'
 import Button from '../../../components/Button.tsx'
 import Flag from '../../../components/Flag.tsx'
 import Icon from '../../../components/Icon.tsx'
+import { useT, type Dictionary } from '../../../i18n/index.ts'
 import layout from '../layout.module.css'
 import AddProxy from './AddProxy.tsx'
 import BulkImport from './BulkImport.tsx'
@@ -29,6 +30,7 @@ const REFRESH =
 const PARALLEL_CHECKS = 8
 
 export default function Proxies() {
+  const t = useT().proxies
   const [proxies, setProxies] = useState<Proxy[] | null>(null)
   const [error, setError] = useState('')
   const [revision, setRevision] = useState(0)
@@ -85,10 +87,9 @@ export default function Proxies() {
     <>
       <div className={layout.header}>
         <div className={styles.heading}>
-          <h1 className={layout.title}>Proxies</h1>
+          <h1 className={layout.title}>{t.title}</h1>
           <span className={styles.summary}>
-            {proxies.length} {proxies.length === 1 ? 'proxy' : 'proxies'} ·{' '}
-            {assigned} {assigned === 1 ? 'account' : 'accounts'} on them
+            {t.summary(proxies.length, assigned)}
           </span>
         </div>
         <div className={styles.tools}>
@@ -99,23 +100,23 @@ export default function Proxies() {
             disabled={checking || proxies.length === 0}
             onClick={() => void checkAll()}
           >
-            {checking ? 'Checking…' : 'Check all'}
+            {checking ? t.checking : t.checkAll}
           </Button>
           <Button size="sm" onClick={() => setAdding(true)}>
-            Add
+            {t.add}
           </Button>
         </div>
       </div>
 
       <div className={styles.body}>
-        <section className={styles.table} aria-label="Proxy list">
+        <section className={styles.table} aria-label={t.list}>
           <div className={`${styles.row} ${styles.head}`}>
-            <span>Proxy</span>
-            <span>Type</span>
-            <span>Country</span>
-            <span>Ping</span>
-            <span>Accounts</span>
-            <span>Status</span>
+            <span>{t.columns.proxy}</span>
+            <span>{t.columns.type}</span>
+            <span>{t.columns.country}</span>
+            <span>{t.columns.ping}</span>
+            <span>{t.columns.accounts}</span>
+            <span>{t.columns.status}</span>
           </div>
           {proxies.map((proxy) => {
             const last = checks[proxy.id]
@@ -146,15 +147,15 @@ export default function Proxies() {
                     '—'
                   )}
                 </span>
-                <span className={styles.mono}>{ping(last)}</span>
+                <span className={styles.mono}>{ping(t, last)}</span>
                 <span className={styles.mono}>{proxy.accounts.length}</span>
                 <span className={styles.statusCell}>
                   <Status check={last} />
                   <button
                     type="button"
                     className={styles.refresh}
-                    aria-label={`Check ${proxyTitle(proxy)}`}
-                    title="Check"
+                    aria-label={t.checkOne(proxyTitle(proxy))}
+                    title={t.check}
                     disabled={last?.state === 'checking'}
                     onClick={() => void check(proxy.id)}
                   >
@@ -164,11 +165,7 @@ export default function Proxies() {
               </div>
             )
           })}
-          {proxies.length === 0 && (
-            <p className={layout.note}>
-              No proxies yet. Add one, or paste a list on the right.
-            </p>
-          )}
+          {proxies.length === 0 && <p className={layout.note}>{t.empty}</p>}
         </section>
         <BulkImport onImported={reload} />
       </div>
@@ -195,19 +192,20 @@ export default function Proxies() {
   )
 }
 
-function ping(check: Check | undefined) {
-  return check?.state === 'ok' ? `${check.pingMs} ms` : '—'
+function ping(t: Dictionary['proxies'], check: Check | undefined) {
+  return check?.state === 'ok' ? t.ms(check.pingMs) : '—'
 }
 
 function Status({ check }: { check: Check | undefined }) {
+  const t = useT().proxies
   const [tone, text] =
     check === undefined
-      ? ['idle', 'Not checked']
+      ? ['idle', t.notChecked]
       : check.state === 'checking'
-        ? ['idle', 'Checking…']
+        ? ['idle', t.checking]
         : check.state === 'ok'
-          ? ['ok', 'Working']
-          : ['failed', 'Not responding']
+          ? ['ok', t.working]
+          : ['failed', t.notResponding]
   return (
     <span
       className={styles.status}

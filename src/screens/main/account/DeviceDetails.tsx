@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { DEVICE_KIND_NAMES, type Device } from '../../../api/security.ts'
+import { useT } from '../../../i18n/index.ts'
 import { ago } from '../../../lib/ago.ts'
 import styles from './AccountPage.module.css'
 
@@ -11,6 +12,7 @@ type Props = {
 
 /** What a device is, where it was and when, for a row in a list of them. */
 export default function DeviceDetails({ device, children }: Props) {
+  const t = useT().account.device
   const kind = DEVICE_KIND_NAMES[device.kind]
   const steamName = device.name || kind
   return (
@@ -18,7 +20,7 @@ export default function DeviceDetails({ device, children }: Props) {
       <span className={styles.deviceWords}>
         <span>
           {device.label ?? steamName}
-          {device.thisApp && <span className={styles.muted}> · this app</span>}
+          {device.thisApp && <span className={styles.muted}>{t.thisApp}</span>}
         </span>
         <span className={styles.muted}>
           {[device.label && steamName, kind, device.place]

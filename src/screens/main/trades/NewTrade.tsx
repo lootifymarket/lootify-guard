@@ -13,6 +13,7 @@ import Dialog from '../../../components/Dialog.tsx'
 import dialogStyles from '../../../components/Dialog.module.css'
 import Dropdown from '../../../components/Dropdown.tsx'
 import TextField from '../../../components/TextField.tsx'
+import { useT } from '../../../i18n/index.ts'
 import ItemCard from '../items/ItemCard.tsx'
 import styles from './Trades.module.css'
 
@@ -29,8 +30,9 @@ type Props = {
 }
 
 export default function NewTrade({ open, accounts, onClose, onSent }: Props) {
+  const t = useT().trades.send
   return (
-    <Dialog open={open} title="New trade" wide onClose={onClose}>
+    <Dialog open={open} title={t.title} wide onClose={onClose}>
       <Form accounts={accounts} onCancel={onClose} onSent={onSent} />
     </Dialog>
   )
@@ -45,6 +47,8 @@ function Form({
   onCancel: () => void
   onSent: (note: string) => void
 }) {
+  const words = useT()
+  const t = words.trades.send
   const signedIn = accounts.filter((account) => account.signedIn)
   const [from, setFrom] = useState(signedIn[0]?.accountName ?? '')
   const [game, setGame] = useState<Game>('cs2')
@@ -105,11 +109,7 @@ function Form({
     setError('')
     try {
       const sent = await sendTradeOffer(from, tradeUrl, chosen, message)
-      onSent(
-        sent.accepted === 'needsEmail'
-          ? 'Offer sent. Steam emailed a link to confirm it.'
-          : 'Offer sent and confirmed.',
-      )
+      onSent(sent.accepted === 'needsEmail' ? t.sentEmail : t.sentConfirmed)
     } catch (err) {
       setError(errorMessage(err))
       setBusy(false)
@@ -119,12 +119,10 @@ function Form({
   if (signedIn.length === 0) {
     return (
       <>
-        <p className={dialogStyles.text}>
-          No account is signed in to Steam. Sign one in on its page first.
-        </p>
+        <p className={dialogStyles.text}>{t.noAccount}</p>
         <div className={dialogStyles.actions}>
           <Button size="sm" onClick={onCancel}>
-            Close
+            {t.close}
           </Button>
         </div>
       </>
@@ -135,7 +133,7 @@ function Form({
     <form className={styles.newTrade} onSubmit={(event) => void send(event)}>
       <div className={styles.newTradeGrid}>
         <Dropdown
-          label="From account"
+          label={t.from}
           value={from}
           options={signedIn.map((account) => ({
             value: account.accountName,
@@ -145,14 +143,14 @@ function Form({
           onChange={(value) => choose({ from: value })}
         />
         <Dropdown
-          label="Game"
+          label={t.game}
           value={game}
           options={GAME_OPTIONS}
           onChange={(value) => choose({ game: value as Game })}
         />
       </div>
       <TextField
-        label="Recipient’s trade URL"
+        label={t.tradeUrl}
         placeholder="https://steamcommunity.com/tradeoffer/new/?partner=…&token=…"
         autoCapitalize="off"
         spellCheck={false}
@@ -163,7 +161,7 @@ function Form({
         <div className={styles.pickerHead}>
           <span className={styles.pickerTools}>
             <span className={styles.itemListLabel}>
-              Items · {chosen.length} selected
+              {t.selected(chosen.length)}
             </span>
             {shown.length > 0 && (
               <button
@@ -179,7 +177,7 @@ function Form({
                   )
                 }
               >
-                Select all
+                {t.selectAll}
               </button>
             )}
             {chosen.length > 0 && (
@@ -188,14 +186,14 @@ function Form({
                 className={styles.check}
                 onClick={() => setPicked(new Set())}
               >
-                Clear selection
+                {t.clearSelection}
               </button>
             )}
           </span>
           <input
             type="search"
-            aria-label="Find item"
-            placeholder="Find item"
+            aria-label={t.findItem}
+            placeholder={t.findItem}
             className={styles.pickerSearch}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -215,18 +213,16 @@ function Form({
                   setAttempt((n) => n + 1)
                 }}
               >
-                Try again
+                {t.tryAgain}
               </button>
             </div>
           )}
           {!inventory && !loadError && (
-            <p className={styles.pickerNote}>Loading the inventory…</p>
+            <p className={styles.pickerNote}>{t.loadingInventory}</p>
           )}
           {inventory && shown.length === 0 && (
             <p className={styles.pickerNote}>
-              {items.length === 0
-                ? 'Nothing here can be traded now.'
-                : 'No item matches.'}
+              {items.length === 0 ? t.nothingTradable : t.noMatch}
             </p>
           )}
           {shown.length > 0 && (
@@ -243,21 +239,15 @@ function Form({
             </div>
           )}
         </div>
-        {held > 0 && (
-          <span className={styles.pickerNote}>
-            {held} more {held === 1 ? 'item' : 'items'} can’t be traded now.
-          </span>
-        )}
+        {held > 0 && <span className={styles.pickerNote}>{t.held(held)}</span>}
       </div>
       <TextField
-        label="Message"
-        placeholder="Optional"
+        label={t.message}
+        placeholder={t.optional}
         value={message}
         onChange={(event) => setMessage(event.target.value)}
       />
-      <p className={dialogStyles.text}>
-        Nothing is asked back. Guard confirms the offer as soon as it’s sent.
-      </p>
+      <p className={dialogStyles.text}>{t.nothingAsked}</p>
       {error && (
         <p className={dialogStyles.error} role="alert">
           {error}
@@ -265,7 +255,7 @@ function Form({
       )}
       <div className={dialogStyles.actions}>
         <Button variant="secondary" size="sm" onClick={onCancel}>
-          Cancel
+          {words.common.cancel}
         </Button>
         <Button
           type="submit"
@@ -273,9 +263,7 @@ function Form({
           busy={busy}
           disabled={busy || chosen.length === 0 || !tradeUrl.trim()}
         >
-          {busy
-            ? 'Sending…'
-            : `Send ${chosen.length} ${chosen.length === 1 ? 'item' : 'items'}`}
+          {busy ? t.sending : t.sendItems(chosen.length)}
         </Button>
       </div>
     </form>

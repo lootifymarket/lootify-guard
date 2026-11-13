@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { fromBackend } from '../i18n/backend/index.ts'
 import type { Game } from './inventory.ts'
 import type { Visibility } from './profile.ts'
 
@@ -65,7 +66,22 @@ export const startTask = (request: {
 }) => invoke<number>('start_task', { request })
 
 /** Newest first. */
-export const taskQueue = () => invoke<Job[]>('task_queue')
+export const taskQueue = () =>
+  invoke<Job[]>('task_queue').then((jobs) =>
+    jobs.map((job) => ({ ...job, runs: job.runs.map(translateRun) })),
+  )
+
+function translateRun(run: Run): Run {
+  switch (run.state) {
+    case 'done':
+    case 'warning':
+      return { ...run, note: fromBackend(run.note) }
+    case 'failed':
+      return { ...run, reason: fromBackend(run.reason) }
+    default:
+      return run
+  }
+}
 
 /** Accounts already running finish; the rest are skipped. */
 export const cancelTask = (id: number) => invoke<void>('cancel_task', { id })

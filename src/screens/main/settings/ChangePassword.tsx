@@ -8,6 +8,7 @@ import Button from '../../../components/Button.tsx'
 import Dialog from '../../../components/Dialog.tsx'
 import dialogStyles from '../../../components/Dialog.module.css'
 import TextField from '../../../components/TextField.tsx'
+import { useT } from '../../../i18n/index.ts'
 import { checkPassword } from '../../../lib/passwordStrength.ts'
 import styles from './Settings.module.css'
 
@@ -20,18 +21,17 @@ type Props = {
 }
 
 export default function ChangePassword(props: Props) {
+  const t = useT().changePassword
   return (
-    <Dialog
-      open={props.open}
-      title="Change master password"
-      onClose={props.onClose}
-    >
+    <Dialog open={props.open} title={t.title} onClose={props.onClose}>
       {props.open && <Form {...props} />}
     </Dialog>
   )
 }
 
 function Form({ biometricName, onClose, onChanged }: Props) {
+  const words = useT()
+  const t = words.changePassword
   const [current, setCurrent] = useState('')
   const [password, setPassword] = useState('')
   const [repeat, setRepeat] = useState('')
@@ -52,11 +52,7 @@ function Form({ biometricName, onClose, onChanged }: Props) {
       await changeMasterPassword(current, password)
       onChanged()
     } catch (err) {
-      setError(
-        isWrongPassword(err)
-          ? 'The current password is wrong'
-          : errorMessage(err),
-      )
+      setError(isWrongPassword(err) ? t.wrongCurrent : errorMessage(err))
       setBusy(false)
     }
   }
@@ -65,7 +61,7 @@ function Form({ biometricName, onClose, onChanged }: Props) {
     <form className={styles.form} onSubmit={save}>
       <TextField
         type="password"
-        label="Current password"
+        label={t.current}
         autoComplete="current-password"
         autoFocus
         value={current}
@@ -73,14 +69,14 @@ function Form({ biometricName, onClose, onChanged }: Props) {
       />
       <TextField
         type="password"
-        label="New password"
+        label={t.new}
         autoComplete="new-password"
         value={password}
         onChange={(event) => setPassword(event.target.value)}
       />
       <TextField
         type="password"
-        label="Repeat new password"
+        label={t.repeat}
         autoComplete="new-password"
         value={repeat}
         invalid={mismatch}
@@ -91,12 +87,12 @@ function Form({ biometricName, onClose, onChanged }: Props) {
         data-tone={mismatch || (password && !strong) ? 'danger' : undefined}
       >
         {mismatch
-          ? 'Passwords don’t match'
+          ? t.mismatch
           : password && !strong
-            ? 'Weak: use 12+ characters, mixed case and a number or symbol'
+            ? t.weak
             : biometricName
-              ? `The vault is re-encrypted, and ${biometricName} moves to the new password.`
-              : 'The vault is re-encrypted with the new password.'}
+              ? t.movesBiometric(biometricName)
+              : t.reencrypted}
       </p>
       {error && (
         <p className={dialogStyles.error} role="alert">
@@ -105,10 +101,10 @@ function Form({ biometricName, onClose, onChanged }: Props) {
       )}
       <div className={dialogStyles.actions}>
         <Button variant="secondary" size="sm" onClick={onClose}>
-          Cancel
+          {words.common.cancel}
         </Button>
         <Button type="submit" size="sm" busy={busy} disabled={!canSave}>
-          {busy ? 'Re-encrypting…' : 'Save'}
+          {busy ? t.reencrypting : words.common.save}
         </Button>
       </div>
     </form>

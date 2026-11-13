@@ -6,6 +6,7 @@ import {
 } from '../../../api/security.ts'
 import { errorMessage } from '../../../api/vault.ts'
 import Button from '../../../components/Button.tsx'
+import { useT } from '../../../i18n/index.ts'
 import TextField from '../../../components/TextField.tsx'
 import DeviceDetails from './DeviceDetails.tsx'
 import styles from './AccountPage.module.css'
@@ -19,6 +20,8 @@ type Props = {
 
 /** A signed-in device with ways to name it here or sign it out of the account. */
 export default function DeviceRow({ accountName, device, onChanged }: Props) {
+  const words = useT()
+  const t = words.account.device
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
@@ -49,22 +52,22 @@ export default function DeviceRow({ accountName, device, onChanged }: Props) {
       {editing ? (
         <form className={styles.rename} onSubmit={save}>
           <TextField
-            label={`Name for ${device.name || 'this device'}`}
+            label={t.nameFor(device.name || null)}
             hideLabel
             autoFocus
-            placeholder={device.name || 'Name'}
+            placeholder={device.name || t.name}
             value={name}
             onChange={(event) => setName(event.target.value)}
           />
           <Button type="submit" size="sm" busy={busy} disabled={busy}>
-            Save
+            {words.common.save}
           </Button>
           <Button
             variant="secondary"
             size="sm"
             onClick={() => setEditing(false)}
           >
-            Cancel
+            {words.common.cancel}
           </Button>
         </form>
       ) : (
@@ -77,7 +80,7 @@ export default function DeviceRow({ accountName, device, onChanged }: Props) {
               setEditing(true)
             }}
           >
-            Rename
+            {t.rename}
           </button>
           {!device.thisApp && (
             <button
@@ -88,7 +91,7 @@ export default function DeviceRow({ accountName, device, onChanged }: Props) {
                 void run(() => signOutDevice(accountName, device.id))
               }
             >
-              {busy ? 'Signing out…' : 'Sign out'}
+              {busy ? t.signingOut : t.signOut}
             </button>
           )}
         </DeviceDetails>

@@ -5,6 +5,7 @@ import {
   type BiometricStatus,
 } from '../../api/vault.ts'
 import Lockup from '../../components/Lockup.tsx'
+import { useT } from '../../i18n/index.ts'
 import RecoverPassword from './RecoverPassword.tsx'
 import ResetVault from './ResetVault.tsx'
 import UnlockForm from './UnlockForm.tsx'
@@ -16,6 +17,7 @@ type Props = {
 }
 
 export default function Unlock({ onUnlocked, onErased }: Props) {
+  const t = useT().unlock
   const [view, setView] = useState<'unlock' | 'recover' | 'reset'>('unlock')
   const [biometric, setBiometric] = useState<BiometricStatus | null>(null)
 
@@ -55,9 +57,7 @@ export default function Unlock({ onUnlocked, onErased }: Props) {
             onBack={() => setView('unlock')}
           />
         )}
-        <p className={styles.footnote}>
-          Your data is encrypted and stored only on this device.
-        </p>
+        <p className={styles.footnote}>{t.footnote}</p>
       </div>
     </div>
   )

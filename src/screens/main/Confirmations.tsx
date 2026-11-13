@@ -1,7 +1,7 @@
 import { useEffect, useEffectEvent, useState } from 'react'
 import type { Account } from '../../api/accounts.ts'
 import {
-  CONFIRMATION_KIND_NAMES,
+  confirmationKindName,
   listConfirmations,
   respondToConfirmations,
   type Confirmation,
@@ -12,6 +12,7 @@ import Button from '../../components/Button.tsx'
 import Dialog from '../../components/Dialog.tsx'
 import dialogStyles from '../../components/Dialog.module.css'
 import Icon from '../../components/Icon.tsx'
+import { useT } from '../../i18n/index.ts'
 import { fromAccounts, type AccountFailure } from './fromAccounts.ts'
 import styles from './Confirmations.module.css'
 
@@ -33,6 +34,8 @@ export default function Confirmations({
   reloadKey,
   onChanged,
 }: Props) {
+  const words = useT()
+  const t = words.guard.confirmations
   const signedIn = accounts
     .filter((account) => account.signedIn)
     .map((account) => account.accountName)
@@ -94,14 +97,15 @@ export default function Confirmations({
     <section className={styles.panel} aria-labelledby="confirmations-title">
       <div className={styles.head}>
         <h2 id="confirmations-title" className={styles.title}>
-          Confirmations{items ? ` · ${items.length}` : ''}
+          {t.title}
+          {items ? ` · ${items.length}` : ''}
         </h2>
         <div className={styles.tools}>
           <button
             type="button"
             className={styles.iconButton}
-            aria-label="Refresh confirmations"
-            title="Refresh"
+            aria-label={t.refresh}
+            title={words.guard.refresh}
             disabled={loading}
             onClick={() => {
               setItems(null)
@@ -115,19 +119,15 @@ export default function Confirmations({
             disabled={!items?.length || busy.size > 0}
             onClick={() => setConfirmingAll(true)}
           >
-            Confirm all
+            {t.confirmAll}
           </Button>
         </div>
       </div>
 
-      {signedIn.length === 0 && (
-        <p className={styles.note}>
-          Sign in to an account on its page to see its confirmations here.
-        </p>
-      )}
-      {loading && <p className={styles.note}>Loading…</p>}
+      {signedIn.length === 0 && <p className={styles.note}>{t.signInFirst}</p>}
+      {loading && <p className={styles.note}>{words.guard.loading}</p>}
       {items?.length === 0 && failures.length === 0 && (
-        <p className={styles.note}>Nothing to confirm.</p>
+        <p className={styles.note}>{t.nothing}</p>
       )}
 
       {failures.map((failure) => (
@@ -149,7 +149,7 @@ export default function Confirmations({
               )}
             </span>
             <span className={styles.meta}>
-              {item.accountName} · {CONFIRMATION_KIND_NAMES[item.kind]} ·{' '}
+              {item.accountName} · {confirmationKindName(item.kind)} ·{' '}
               {ago(item.createdAt)}
             </span>
           </div>
@@ -165,7 +165,7 @@ export default function Confirmations({
               disabled={busy.has(item.id)}
               onClick={() => void respond([item], true)}
             >
-              Confirm
+              {t.confirm}
             </button>
             <button
               type="button"
@@ -173,7 +173,7 @@ export default function Confirmations({
               disabled={busy.has(item.id)}
               onClick={() => void respond([item], false)}
             >
-              Decline
+              {t.decline}
             </button>
           </div>
         </div>
@@ -181,16 +181,14 @@ export default function Confirmations({
 
       <Dialog
         open={confirmingAll}
-        title="Confirm everything?"
+        title={t.confirmAllTitle}
         onClose={() => setConfirmingAll(false)}
       >
         <p className={dialogStyles.text}>
-          {count(items?.length ?? 0, 'operation')} on{' '}
-          {count(
+          {t.confirmAllText(
+            items?.length ?? 0,
             new Set(items?.map((item) => item.accountName)).size,
-            'account',
-          )}{' '}
-          will be confirmed. Review them first if you’re not sure what they are.
+          )}
         </p>
         <div className={dialogStyles.actions}>
           <Button
@@ -198,7 +196,7 @@ export default function Confirmations({
             size="sm"
             onClick={() => setConfirmingAll(false)}
           >
-            Cancel
+            {words.common.cancel}
           </Button>
           <Button
             size="sm"
@@ -207,14 +205,10 @@ export default function Confirmations({
               void respond(items ?? [], true)
             }}
           >
-            Confirm all
+            {t.confirmAll}
           </Button>
         </div>
       </Dialog>
     </section>
   )
-}
-
-function count(n: number, noun: string) {
-  return `${n} ${noun}${n === 1 ? '' : 's'}`
 }

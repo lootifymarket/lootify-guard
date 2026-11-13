@@ -2,7 +2,7 @@ import { useEffect, useEffectEvent, useState } from 'react'
 import {
   isOpen,
   listTradeOffers,
-  OFFER_STATE_NAMES,
+  offerStateName,
   warningText,
   type Item,
   type Known,
@@ -12,6 +12,7 @@ import {
 import type { Account } from '../../../api/accounts.ts'
 import { errorMessage } from '../../../api/vault.ts'
 import Button from '../../../components/Button.tsx'
+import { useT, type Dictionary } from '../../../i18n/index.ts'
 import { ago } from '../../../lib/ago.ts'
 import layout from '../layout.module.css'
 import NewTrade from './NewTrade.tsx'
@@ -22,11 +23,7 @@ import styles from './Trades.module.css'
 
 type Tab = 'incoming' | 'outgoing' | 'history'
 
-const TABS: { id: Tab; label: string; empty: string }[] = [
-  { id: 'incoming', label: 'Incoming', empty: 'No offers waiting for you.' },
-  { id: 'outgoing', label: 'Outgoing', empty: 'No offers waiting on others.' },
-  { id: 'history', label: 'History', empty: 'No offers finished this week.' },
-]
+const TABS: Tab[] = ['incoming', 'outgoing', 'history']
 
 const tabOf = (offer: TradeOffer): Tab =>
   !isOpen(offer.state) ? 'history' : offer.sent ? 'outgoing' : 'incoming'
@@ -39,6 +36,7 @@ type Props = {
 
 /** Trade offers of every signed-in account in one list. */
 export default function Trades({ accounts, onChanged }: Props) {
+  const t = useT().trades
   const [tab, setTab] = useState<Tab>('incoming')
   const [creating, setCreating] = useState(false)
   const [sentNote, setSentNote] = useState('')
@@ -78,10 +76,8 @@ export default function Trades({ accounts, onChanged }: Props) {
     <>
       <div className={layout.header}>
         <div className={styles.heading}>
-          <h1 className={layout.title}>Trades</h1>
-          <span className={styles.subtitle}>
-            Trade offers from all your accounts in one list
-          </span>
+          <h1 className={layout.title}>{t.title}</h1>
+          <span className={styles.subtitle}>{t.subtitle}</span>
         </div>
         <div className={styles.tools}>
           <Button
@@ -91,26 +87,26 @@ export default function Trades({ accounts, onChanged }: Props) {
             disabled={loading}
             onClick={load}
           >
-            {loading ? 'Loading…' : 'Reload'}
+            {loading ? t.loading : t.reload}
           </Button>
           <Button size="sm" onClick={() => setCreating(true)}>
-            New trade
+            {t.newTrade}
           </Button>
         </div>
       </div>
 
-      <div role="tablist" aria-label="Offers" className={styles.tabs}>
-        {TABS.map((item) => (
+      <div role="tablist" aria-label={t.offersLabel} className={styles.tabs}>
+        {TABS.map((id) => (
           <button
-            key={item.id}
+            key={id}
             type="button"
             role="tab"
-            aria-selected={tab === item.id}
+            aria-selected={tab === id}
             className={styles.tab}
-            onClick={() => setTab(item.id)}
+            onClick={() => setTab(id)}
           >
-            {item.label}
-            {trades && <span className={styles.count}>{count(item.id)}</span>}
+            {t.tabs[id]}
+            {trades && <span className={styles.count}>{count(id)}</span>}
           </button>
         ))}
       </div>
@@ -147,9 +143,9 @@ export default function Trades({ accounts, onChanged }: Props) {
         {trades && shown.length > 0 && (
           <div className={styles.table}>
             <div className={styles.head} aria-hidden="true">
-              <span>From → to</span>
-              <span>You give</span>
-              <span>You get</span>
+              <span>{t.columns.parties}</span>
+              <span>{t.columns.give}</span>
+              <span>{t.columns.get}</span>
             </div>
             {shown.map((offer) => (
               <OfferRow
@@ -163,15 +159,12 @@ export default function Trades({ accounts, onChanged }: Props) {
           </div>
         )}
         {trades && shown.length === 0 && (
-          <p className={layout.note}>
-            {TABS.find((item) => item.id === tab)?.empty}
-          </p>
+          <p className={layout.note}>{t.empty[tab]}</p>
         )}
-        {!trades && !error && <p className={layout.note}>Asking Steam…</p>}
+        {!trades && !error && <p className={layout.note}>{t.askingSteam}</p>}
         {trades && trades.signedOut.length > 0 && (
           <p className={styles.footnote}>
-            Not shown, as they aren’t signed in to Steam:{' '}
-            {trades.signedOut.join(', ')}
+            {t.notShown(trades.signedOut.join(', '))}
           </p>
         )}
       </div>
@@ -190,11 +183,14 @@ function OfferRow({
   pastTrades: number
   onDone: () => void
 }) {
+  const t = useT().trades
   const result = usePartnerCheck(offer, known)
   const [checking, setChecking] = useState(false)
   const warnings = result && 'check' in result ? result.check.warnings : []
   const partner =
-    offer.partnerAccount ?? offer.partnerName ?? `Steam ID ${offer.partnerId}`
+    offer.partnerAccount ??
+    offer.partnerName ??
+    t.partnerSteamId(offer.partnerId)
   const [from, to] = offer.sent
     ? [offer.accountName, partner]
     : [partner, offer.accountName]
@@ -206,7 +202,7 @@ function OfferRow({
         </span>
         <span className={styles.meta}>
           {ago(offer.createdAt)}
-          {offer.partnerAccount && ' · between your accounts'}
+          {offer.partnerAccount && t.betweenYourAccounts}
         </span>
       </span>
       <Items items={offer.give} />
@@ -218,14 +214,14 @@ function OfferRow({
           </span>
         )}
         {offer.message && <q className={styles.message}>{offer.message}</q>}
-        <span>{status(offer)}</span>
+        <span>{status(t, offer)}</span>
         {result && (
           <button
             type="button"
             className={styles.check}
             onClick={() => setChecking(true)}
           >
-            Check sender
+            {t.checkSender}
           </button>
         )}
         <PartnerDialog
@@ -273,7 +269,10 @@ function pastTrades(offers: TradeOffer[], partnerId: string) {
 }
 
 function Items({ items }: { items: Item[] }) {
-  if (items.length === 0) return <span className={styles.nothing}>Nothing</span>
+  const t = useT().trades
+  if (items.length === 0) {
+    return <span className={styles.nothing}>{t.nothing}</span>
+  }
   const [first, ...rest] = items
   return (
     <span
@@ -292,28 +291,26 @@ function Items({ items }: { items: Item[] }) {
         {first.amount > 1 && ` × ${first.amount}`}
       </span>
       {rest.length > 0 && (
-        <span className={styles.more}>
-          and {rest.length} more {rest.length === 1 ? 'item' : 'items'}
-        </span>
+        <span className={styles.more}>{t.moreItems(rest.length)}</span>
       )}
     </span>
   )
 }
 
-function status(offer: TradeOffer) {
+function status(t: Dictionary['trades'], offer: TradeOffer) {
   if (offer.state === 'active') {
-    return `${offer.sent ? 'Waiting · ' : ''}expires in ${left(offer.expiresAt)}`
+    return t.expiresIn(left(t, offer.expiresAt), offer.sent)
   }
   if (offer.state === 'onHold' && offer.heldUntil) {
-    return `Accepted, items arrive in ${left(offer.heldUntil)}`
+    return t.arriveIn(left(t, offer.heldUntil))
   }
-  return OFFER_STATE_NAMES[offer.state]
+  return offerStateName(offer.state)
 }
 
-function left(unixSeconds: number) {
+function left(t: Dictionary['trades'], unixSeconds: number) {
   const hours = Math.max(
     0,
     Math.round((unixSeconds - Date.now() / 1000) / 3600),
   )
-  return hours < 48 ? `${hours} h` : `${Math.round(hours / 24)} days`
+  return hours < 48 ? t.hours(hours) : t.days(Math.round(hours / 24))
 }

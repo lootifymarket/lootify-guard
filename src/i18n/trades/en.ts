@@ -1,0 +1,114 @@
+const items = (n: number) => (n === 1 ? 'item' : 'items')
+
+export const trades = {
+  title: 'Trades',
+  subtitle: 'Trade offers from all your accounts in one list',
+  loading: 'Loading…',
+  reload: 'Reload',
+  newTrade: 'New trade',
+  offersLabel: 'Offers',
+  tabs: {
+    incoming: 'Incoming',
+    outgoing: 'Outgoing',
+    history: 'History',
+  },
+  empty: {
+    incoming: 'No offers waiting for you.',
+    outgoing: 'No offers waiting on others.',
+    history: 'No offers finished this week.',
+  },
+  columns: {
+    parties: 'From → to',
+    give: 'You give',
+    get: 'You get',
+  },
+  askingSteam: 'Asking Steam…',
+  notShown: (names: string) =>
+    `Not shown, as they aren’t signed in to Steam: ${names}`,
+  partnerSteamId: (id: string) => `Steam ID ${id}`,
+  betweenYourAccounts: ' · between your accounts',
+  checkSender: 'Check sender',
+  nothing: 'Nothing',
+  moreItems: (n: number) => `and ${n} more ${items(n)}`,
+  expiresIn: (left: string, waiting: boolean) =>
+    `${waiting ? 'Waiting · ' : ''}expires in ${left}`,
+  arriveIn: (left: string) => `Accepted, items arrive in ${left}`,
+  hours: (n: number) => `${n} h`,
+  days: (n: number) => `${n} days`,
+  states: {
+    active: 'Waiting',
+    needsConfirmation: 'Waiting for confirmation in Guard',
+    accepted: 'Accepted',
+    onHold: 'Accepted, items on hold',
+    countered: 'Countered',
+    expired: 'Expired',
+    canceled: 'Canceled',
+    declined: 'Declined',
+    invalidItems: 'Items are gone',
+    invalid: 'Invalid',
+  },
+  warnings: {
+    newAccount: (days: number) =>
+      `Account is ${days} ${days === 1 ? 'day' : 'days'} old`,
+    noLevel: 'Steam level 0',
+    vacBanned: 'VAC banned',
+    tradeBanned: 'Trade banned',
+    tradeProbation: 'On trade probation',
+    privateProfile: 'Private profile',
+    copiesName: (of: string) => `Copies the name of ${of}`,
+  },
+
+  actions: {
+    emailSent: 'Steam sent an email to confirm the trade.',
+    decline: 'Decline',
+    accept: 'Accept',
+    confirm: 'Confirm',
+    cancel: 'Cancel',
+    confirmTitle: 'Accept the trade?',
+    risky: (warnings: string) => `The sender looks risky. ${warnings}`,
+    itemsLeave: (account: string) =>
+      `Guard confirms it right away, and the items leave ${account}.`,
+  },
+
+  partner: {
+    title: 'Trade partner',
+    copiesName: (of: string) =>
+      `This account copies the name of ${of}, someone you trade with, from a different Steam account. That’s how trade swap scams work: don’t send it anything.`,
+    accountAge: 'Account age',
+    hidden: 'Hidden',
+    days: (n: number) => `${n} ${n === 1 ? 'day' : 'days'}`,
+    level: 'Steam level',
+    unknown: 'Unknown',
+    tradesThisWeek: 'Trades with you this week',
+    none: 'None',
+    steamId: 'Steam ID',
+    close: 'Close',
+  },
+
+  send: {
+    title: 'New trade',
+    sentEmail: 'Offer sent. Steam emailed a link to confirm it.',
+    sentConfirmed: 'Offer sent and confirmed.',
+    noAccount:
+      'No account is signed in to Steam. Sign one in on its page first.',
+    close: 'Close',
+    from: 'From account',
+    game: 'Game',
+    tradeUrl: 'Recipient’s trade URL',
+    selected: (n: number) => `Items · ${n} selected`,
+    selectAll: 'Select all',
+    clearSelection: 'Clear selection',
+    findItem: 'Find item',
+    tryAgain: 'Try again',
+    loadingInventory: 'Loading the inventory…',
+    nothingTradable: 'Nothing here can be traded now.',
+    noMatch: 'No item matches.',
+    held: (n: number) => `${n} more ${items(n)} can’t be traded now.`,
+    message: 'Message',
+    optional: 'Optional',
+    nothingAsked:
+      'Nothing is asked back. Guard confirms the offer as soon as it’s sent.',
+    sending: 'Sending…',
+    sendItems: (n: number) => `Send ${n} ${items(n)}`,
+  },
+}

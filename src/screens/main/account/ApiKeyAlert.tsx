@@ -6,6 +6,7 @@ import {
 } from '../../../api/security.ts'
 import { errorMessage } from '../../../api/vault.ts'
 import Button from '../../../components/Button.tsx'
+import { useT } from '../../../i18n/index.ts'
 import Dialog from '../../../components/Dialog.tsx'
 import dialogStyles from '../../../components/Dialog.module.css'
 import styles from './AccountPage.module.css'
@@ -19,6 +20,7 @@ type Props = {
 
 /** The warning about a Web API key on the account, with its two ways out. */
 export default function ApiKeyAlert({ accountName, apiKey, onChanged }: Props) {
+  const t = useT().account.apiKey
   const [revoking, setRevoking] = useState(false)
   const [trusting, setTrusting] = useState(false)
   const [error, setError] = useState('')
@@ -39,13 +41,8 @@ export default function ApiKeyAlert({ accountName, apiKey, onChanged }: Props) {
     <>
       <div className={styles.alert} role="alert">
         <div className={styles.alertWords}>
-          <span className={styles.alertTitle}>
-            A Web API key was found on this account
-          </span>
-          <span className={styles.alertText}>
-            Domain {apiKey.domain}. If it wasn’t you, revoke it, or your trades
-            can be hijacked.
-          </span>
+          <span className={styles.alertTitle}>{t.found}</span>
+          <span className={styles.alertText}>{t.domain(apiKey.domain)}</span>
           {error && <span className={styles.error}>{error}</span>}
         </div>
         <div className={styles.alertActions}>
@@ -56,16 +53,16 @@ export default function ApiKeyAlert({ accountName, apiKey, onChanged }: Props) {
             disabled={trusting}
             onClick={() => void trust()}
           >
-            It’s mine
+            {t.mine}
           </Button>
           <Button size="sm" onClick={() => setRevoking(true)}>
-            Revoke
+            {t.revoke}
           </Button>
         </div>
       </div>
       <Dialog
         open={revoking}
-        title="Revoke the API key?"
+        title={t.revokeTitle}
         onClose={() => setRevoking(false)}
       >
         <Revoke
@@ -93,6 +90,8 @@ function Revoke({
   onCancel: () => void
   onRevoked: () => void
 }) {
+  const words = useT()
+  const t = words.account.apiKey
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -111,11 +110,7 @@ function Revoke({
 
   return (
     <>
-      <p className={dialogStyles.text}>
-        The {domain} key will be deleted and every deal through it stops
-        working. If you didn’t make it, change the Steam password right away:
-        whoever made it was in the account.
-      </p>
+      <p className={dialogStyles.text}>{t.revokeText(domain)}</p>
       {error && (
         <p className={dialogStyles.error} role="alert">
           {error}
@@ -123,7 +118,7 @@ function Revoke({
       )}
       <div className={dialogStyles.actions}>
         <Button variant="secondary" size="sm" onClick={onCancel}>
-          Cancel
+          {words.common.cancel}
         </Button>
         <Button
           size="sm"
@@ -131,7 +126,7 @@ function Revoke({
           disabled={busy}
           onClick={() => void revoke()}
         >
-          {busy ? 'Revoking…' : 'Revoke'}
+          {busy ? t.revoking : t.revoke}
         </Button>
       </div>
     </>

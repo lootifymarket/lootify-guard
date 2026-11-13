@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { fromBackend } from '../i18n/backend/index.ts'
 
 export type Game = 'cs2' | 'dota2'
 
@@ -67,7 +68,13 @@ export const moveItems = (
         amount,
       })),
     })),
-  })
+  }).then((reports) =>
+    reports.map((report) =>
+      report.outcome === 'done'
+        ? report
+        : { ...report, reason: fromBackend(report.reason) },
+    ),
+  )
 
 export type Price = {
   /** As the buyer pays, in hundredths of the wallet currency. */
@@ -121,7 +128,13 @@ export const listOnMarket = (
         price,
       })),
     })),
-  })
+  }).then((reports) =>
+    reports.map((report) =>
+      report.outcome === 'failed'
+        ? { ...report, reason: fromBackend(report.reason) }
+        : report,
+    ),
+  )
 
 // Steam's cut and the game's, as in `market.rs`; only for showing an estimate.
 const STEAM_FEE = 0.05

@@ -7,6 +7,7 @@ import Button from '../../../components/Button.tsx'
 import Dropdown from '../../../components/Dropdown.tsx'
 import TextField from '../../../components/TextField.tsx'
 import Toggle from '../../../components/Toggle.tsx'
+import { useT } from '../../../i18n/index.ts'
 import layout from '../layout.module.css'
 import ProfileOptions, { type ProfileChoice } from './ProfileOptions.tsx'
 import Queue from './Queue.tsx'
@@ -14,63 +15,28 @@ import styles from './Tasks.module.css'
 
 type Kind = TaskInput['kind']
 
-const TASKS: { kind: Kind; name: string; text: string }[] = [
-  {
-    kind: 'hourBoost',
-    name: 'Hour boost',
-    text: 'Play games on a connection that stays up',
-  },
-  {
-    kind: 'cardFarming',
-    name: 'Card farming',
-    text: 'Play the games with card drops left until they run out',
-  },
-  {
-    kind: 'moveToStorage',
-    name: 'Move to storage',
-    text: 'Every tradable item to one account',
-  },
-  {
-    kind: 'acceptGifts',
-    name: 'Accept gifts',
-    text: 'Incoming offers where the account gives nothing',
-  },
-  {
-    kind: 'profile',
-    name: 'Profile',
-    text: 'Nickname, avatar and privacy',
-  },
-  {
-    kind: 'freeGames',
-    name: 'Free games',
-    text: 'Free licenses by store link or ID',
-  },
-  {
-    kind: 'events',
-    name: 'Events',
-    text: 'Discovery queue and the free sale item',
-  },
-  {
-    kind: 'check',
-    name: 'Check',
-    text: 'Session, profile, Web API key, bans and limits',
-  },
-  {
-    kind: 'goOffline',
-    name: 'Go offline',
-    text: 'Stop playing and sign the game connection out',
-  },
+// In the order they're offered; names and descriptions are in the dictionary.
+const KINDS: Kind[] = [
+  'hourBoost',
+  'cardFarming',
+  'moveToStorage',
+  'acceptGifts',
+  'profile',
+  'freeGames',
+  'events',
+  'check',
+  'goOffline',
 ]
 
 const MAX_AVATAR_BYTES = 1024 * 1024
 
 const AT_ONCE = [1, 2, 3, 5, 10]
 
-const PAUSES: { value: string; label: string; min: number; max: number }[] = [
-  { value: 'none', label: 'None', min: 0, max: 0 },
-  { value: 'short', label: '2–5 s', min: 2, max: 5 },
-  { value: 'medium', label: '5–20 s', min: 5, max: 20 },
-  { value: 'long', label: '30–90 s', min: 30, max: 90 },
+const PAUSES: { value: string; min: number; max: number }[] = [
+  { value: 'none', min: 0, max: 0 },
+  { value: 'short', min: 2, max: 5 },
+  { value: 'medium', min: 5, max: 20 },
+  { value: 'long', min: 30, max: 90 },
 ]
 
 /** Every account, the ones in no group, or a group by id. */
@@ -83,6 +49,7 @@ type Props = {
 
 /** Runs one action on many accounts, with limits and random pauses. */
 export default function Tasks({ accounts, groups }: Props) {
+  const t = useT().tasks
   const [target, setTarget] = useState<Target>('all')
   const [kind, setKind] = useState<Kind>('check')
   const [onlyOwn, setOnlyOwn] = useState(true)
@@ -106,18 +73,18 @@ export default function Tasks({ accounts, groups }: Props) {
 
   const loose = accounts.filter((account) => account.groupId === null)
   const targets: { id: Target; name: string; accounts: Account[] }[] = [
-    { id: 'all', name: 'All accounts', accounts },
+    { id: 'all', name: t.allAccounts, accounts },
     ...groups.map((group) => ({
       id: group.id,
       name: group.name,
       accounts: accounts.filter((account) => account.groupId === group.id),
     })),
     ...(groups.length > 0 && loose.length > 0
-      ? [{ id: 'none' as const, name: 'No group', accounts: loose }]
+      ? [{ id: 'none' as const, name: t.noGroup, accounts: loose }]
       : []),
   ]
   const chosen = targets.find((item) => item.id === target) ?? targets[0]
-  const task = TASKS.find((item) => item.kind === kind) ?? TASKS[0]
+  const task = t.kinds[kind]
   // The storage account has nothing to send to itself.
   const runOn =
     kind === 'moveToStorage'
@@ -169,7 +136,7 @@ export default function Tasks({ accounts, groups }: Props) {
   async function run() {
     const range = PAUSES.find((item) => item.value === pause) ?? PAUSES[0]
     if (kind === 'profile' && (profile.avatar?.size ?? 0) > MAX_AVATAR_BYTES) {
-      setError('The image is over 1 MB')
+      setError(t.imageTooBig)
       return
     }
     setBusy(true)
@@ -177,7 +144,7 @@ export default function Tasks({ accounts, groups }: Props) {
     try {
       await startTask({
         task: await input(),
-        title: kind === 'moveToStorage' ? `Move to ${storage}` : task.name,
+        title: kind === 'moveToStorage' ? t.moveTo(storage) : task.name,
         target: chosen.name,
         accountNames: runOn.map((account) => account.accountName),
         pacing: { atOnce, pauseMin: range.min, pauseMax: range.max, retry },
@@ -193,18 +160,15 @@ export default function Tasks({ accounts, groups }: Props) {
     <>
       <div className={layout.header}>
         <div className={styles.heading}>
-          <h1 className={layout.title}>Tasks</h1>
-          <span className={styles.subtitle}>
-            Run actions on a whole group of accounts, with limits and random
-            pauses
-          </span>
+          <h1 className={layout.title}>{t.title}</h1>
+          <span className={styles.subtitle}>{t.subtitle}</span>
         </div>
       </div>
 
       <div className={styles.columns}>
         <section className={styles.targets} aria-labelledby="targets-title">
           <h2 id="targets-title" className={styles.sectionTitle}>
-            Groups
+            {t.groups}
           </h2>
           {targets.map((item) => (
             <button
@@ -218,25 +182,25 @@ export default function Tasks({ accounts, groups }: Props) {
               <span className={styles.count}>{item.accounts.length}</span>
             </button>
           ))}
-          <p className={styles.hint}>Make groups on the Accounts screen.</p>
+          <p className={styles.hint}>{t.groupsHint}</p>
         </section>
 
         <section className={styles.setup} aria-labelledby="setup-title">
           <h2 id="setup-title" className={styles.sectionTitle}>
             {chosen.name}
           </h2>
-          <div className={styles.tasks} role="radiogroup" aria-label="Task">
-            {TASKS.map((item) => (
+          <div className={styles.tasks} role="radiogroup" aria-label={t.task}>
+            {KINDS.map((item) => (
               <button
-                key={item.kind}
+                key={item}
                 type="button"
                 role="radio"
-                aria-checked={item.kind === kind}
+                aria-checked={item === kind}
                 className={styles.task}
-                onClick={() => setKind(item.kind)}
+                onClick={() => setKind(item)}
               >
-                <span className={styles.taskName}>{item.name}</span>
-                <span className={styles.taskText}>{item.text}</span>
+                <span className={styles.taskName}>{t.kinds[item].name}</span>
+                <span className={styles.taskText}>{t.kinds[item].text}</span>
               </button>
             ))}
           </div>
@@ -245,11 +209,11 @@ export default function Tasks({ accounts, groups }: Props) {
             <div className={styles.options}>
               <div className={styles.pacing}>
                 <Dropdown
-                  label="To"
+                  label={t.to}
                   size="sm"
                   value={storage}
                   options={[
-                    { value: '', label: 'Pick an account', disabled: true },
+                    { value: '', label: t.pickAccount, disabled: true },
                     ...accounts.map((account) => ({
                       value: account.accountName,
                       label: account.personaName || account.accountName,
@@ -261,7 +225,7 @@ export default function Tasks({ accounts, groups }: Props) {
                   onChange={setStorage}
                 />
                 <Dropdown
-                  label="Game"
+                  label={t.game}
                   size="sm"
                   value={game}
                   options={(Object.keys(GAME_NAMES) as Game[]).map((value) => ({
@@ -271,71 +235,57 @@ export default function Tasks({ accounts, groups }: Props) {
                   onChange={(value) => setGame(value as Game)}
                 />
               </div>
-              <p className={styles.note}>
-                Each account sends an offer with all its tradable items, and the
-                storage account accepts it. No phone needed.
-              </p>
+              <p className={styles.note}>{t.moveNote}</p>
             </div>
           )}
 
           {kind === 'hourBoost' && (
             <div className={styles.optionGroup}>
               <TextField
-                label="Games"
-                placeholder="Each account's own list"
+                label={t.games}
+                placeholder={t.ownList}
                 className={styles.input}
                 value={boostGames}
                 onChange={(event) => setBoostGames(event.target.value)}
               />
-              <p className={styles.note}>
-                App IDs or store links, up to 32. Left empty, each account plays
-                the games on its Playing tab. Accounts keep playing until Go
-                offline, and reconnect by themselves.
-              </p>
+              <p className={styles.note}>{t.boostNote}</p>
             </div>
           )}
 
           {kind === 'events' && (
             <div className={styles.options}>
               <Dropdown
-                label="Discovery queues"
+                label={t.discoveryQueues}
                 size="sm"
                 value={String(queues)}
                 options={[0, 1, 2, 3].map((n) => ({
                   value: String(n),
-                  label: n === 0 ? 'None' : n === 1 ? '1 queue' : `${n} queues`,
+                  label: t.queues(n),
                 }))}
                 onChange={(value) => setQueues(Number(value))}
               />
               <div className={styles.option}>
-                <span>Claim the free sale item</span>
+                <span>{t.claimItem}</span>
                 <Toggle
                   on={claimItem}
-                  label="Claim the free sale item"
+                  label={t.claimItem}
                   onChange={setClaimItem}
                 />
               </div>
-              <p className={styles.note}>
-                During Steam sales and festivals, viewing the queue gives
-                trading cards and the free item is a sticker or similar. With no
-                sale on, there's nothing to get.
-              </p>
+              <p className={styles.note}>{t.eventsNote}</p>
             </div>
           )}
 
           {kind === 'freeGames' && (
             <div className={styles.optionGroup}>
               <TextField
-                label="Games"
+                label={t.games}
                 placeholder="store.steampowered.com/app/440, sub/12345"
                 className={styles.input}
                 value={licenses}
                 onChange={(event) => setLicenses(event.target.value)}
               />
-              <p className={styles.note}>
-                Store links, app/… or sub/… IDs, split by spaces or commas. A
-                plain number is an app ID. Games already owned are skipped.
-              </p>
+              <p className={styles.note}>{t.freeGamesNote}</p>
             </div>
           )}
 
@@ -345,41 +295,37 @@ export default function Tasks({ accounts, groups }: Props) {
 
           {kind === 'acceptGifts' && (
             <div className={styles.option}>
-              <span>Only from my accounts</span>
-              <Toggle
-                on={onlyOwn}
-                label="Only from my accounts"
-                onChange={setOnlyOwn}
-              />
+              <span>{t.onlyOwn}</span>
+              <Toggle on={onlyOwn} label={t.onlyOwn} onChange={setOnlyOwn} />
             </div>
           )}
 
           <div className={styles.pacing}>
             <Dropdown
-              label="At once"
+              label={t.atOnce}
               size="sm"
               value={String(atOnce)}
               options={AT_ONCE.map((n) => ({
                 value: String(n),
-                label: n === 1 ? 'One by one' : `${n} accounts`,
+                label: n === 1 ? t.oneByOne : t.accountsAtOnce(n),
               }))}
               onChange={(value) => setAtOnce(Number(value))}
             />
             <Dropdown
-              label="Pause between accounts"
+              label={t.pause}
               size="sm"
               value={pause}
-              options={PAUSES}
+              options={PAUSES.map((item) => ({
+                value: item.value,
+                label:
+                  item.max === 0 ? t.noPause : t.seconds(item.min, item.max),
+              }))}
               onChange={setPause}
             />
           </div>
           <div className={styles.option}>
-            <span>Retry failed accounts (up to 3 times)</span>
-            <Toggle
-              on={retry}
-              label="Retry failed accounts"
-              onChange={setRetry}
-            />
+            <span>{t.retry}</span>
+            <Toggle on={retry} label={t.retryLabel} onChange={setRetry} />
           </div>
 
           {error && (
@@ -393,7 +339,7 @@ export default function Tasks({ accounts, groups }: Props) {
               disabled={busy || !ready || runOn.length === 0}
               onClick={() => void run()}
             >
-              Run on {chosen.name} ({runOn.length})
+              {t.runOn(chosen.name, runOn.length)}
             </Button>
           </div>
         </section>

@@ -1,4 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
+import { fromBackend } from '../i18n/backend/index.ts'
+import { words } from '../i18n/index.ts'
 import type { InventoryItem } from './inventory.ts'
 
 export type OfferState =
@@ -13,18 +15,8 @@ export type OfferState =
   | 'invalidItems'
   | 'invalid'
 
-export const OFFER_STATE_NAMES: Record<OfferState, string> = {
-  active: 'Waiting',
-  needsConfirmation: 'Waiting for confirmation in Guard',
-  accepted: 'Accepted',
-  onHold: 'Accepted, items on hold',
-  countered: 'Countered',
-  expired: 'Expired',
-  canceled: 'Canceled',
-  declined: 'Declined',
-  invalidItems: 'Items are gone',
-  invalid: 'Invalid',
-}
+export const offerStateName = (state: OfferState) =>
+  words().trades.states[state]
 
 export const isOpen = (state: OfferState) =>
   state === 'active' || state === 'needsConfirmation'
@@ -63,7 +55,14 @@ export type Trades = {
   signedOut: string[]
 }
 
-export const listTradeOffers = () => invoke<Trades>('list_trade_offers')
+export const listTradeOffers = () =>
+  invoke<Trades>('list_trade_offers').then((trades) => ({
+    ...trades,
+    failures: trades.failures.map((failure) => ({
+      ...failure,
+      reason: fromBackend(failure.reason),
+    })),
+  }))
 
 /** What came of accepting: done, confirmed in Guard here, or waiting for email. */
 export type Accepted = 'done' | 'confirmed' | 'needsEmail'
@@ -121,21 +120,22 @@ export const checkTradePartner = (offer: TradeOffer, known: Known[]) =>
   })
 
 export function warningText(warning: PartnerWarning) {
+  const t = words().trades.warnings
   switch (warning.kind) {
     case 'newAccount':
-      return `Account is ${warning.days} ${warning.days === 1 ? 'day' : 'days'} old`
+      return t.newAccount(warning.days)
     case 'noLevel':
-      return 'Steam level 0'
+      return t.noLevel
     case 'vacBanned':
-      return 'VAC banned'
+      return t.vacBanned
     case 'tradeBanned':
-      return 'Trade banned'
+      return t.tradeBanned
     case 'tradeProbation':
-      return 'On trade probation'
+      return t.tradeProbation
     case 'privateProfile':
-      return 'Private profile'
+      return t.privateProfile
     case 'copiesName':
-      return `Copies the name of ${warning.of}`
+      return t.copiesName(warning.of)
   }
 }
 

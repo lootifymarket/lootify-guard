@@ -3,7 +3,6 @@ import type { Account } from '../../api/accounts.ts'
 import {
   answerSignIn,
   listSignInRequests,
-  type SignInPlatform,
   type SignInRequest,
 } from '../../api/signIns.ts'
 import { errorMessage } from '../../api/vault.ts'
@@ -11,18 +10,12 @@ import Button from '../../components/Button.tsx'
 import Dialog from '../../components/Dialog.tsx'
 import dialogStyles from '../../components/Dialog.module.css'
 import Icon from '../../components/Icon.tsx'
+import { useT } from '../../i18n/index.ts'
 import { fromAccounts, type AccountFailure } from './fromAccounts.ts'
 import QrSignIn from './QrSignIn.tsx'
 import styles from './SignInRequests.module.css'
 
 type Item = SignInRequest & { accountName: string }
-
-const PLATFORM_NAMES: Record<SignInPlatform, string> = {
-  steamClient: 'Steam client',
-  webBrowser: 'Browser',
-  mobileApp: 'Steam mobile app',
-  unknown: 'Unknown device',
-}
 
 const REFRESH =
   'M23 4v6h-6M1 20v-6h6M3.5 9a9 9 0 0 1 14.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15'
@@ -34,6 +27,8 @@ type Props = {
 
 /** People signing in to one of the accounts and waiting for its authenticator. */
 export default function SignInRequests({ accounts, onChanged }: Props) {
+  const words = useT()
+  const t = words.guard.signIns
   const signedIn = accounts
     .filter((account) => account.signedIn)
     .map((account) => account.accountName)
@@ -76,7 +71,7 @@ export default function SignInRequests({ accounts, onChanged }: Props) {
     }
     setBusy(null)
     setItems((all) => all?.filter((other) => other !== item) ?? null)
-    if (allow) setStatus(`Sign-in allowed for ${item.accountName}.`)
+    if (allow) setStatus(t.allowed(item.accountName))
     else setDenied(item.accountName)
   }
 
@@ -86,14 +81,14 @@ export default function SignInRequests({ accounts, onChanged }: Props) {
     <section className={styles.panel} aria-labelledby="sign-ins-title">
       <div className={styles.head}>
         <h2 id="sign-ins-title" className={styles.title}>
-          Sign-in requests
+          {t.title}
         </h2>
         <div className={styles.tools}>
           <button
             type="button"
             className={styles.iconButton}
-            aria-label="Refresh sign-in requests"
-            title="Refresh"
+            aria-label={t.refresh}
+            title={words.guard.refresh}
             disabled={loading}
             onClick={() => {
               setItems(null)
@@ -108,7 +103,7 @@ export default function SignInRequests({ accounts, onChanged }: Props) {
             disabled={signedIn.length === 0}
             onClick={() => setQrOpen(true)}
           >
-            QR sign-in
+            {t.qr}
           </button>
         </div>
       </div>
@@ -124,9 +119,9 @@ export default function SignInRequests({ accounts, onChanged }: Props) {
           <span className={styles.reason}>{failure.reason}</span>
         </p>
       ))}
-      {loading && <p className={styles.note}>Loading…</p>}
+      {loading && <p className={styles.note}>{words.guard.loading}</p>}
       {items?.length === 0 && failures.length === 0 && (
-        <p className={styles.note}>No new requests.</p>
+        <p className={styles.note}>{t.noRequests}</p>
       )}
 
       {items?.map((item) => (
@@ -134,17 +129,15 @@ export default function SignInRequests({ accounts, onChanged }: Props) {
           <div className={styles.words}>
             <span className={styles.who}>
               {item.accountName} ·{' '}
-              {item.deviceName || PLATFORM_NAMES[item.platform]}
+              {item.deviceName || t.platforms[item.platform]}
             </span>
             <span className={styles.where}>
               {[item.city, item.country].filter(Boolean).join(', ') ||
-                'Unknown location'}
+                t.unknownLocation}
               {item.ip && ` · ${item.ip}`}
             </span>
             {item.unfamiliar && (
-              <span className={styles.warning}>
-                Steam hasn’t seen a sign-in from here before
-              </span>
+              <span className={styles.warning}>{t.unfamiliar}</span>
             )}
             {itemError?.id === item.clientId && (
               <span className={`${styles.failure} ${styles.reason}`}>
@@ -159,7 +152,7 @@ export default function SignInRequests({ accounts, onChanged }: Props) {
               disabled={busy !== null}
               onClick={() => void answer(item, false)}
             >
-              Not me
+              {t.notMe}
             </button>
             <Button
               size="sm"
@@ -167,7 +160,7 @@ export default function SignInRequests({ accounts, onChanged }: Props) {
               disabled={busy !== null}
               onClick={() => void answer(item, true)}
             >
-              Allow
+              {t.allow}
             </Button>
           </div>
         </div>
@@ -179,21 +172,18 @@ export default function SignInRequests({ accounts, onChanged }: Props) {
         onClose={() => setQrOpen(false)}
         onAllowed={(accountName) => {
           setQrOpen(false)
-          setStatus(`Sign-in allowed for ${accountName}.`)
+          setStatus(t.allowed(accountName))
         }}
       />
       <Dialog
         open={denied !== null}
-        title="Sign-in blocked"
+        title={t.blockedTitle}
         onClose={() => setDenied(null)}
       >
-        <p className={dialogStyles.text}>
-          Someone knows the password for {denied}. Change it in Steam now and
-          sign out of all other sessions there.
-        </p>
+        <p className={dialogStyles.text}>{t.blockedText(denied ?? '')}</p>
         <div className={dialogStyles.actions}>
           <Button size="sm" onClick={() => setDenied(null)}>
-            Got it
+            {t.gotIt}
           </Button>
         </div>
       </Dialog>

@@ -7,6 +7,7 @@ import {
   type BiometricMethod,
 } from '../../../api/vault.ts'
 import Button from '../../../components/Button.tsx'
+import { useT } from '../../../i18n/index.ts'
 import Dialog from '../../../components/Dialog.tsx'
 import dialogStyles from '../../../components/Dialog.module.css'
 import TextField from '../../../components/TextField.tsx'
@@ -54,6 +55,8 @@ function Form({
   passwordField: RefObject<HTMLInputElement | null>
   onCancel: () => void
 }) {
+  const words = useT()
+  const t = words.account.confirmOwner
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -82,7 +85,7 @@ function Form({
       <TextField
         ref={passwordField}
         type="password"
-        label="Master password"
+        label={t.masterPassword}
         autoComplete="current-password"
         value={password}
         invalid={error !== ''}
@@ -101,12 +104,12 @@ function Form({
             disabled={busy}
             onClick={() => void confirm(null)}
           >
-            Use {BIOMETRIC_NAMES[biometric]}
+            {t.use(BIOMETRIC_NAMES[biometric])}
           </Button>
         )}
         <div className={dialogStyles.actions}>
           <Button variant="secondary" size="sm" onClick={onCancel}>
-            Cancel
+            {words.common.cancel}
           </Button>
           <Button
             type="submit"

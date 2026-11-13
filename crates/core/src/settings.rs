@@ -10,6 +10,17 @@ use crate::vault::write_atomically;
 /// The auto-lock choices, in minutes.
 pub const AUTO_LOCK_CHOICES: [u32; 3] = [5, 15, 60];
 
+/// The languages the app is translated into.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Language {
+    #[default]
+    En,
+    Ru,
+    Uk,
+    Zh,
+}
+
 /// App preferences. They hold no secrets and are needed before the vault is
 /// open, so they live in a plain file beside it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -23,6 +34,7 @@ pub struct Settings {
     pub streamer_mode: bool,
     /// Closing the window leaves the app running in the tray.
     pub close_to_tray: bool,
+    pub language: Language,
 }
 
 impl Default for Settings {
@@ -32,6 +44,7 @@ impl Default for Settings {
             last_backup_at: None,
             streamer_mode: false,
             close_to_tray: true,
+            language: Language::En,
         }
     }
 }
@@ -81,6 +94,7 @@ mod tests {
             last_backup_at: Some(1_700_000_000),
             streamer_mode: true,
             close_to_tray: false,
+            language: Language::Uk,
         };
         settings.save(&path).unwrap();
         assert_eq!(Settings::load(&path), settings);

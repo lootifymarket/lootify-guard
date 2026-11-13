@@ -9,6 +9,7 @@ import {
 } from '../../api/vault.ts'
 import Button from '../../components/Button.tsx'
 import TextField from '../../components/TextField.tsx'
+import { useT } from '../../i18n/index.ts'
 import styles from './Unlock.module.css'
 
 type Props = {
@@ -26,6 +27,8 @@ export default function RecoverPassword({
   onUnavailable,
   onBiometricsOutdated,
 }: Props) {
+  const words = useT()
+  const t = words.unlock
   const [verified, setVerified] = useState(false)
   const [password, setPassword] = useState('')
   const [repeat, setRepeat] = useState('')
@@ -73,18 +76,17 @@ export default function RecoverPassword({
   return (
     <form className={`${styles.view} ${styles.recover}`} onSubmit={save}>
       <div className={styles.heading}>
-        <h1 className={styles.title}>Reset your password</h1>
-        <p className={styles.text}>
-          {biometricName} is turned on for this vault. Confirm it’s you, then
-          choose a new master password.
-        </p>
+        <h1 className={styles.title}>{t.recoverTitle}</h1>
+        <p className={styles.text}>{t.recoverText(biometricName)}</p>
       </div>
       {verified ? (
         <div className={styles.newPassword}>
-          <span className={styles.verified}>Verified with {biometricName}</span>
+          <span className={styles.verified}>
+            {t.verifiedWith(biometricName)}
+          </span>
           <TextField
             type="password"
-            label="New master password"
+            label={t.newPassword}
             autoComplete="new-password"
             autoFocus
             value={password}
@@ -92,7 +94,7 @@ export default function RecoverPassword({
           />
           <TextField
             type="password"
-            label="Repeat password"
+            label={t.repeatPassword}
             autoComplete="new-password"
             value={repeat}
             invalid={mismatch}
@@ -103,14 +105,14 @@ export default function RecoverPassword({
             data-tone={mismatch || weak ? 'danger' : 'faint'}
           >
             {!password
-              ? '12+ characters recommended'
+              ? t.recommended
               : mismatch
-                ? 'Passwords don’t match'
+                ? t.mismatch
                 : weak
-                  ? 'Weak: easy to crack if the vault file is stolen'
+                  ? t.weak
                   : canSave
-                    ? 'Looks good'
-                    : 'Repeat the password'}
+                    ? t.looksGood
+                    : t.repeat}
           </span>
           <Button
             type="submit"
@@ -118,7 +120,7 @@ export default function RecoverPassword({
             disabled={!canSave}
             className={styles.wide}
           >
-            {busy ? 'Re-encrypting vault…' : 'Save and unlock'}
+            {busy ? t.reencrypting : t.saveAndUnlock}
           </Button>
         </div>
       ) : (
@@ -127,9 +129,7 @@ export default function RecoverPassword({
           className={styles.wide}
           onClick={() => void verify()}
         >
-          {busy
-            ? `Waiting for ${biometricName}…`
-            : `Verify with ${biometricName}`}
+          {busy ? t.waitingFor(biometricName) : t.verifyWith(biometricName)}
         </Button>
       )}
       {error && (
@@ -143,14 +143,14 @@ export default function RecoverPassword({
           className={styles.back}
           onClick={() => void leave(onBack)}
         >
-          ← Back
+          ← {words.common.back}
         </button>
         <button
           type="button"
           className={styles.link}
           onClick={() => void leave(onUnavailable)}
         >
-          {biometricName} isn’t available
+          {t.unavailable(biometricName)}
         </button>
       </div>
     </form>

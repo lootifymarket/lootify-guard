@@ -4,6 +4,7 @@ import {
   exportBackup,
   getSettings,
   launchAtStartup,
+  saveLanguage,
   setAutoLock,
   setCloseToTray,
   setLaunchAtStartup,
@@ -23,6 +24,12 @@ import {
 import Button from '../../../components/Button.tsx'
 import Dropdown from '../../../components/Dropdown.tsx'
 import Toggle from '../../../components/Toggle.tsx'
+import {
+  LANGUAGES,
+  useLanguage,
+  type Dictionary,
+  type Language,
+} from '../../../i18n/index.ts'
 import { ago } from '../../../lib/ago.ts'
 import layout from '../layout.module.css'
 import ChangePassword from './ChangePassword.tsx'
@@ -30,20 +37,14 @@ import styles from './Settings.module.css'
 
 const NEVER = 'never'
 
-const AUTO_LOCK_OPTIONS = [
-  ...AUTO_LOCK_CHOICES.map((minutes) => ({
-    value: String(minutes),
-    label: minutes === 60 ? '1 hour' : `${minutes} minutes`,
-  })),
-  { value: NEVER, label: 'Never' },
-]
-
 type Props = {
   /** The vault locks at a new time, which the sidebar shows. */
   onAutoLockChanged: () => void
 }
 
 export default function Settings({ onAutoLockChanged }: Props) {
+  const { language, t: words, setLanguage } = useLanguage()
+  const t = words.settings
   const [settings, setSettings] = useState<SettingsValues | null>(null)
   const [biometric, setBiometric] = useState<BiometricStatus | null>(null)
   const [atStartup, setAtStartup] = useState(false)
@@ -73,29 +74,51 @@ export default function Settings({ onAutoLockChanged }: Props) {
   const biometricName = biometric?.method
     ? BIOMETRIC_NAMES[biometric.method]
     : null
+  const autoLockOptions = [
+    ...AUTO_LOCK_CHOICES.map((minutes) => ({
+      value: String(minutes),
+      label: t.minutes(minutes),
+    })),
+    { value: NEVER, label: t.never },
+  ]
 
   return (
     <>
       <div className={layout.header}>
-        <h1 className={layout.title}>Settings</h1>
+        <h1 className={layout.title}>{t.title}</h1>
       </div>
 
       <div className={styles.sections}>
         <section className={styles.section} aria-labelledby="display-title">
           <h2 id="display-title" className={styles.sectionTitle}>
-            Display
+            {t.display}
           </h2>
           <div className={styles.row}>
+            <span>{t.language}</span>
+            <span className={styles.control}>
+              <Dropdown
+                label={t.language}
+                hideLabel
+                size="sm"
+                value={language}
+                options={LANGUAGES}
+                onChange={(value) =>
+                  void act(async () => {
+                    await saveLanguage(value as Language)
+                    setLanguage(value as Language)
+                  })
+                }
+              />
+            </span>
+          </div>
+          <div className={styles.row}>
             <span className={styles.words}>
-              <span>Streamer mode</span>
-              <span className={styles.hint}>
-                Blurs Steam Guard codes, Steam IDs, trade URLs, balances and
-                prices, for streams and screenshots.
-              </span>
+              <span>{t.streamer}</span>
+              <span className={styles.hint}>{t.streamerHint}</span>
             </span>
             <Toggle
               on={settings?.streamerMode ?? false}
-              label="Streamer mode"
+              label={t.streamer}
               onChange={(on) =>
                 void act(async () => {
                   await setStreamerMode(on)
@@ -111,19 +134,16 @@ export default function Settings({ onAutoLockChanged }: Props) {
 
         <section className={styles.section} aria-labelledby="security-title">
           <h2 id="security-title" className={styles.sectionTitle}>
-            Security
+            {t.security}
           </h2>
           <div className={styles.row}>
             <span className={styles.words}>
-              <span>Auto-lock</span>
-              <span className={styles.hint}>
-                Locks the vault after this long without activity. Auto-confirm
-                runs only while it’s unlocked.
-              </span>
+              <span>{t.autoLock}</span>
+              <span className={styles.hint}>{t.autoLockHint}</span>
             </span>
             <span className={styles.control}>
               <Dropdown
-                label="Auto-lock"
+                label={t.autoLock}
                 hideLabel
                 size="sm"
                 value={
@@ -131,7 +151,7 @@ export default function Settings({ onAutoLockChanged }: Props) {
                     ? String(settings.autoLockMinutes ?? NEVER)
                     : String(15)
                 }
-                options={AUTO_LOCK_OPTIONS}
+                options={autoLockOptions}
                 onChange={(value) => {
                   const minutes = value === NEVER ? null : Number(value)
                   void act(async () => {
@@ -150,15 +170,14 @@ export default function Settings({ onAutoLockChanged }: Props) {
           {biometricName && biometric && (
             <div className={styles.row}>
               <span className={styles.words}>
-                <span>Unlock with {biometricName}</span>
+                <span>{t.unlockWith(biometricName)}</span>
                 <span className={styles.hint}>
-                  The vault key is kept in the login keychain, and the app asks
-                  for {biometricName} before using it.
+                  {t.biometricHint(biometricName)}
                 </span>
               </span>
               <Toggle
                 on={biometric.enrolled}
-                label={`Unlock with ${biometricName}`}
+                label={t.unlockWith(biometricName)}
                 onChange={(on) =>
                   void act(async () => {
                     await (on ? enableBiometrics() : disableBiometrics())
@@ -170,23 +189,22 @@ export default function Settings({ onAutoLockChanged }: Props) {
           )}
 
           <div className={styles.row}>
-            <span>Master password</span>
+            <span>{t.masterPassword}</span>
             <Button
               variant="secondary"
               size="sm"
               onClick={() => setChanging(true)}
             >
-              Change
+              {words.common.change}
             </Button>
           </div>
 
           <div className={styles.row}>
             <span className={styles.words}>
-              <span>Backup</span>
+              <span>{t.backup}</span>
               <span className={styles.hint}>
-                {backupNote(settings?.lastBackupAt ?? null)}
-                The file holds every account and Guard secret, encrypted with
-                the master password.
+                {backupNote(t, settings?.lastBackupAt ?? null)}
+                {t.backupHint}
               </span>
             </span>
             <Button
@@ -197,30 +215,28 @@ export default function Settings({ onAutoLockChanged }: Props) {
               onClick={() =>
                 void act(async () => {
                   if (!(await exportBackup())) return
-                  setNote('Backup saved')
+                  setNote(t.backupSaved)
                   setSettings(await getSettings())
                 })
               }
             >
-              Export
+              {words.common.export}
             </Button>
           </div>
         </section>
 
         <section className={styles.section} aria-labelledby="app-title">
           <h2 id="app-title" className={styles.sectionTitle}>
-            App
+            {t.app}
           </h2>
           <div className={styles.row}>
             <span className={styles.words}>
-              <span>Launch at startup</span>
-              <span className={styles.hint}>
-                Starts in the tray with the vault locked.
-              </span>
+              <span>{t.startup}</span>
+              <span className={styles.hint}>{t.startupHint}</span>
             </span>
             <Toggle
               on={atStartup}
-              label="Launch at startup"
+              label={t.startup}
               onChange={(on) =>
                 void act(async () => {
                   await setLaunchAtStartup(on)
@@ -231,15 +247,12 @@ export default function Settings({ onAutoLockChanged }: Props) {
           </div>
           <div className={styles.row}>
             <span className={styles.words}>
-              <span>Keep running in the tray</span>
-              <span className={styles.hint}>
-                Closing the window leaves auto-confirm, playing and card farming
-                running. Quit from the tray icon.
-              </span>
+              <span>{t.tray}</span>
+              <span className={styles.hint}>{t.trayHint}</span>
             </span>
             <Toggle
               on={settings?.closeToTray ?? true}
-              label="Keep running in the tray"
+              label={t.tray}
               onChange={(on) =>
                 void act(async () => {
                   await setCloseToTray(on)
@@ -270,15 +283,16 @@ export default function Settings({ onAutoLockChanged }: Props) {
         onClose={() => setChanging(false)}
         onChanged={() => {
           setChanging(false)
-          setNote('Master password changed')
+          setNote(t.passwordChanged)
         }}
       />
     </>
   )
 }
 
-function backupNote(savedAt: number | null) {
-  if (savedAt === null) return 'Not saved yet. '
-  const when = ago(savedAt)
-  return when === 'just now' ? 'Saved just now. ' : `Last saved ${when} ago. `
+function backupNote(t: Dictionary['settings'], savedAt: number | null) {
+  if (savedAt === null) return t.backupNever
+  return Date.now() / 1000 - savedAt < 60
+    ? t.backupJustNow
+    : t.backupAgo(ago(savedAt))
 }

@@ -10,6 +10,7 @@ import { errorMessage } from '../../../api/vault.ts'
 import Button from '../../../components/Button.tsx'
 import Dropdown from '../../../components/Dropdown.tsx'
 import Toggle from '../../../components/Toggle.tsx'
+import { useT } from '../../../i18n/index.ts'
 import ItemCard from '../items/ItemCard.tsx'
 import layout from '../layout.module.css'
 import ListOnMarket from './ListOnMarket.tsx'
@@ -18,11 +19,7 @@ import styles from './Inventory.module.css'
 
 type Sort = 'name' | 'rarity' | 'account'
 
-const SORT_NAMES: Record<Sort, string> = {
-  rarity: 'Rarity, rarest first',
-  name: 'Name A–Z',
-  account: 'Account',
-}
+const SORTS: Sort[] = ['rarity', 'name', 'account']
 
 // Rarity names differ by game and item kind; these put them on one scale.
 const RARITY_TIER: Record<string, number> = {
@@ -62,6 +59,7 @@ type Props = {
 
 /** Every item of every signed-in account in one grid. */
 export default function Inventory({ accounts, groups, onChanged }: Props) {
+  const t = useT().inventory
   const signedIn = accounts.filter((account) => account.signedIn)
   const [game, setGame] = useState<Game>('cs2')
   const [accountFilter, setAccountFilter] = useState('')
@@ -129,11 +127,11 @@ export default function Inventory({ accounts, groups, onChanged }: Props) {
   const all: Owned[] = Object.entries(loaded).flatMap(([account, items]) =>
     items.map((item) => ({ account, item })),
   )
-  const words = query.trim().toLowerCase()
+  const needle = query.trim().toLowerCase()
   const shown = all
     .filter(({ account }) => shows(accountFilter, account))
     .filter(({ item }) => !tradableOnly || item.tradable)
-    .filter(({ item }) => item.name.toLowerCase().includes(words))
+    .filter(({ item }) => item.name.toLowerCase().includes(needle))
     .sort(compare(sort))
   const chosen = all.filter((owned) => picked.has(keyOf(owned)))
   const waiting =
@@ -152,29 +150,25 @@ export default function Inventory({ accounts, groups, onChanged }: Props) {
     <>
       <div className={layout.header}>
         <div className={styles.heading}>
-          <h1 className={layout.title}>Inventory</h1>
-          <span className={styles.subtitle}>
-            Every item from every account in one place.
-          </span>
+          <h1 className={layout.title}>{t.title}</h1>
+          <span className={styles.subtitle}>{t.subtitle}</span>
         </div>
-        <span className={styles.total}>
-          {shown.length} {shown.length === 1 ? 'item' : 'items'}
-        </span>
+        <span className={styles.total}>{t.items(shown.length)}</span>
       </div>
 
       <div className={styles.filters}>
         <div className={styles.account}>
           <Dropdown
-            label="Account"
+            label={t.account}
             hideLabel
             size="sm"
             value={accountFilter}
             options={[
-              { value: '', label: 'All accounts' },
+              { value: '', label: t.allAccounts },
               ...groups.map((group) => ({
                 value: `group:${group.id}`,
                 label: group.name,
-                hint: 'Group',
+                hint: t.group,
               })),
               ...signedIn.map((account) => ({
                 value: account.accountName,
@@ -187,7 +181,7 @@ export default function Inventory({ accounts, groups, onChanged }: Props) {
         </div>
         <div className={styles.game}>
           <Dropdown
-            label="Game"
+            label={t.game}
             hideLabel
             size="sm"
             value={game}
@@ -199,29 +193,30 @@ export default function Inventory({ accounts, groups, onChanged }: Props) {
         </div>
         <input
           type="search"
-          aria-label="Search items"
-          placeholder="Search items"
+          aria-label={t.search}
+          placeholder={t.search}
           className={`${layout.search} ${styles.search}`}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
         <div className={styles.sort}>
           <Dropdown
-            label="Sort"
+            label={t.sort}
             hideLabel
             size="sm"
             value={sort}
-            options={(Object.entries(SORT_NAMES) as [Sort, string][]).map(
-              ([value, label]) => ({ value, label }),
-            )}
+            options={SORTS.map((value) => ({
+              value,
+              label: t.sorts[value],
+            }))}
             onChange={(value) => setSort(value as Sort)}
           />
         </div>
         <span className={styles.toggle}>
-          Tradable only
+          {t.tradableOnly}
           <Toggle
             on={tradableOnly}
-            label="Tradable only"
+            label={t.tradableOnly}
             onChange={setTradableOnly}
           />
         </span>
@@ -230,18 +225,18 @@ export default function Inventory({ accounts, groups, onChanged }: Props) {
       <div className={styles.bar} data-picked={chosen.length > 0}>
         {chosen.length > 0 ? (
           <span className={styles.barWords}>
-            <span>{chosen.length} selected</span>
+            <span>{t.selected(chosen.length)}</span>
             <button
               type="button"
               className={styles.link}
               onClick={() => setPicked(new Set())}
             >
-              Clear selection
+              {t.clearSelection}
             </button>
           </span>
         ) : (
           <span className={styles.barWords}>
-            <span className={styles.muted}>Click items to select them</span>
+            <span className={styles.muted}>{t.clickToSelect}</span>
             {shown.some(({ item }) => item.tradable) && (
               <button
                 type="button"
@@ -254,15 +249,13 @@ export default function Inventory({ accounts, groups, onChanged }: Props) {
                   )
                 }
               >
-                Select all
+                {t.selectAll}
               </button>
             )}
           </span>
         )}
         {waiting > 0 && (
-          <span className={styles.muted}>
-            Loading {waiting} more {waiting === 1 ? 'account' : 'accounts'}…
-          </span>
+          <span className={styles.muted}>{t.loadingMore(waiting)}</span>
         )}
         <span className={styles.actions}>
           <Button
@@ -271,7 +264,7 @@ export default function Inventory({ accounts, groups, onChanged }: Props) {
             disabled={chosen.length === 0}
             onClick={() => setMoving(true)}
           >
-            Move to one account
+            {t.moveToOne}
           </Button>
           <Button
             variant="secondary"
@@ -279,7 +272,7 @@ export default function Inventory({ accounts, groups, onChanged }: Props) {
             disabled={!chosen.some(({ item }) => item.marketable)}
             onClick={() => setListing(true)}
           >
-            Steam market
+            {t.steamMarket}
           </Button>
         </span>
       </div>
@@ -318,7 +311,7 @@ export default function Inventory({ accounts, groups, onChanged }: Props) {
                   ? undefined
                   : owned.account
               }
-              unavailable={owned.item.tradable ? undefined : 'Not tradable now'}
+              unavailable={owned.item.tradable ? undefined : t.notTradable}
               onToggle={() => toggle(owned)}
             />
           ))}
@@ -327,10 +320,10 @@ export default function Inventory({ accounts, groups, onChanged }: Props) {
         waiting === 0 && (
           <p className={layout.note}>
             {signedIn.length === 0
-              ? 'No account is signed in to Steam.'
+              ? t.noneSignedIn
               : all.length === 0
-                ? `No ${GAME_NAMES[game]} items on these accounts.`
-                : 'Nothing found.'}
+                ? t.noItems(GAME_NAMES[game])
+                : t.nothingFound}
           </p>
         )
       )}

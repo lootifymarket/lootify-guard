@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { fromBackend } from '../i18n/backend/index.ts'
 
 export type ProxyKind = 'http' | 'socks5'
 
@@ -42,7 +43,13 @@ export const listProxies = () => invoke<Proxy[]>('list_proxies')
 
 /** One proxy per line, in any of the usual list formats. */
 export const addProxies = (text: string) =>
-  invoke<AddReport>('add_proxies', { text })
+  invoke<AddReport>('add_proxies', { text }).then((report) => ({
+    ...report,
+    failed: report.failed.map((failure) => ({
+      ...failure,
+      reason: fromBackend(failure.reason),
+    })),
+  }))
 
 /** Resolves to false when the same proxy is already in the list. */
 export const addProxy = (

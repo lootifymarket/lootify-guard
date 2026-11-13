@@ -7,6 +7,7 @@ import dialogStyles from '../../components/Dialog.module.css'
 import Dropdown from '../../components/Dropdown.tsx'
 import QrScanner from '../../components/QrScanner.tsx'
 import TextField from '../../components/TextField.tsx'
+import { useT } from '../../i18n/index.ts'
 import styles from './SignInRequests.module.css'
 
 const STEAM_QR_LINK = /^https:\/\/s\.team\/q\/\d+\/\d+$/
@@ -24,11 +25,12 @@ export default function QrSignIn({
   onClose,
   onAllowed,
 }: Props) {
+  const t = useT().guard.qr
   const linkField = useRef<HTMLInputElement>(null)
   return (
     <Dialog
       open={open}
-      title="Sign in with QR code"
+      title={t.title}
       onClose={onClose}
       initialFocus={linkField}
     >
@@ -53,6 +55,8 @@ function Form({
   onCancel: () => void
   onAllowed: (accountName: string) => void
 }) {
+  const words = useT()
+  const t = words.guard.qr
   const [link, setLink] = useState('')
   const [scanning, setScanning] = useState(false)
   const [scanNote, setScanNote] = useState('')
@@ -68,7 +72,7 @@ function Form({
       setScanNote('')
       setError('')
     } else {
-      setScanNote('That QR code isn’t from a Steam sign-in page.')
+      setScanNote(t.notSteam)
     }
   }
 
@@ -89,10 +93,7 @@ function Form({
 
   return (
     <form className={styles.form} onSubmit={(event) => void submit(event)}>
-      <p className={dialogStyles.text}>
-        Scan the QR code on the Steam sign-in page with a camera, or paste the
-        link it holds.
-      </p>
+      <p className={dialogStyles.text}>{t.intro}</p>
       {scanning ? (
         <>
           <QrScanner onScan={scanned} />
@@ -105,12 +106,12 @@ function Form({
           className={styles.scanButton}
           onClick={() => setScanning(true)}
         >
-          Scan with camera
+          {t.scan}
         </Button>
       )}
       <TextField
         ref={linkField}
-        label="Link"
+        label={t.link}
         placeholder="https://s.team/q/…"
         autoComplete="off"
         spellCheck={false}
@@ -119,7 +120,7 @@ function Form({
         onChange={(event) => setLink(event.target.value)}
       />
       <Dropdown
-        label="Account"
+        label={t.account}
         value={accountName}
         options={accountNames.map((name) => ({ value: name, label: name }))}
         onChange={setAccountName}
@@ -131,7 +132,7 @@ function Form({
       )}
       <div className={dialogStyles.actions}>
         <Button variant="secondary" size="sm" onClick={onCancel}>
-          Cancel
+          {words.common.cancel}
         </Button>
         <Button
           type="submit"
@@ -139,7 +140,7 @@ function Form({
           busy={busy}
           disabled={!link.trim() || !accountName || busy}
         >
-          Allow sign-in
+          {t.allow}
         </Button>
       </div>
     </form>

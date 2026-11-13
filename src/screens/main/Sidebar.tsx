@@ -1,5 +1,6 @@
 import Icon from '../../components/Icon.tsx'
 import LogoMark from '../../components/LogoMark.tsx'
+import { useT } from '../../i18n/index.ts'
 import { useSecondsLeft } from './useAccounts.ts'
 import styles from './Sidebar.module.css'
 
@@ -13,41 +14,35 @@ export type Section =
   | 'add'
   | 'settings'
 
-const SECTIONS: { id: Section; label: string; icon: string }[] = [
+// Each is named by the section's key in the dictionary.
+const SECTIONS: { id: Section; icon: string }[] = [
   {
     id: 'accounts',
-    label: 'Accounts',
     icon: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
   },
   {
     id: 'guard',
-    label: 'Steam Guard',
     icon: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
   },
   {
     id: 'trades',
-    label: 'Trades',
     icon: 'M7 7h13l-4-4M17 17H4l4 4',
   },
   {
     id: 'inventory',
-    label: 'Inventory',
     icon: 'M21 8l-9-5-9 5v8l9 5 9-5V8zM3 8l9 5 9-5M12 13v8',
   },
   {
     id: 'tasks',
-    label: 'Tasks',
     icon: 'M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2',
   },
   {
     id: 'proxies',
-    label: 'Proxies',
     icon: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM2 12h20M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10 15 15 0 0 1-4-10 15 15 0 0 1 4-10z',
   },
-  { id: 'add', label: 'Add account', icon: 'M12 5v14M5 12h14' },
+  { id: 'add', icon: 'M12 5v14M5 12h14' },
   {
     id: 'settings',
-    label: 'Settings',
     icon: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z',
   },
 ]
@@ -62,8 +57,9 @@ type Props = {
 }
 
 export default function Sidebar({ section, locksAt, onSelect, onLock }: Props) {
+  const t = useT().sidebar
   return (
-    <nav aria-label="Main menu" className={styles.sidebar}>
+    <nav aria-label={t.menu} className={styles.sidebar}>
       <button
         type="button"
         className={styles.home}
@@ -83,19 +79,19 @@ export default function Sidebar({ section, locksAt, onSelect, onLock }: Props) {
             onClick={() => onSelect(item.id)}
           >
             <Icon path={item.icon} size={17} stroke={1.7} />
-            {item.label}
+            {t[item.id]}
           </button>
         ))}
       </div>
       <div className={styles.footer}>
         <span className={styles.vault}>
-          <span className={styles.vaultState}>Vault unlocked</span>
+          <span className={styles.vaultState}>{t.vaultUnlocked}</span>
           {locksAt !== null && <LocksIn deadline={locksAt} />}
         </span>
         <button
           type="button"
           className={styles.lock}
-          aria-label="Lock"
+          aria-label={t.lock}
           onClick={onLock}
         >
           <Icon path={LOCK} size={15} stroke={1.8} />
@@ -106,6 +102,7 @@ export default function Sidebar({ section, locksAt, onSelect, onLock }: Props) {
 }
 
 function LocksIn({ deadline }: { deadline: number }) {
+  const t = useT().sidebar
   const minutes = Math.max(1, Math.ceil(useSecondsLeft(deadline) / 60))
-  return <span className={styles.locksIn}>Locks in {minutes} min</span>
+  return <span className={styles.locksIn}>{t.locksIn(minutes)}</span>
 }
