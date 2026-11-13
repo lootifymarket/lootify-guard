@@ -2,6 +2,7 @@ use serde::Deserialize;
 
 use crate::api_key::{self, ApiKey};
 use crate::contents::Account;
+use crate::events::{self, SaleItem};
 use crate::inventory::{self, Game};
 use crate::licenses::{self, Claim, Claimed, License};
 use crate::moves::{self, Moved, Side};
@@ -27,6 +28,12 @@ pub enum Task {
     Profile(ProfileTask),
     /// Adds free games and packages to the account.
     FreeGames(Vec<License>),
+    /// What a running sale gives out: cards for looking through the discovery
+    /// queue, and the free daily item.
+    Events {
+        queues: u8,
+        claim_item: bool,
+    },
 }
 
 /// What to change on each profile; what's left out stays as it is.
@@ -88,6 +95,23 @@ pub fn run(
         Task::Check => check(account, proxy),
         Task::AcceptGifts { only_from } => accept_gifts(account, proxy, now, only_from.as_deref()),
         Task::Profile(task) => profile(task, account, proxy, number),
+        Task::Events { queues, claim_item } => {
+            let mut parts = Vec::new();
+            if *queues > 0 {
+                let (session, seen) = events::view_queues(account, proxy, *queues)?;
+                account.session = Some(session);
+                parts.push(match seen {
+                    0 => "the discovery queue was empty".to_owned(),
+                    n => format!("viewed {n} games in the discovery queue"),
+                });
+            }
+            if *claim_item {
+                let (session, item) = events::claim_sale_item(account, proxy)?;
+                account.session = Some(session);
+                parts.push(sale_item_note(item, now));
+            }
+            Ok(Outcome::Done(capitalize(&parts.join(", "))))
+        }
         Task::FreeGames(licenses) => {
             let (session, claims) = licenses::claim(account, proxy, licenses)?;
             account.session = Some(session);
@@ -213,6 +237,25 @@ fn profile(
     account.session = Some(session);
     account.profile = Some(profile);
     Ok(Outcome::Done(format!("Changed {}", changed.join(", "))))
+}
+
+fn sale_item_note(item: SaleItem, now: u64) -> String {
+    match item {
+        SaleItem::Claimed => "claimed the free sale item".to_owned(),
+        SaleItem::NextAt(at) => {
+            let hours = at.saturating_sub(now).div_ceil(3600).max(1);
+            format!("sale item already claimed, next in {hours} h")
+        }
+        SaleItem::Nothing => "no sale item to claim".to_owned(),
+    }
+}
+
+fn capitalize(text: &str) -> String {
+    let mut chars = text.chars();
+    chars
+        .next()
+        .map(|first| first.to_uppercase().chain(chars).collect())
+        .unwrap_or_default()
 }
 
 fn claims_summary(claims: &[Claim]) -> Outcome {
@@ -343,6 +386,19 @@ mod tests {
         );
         assert!(PrivacyChanges::default().is_empty());
         assert!(!changes.is_empty());
+    }
+
+    #[test]
+    fn sale_items_are_put_in_words() {
+        assert_eq!(
+            sale_item_note(SaleItem::NextAt(10_000 + 2 * 3600 + 1), 10_000),
+            "sale item already claimed, next in 3 h"
+        );
+        assert_eq!(
+            sale_item_note(SaleItem::NextAt(5), 10_000),
+            "sale item already claimed, next in 1 h"
+        );
+        assert_eq!(capitalize("viewed 12 games"), "Viewed 12 games");
     }
 
     #[test]
