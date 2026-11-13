@@ -21,6 +21,8 @@ pub struct Settings {
     pub last_backup_at: Option<u64>,
     /// Blurs codes, Steam IDs, trade URLs and money, for showing the screen to others.
     pub streamer_mode: bool,
+    /// Closing the window leaves the app running in the tray.
+    pub close_to_tray: bool,
 }
 
 impl Default for Settings {
@@ -29,6 +31,7 @@ impl Default for Settings {
             auto_lock_minutes: Some(15),
             last_backup_at: None,
             streamer_mode: false,
+            close_to_tray: true,
         }
     }
 }
@@ -77,6 +80,7 @@ mod tests {
             auto_lock_minutes: None,
             last_backup_at: Some(1_700_000_000),
             streamer_mode: true,
+            close_to_tray: false,
         };
         settings.save(&path).unwrap();
         assert_eq!(Settings::load(&path), settings);

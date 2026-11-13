@@ -10,6 +10,8 @@ export type Settings = {
   lastBackupAt: number | null
   /** Blurs codes, Steam IDs, trade URLs and money. */
   streamerMode: boolean
+  /** Closing the window leaves the app running in the tray. */
+  closeToTray: boolean
 }
 
 export const getSettings = () => invoke<Settings>('get_settings')
@@ -20,6 +22,15 @@ export const setAutoLock = (minutes: number | null) =>
 
 export const setStreamerMode = (on: boolean) =>
   invoke<void>('set_streamer_mode', { on })
+
+export const setCloseToTray = (on: boolean) =>
+  invoke<void>('set_close_to_tray', { on })
+
+/** Whether the system starts the app at login, as the system has it. */
+export const launchAtStartup = () => invoke<boolean>('launch_at_startup')
+
+export const setLaunchAtStartup = (on: boolean) =>
+  invoke<void>('set_launch_at_startup', { on })
 
 /** Blurs whatever is marked `data-private` on the page. */
 export function showStreamerMode(on: boolean) {

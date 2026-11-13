@@ -3,7 +3,10 @@ import {
   AUTO_LOCK_CHOICES,
   exportBackup,
   getSettings,
+  launchAtStartup,
   setAutoLock,
+  setCloseToTray,
+  setLaunchAtStartup,
   setStreamerMode,
   showStreamerMode,
   type Settings as SettingsValues,
@@ -43,6 +46,7 @@ type Props = {
 export default function Settings({ onAutoLockChanged }: Props) {
   const [settings, setSettings] = useState<SettingsValues | null>(null)
   const [biometric, setBiometric] = useState<BiometricStatus | null>(null)
+  const [atStartup, setAtStartup] = useState(false)
   const [changing, setChanging] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -51,6 +55,7 @@ export default function Settings({ onAutoLockChanged }: Props) {
   useEffect(() => {
     void getSettings().then(setSettings)
     void biometricStatus().then(setBiometric)
+    void launchAtStartup().then(setAtStartup)
   }, [])
 
   async function act(action: () => Promise<void>) {
@@ -200,18 +205,63 @@ export default function Settings({ onAutoLockChanged }: Props) {
               Export
             </Button>
           </div>
-
-          {error && (
-            <p className={styles.error} role="alert">
-              {error}
-            </p>
-          )}
-          {note && (
-            <p className={styles.note} role="status">
-              {note}
-            </p>
-          )}
         </section>
+
+        <section className={styles.section} aria-labelledby="app-title">
+          <h2 id="app-title" className={styles.sectionTitle}>
+            App
+          </h2>
+          <div className={styles.row}>
+            <span className={styles.words}>
+              <span>Launch at startup</span>
+              <span className={styles.hint}>
+                Starts in the tray with the vault locked.
+              </span>
+            </span>
+            <Toggle
+              on={atStartup}
+              label="Launch at startup"
+              onChange={(on) =>
+                void act(async () => {
+                  await setLaunchAtStartup(on)
+                  setAtStartup(on)
+                })
+              }
+            />
+          </div>
+          <div className={styles.row}>
+            <span className={styles.words}>
+              <span>Keep running in the tray</span>
+              <span className={styles.hint}>
+                Closing the window leaves auto-confirm, playing and card farming
+                running. Quit from the tray icon.
+              </span>
+            </span>
+            <Toggle
+              on={settings?.closeToTray ?? true}
+              label="Keep running in the tray"
+              onChange={(on) =>
+                void act(async () => {
+                  await setCloseToTray(on)
+                  setSettings(
+                    (current) => current && { ...current, closeToTray: on },
+                  )
+                })
+              }
+            />
+          </div>
+        </section>
+
+        {error && (
+          <p className={styles.error} role="alert">
+            {error}
+          </p>
+        )}
+        {note && (
+          <p className={styles.note} role="status">
+            {note}
+          </p>
+        )}
       </div>
 
       <ChangePassword

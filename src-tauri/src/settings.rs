@@ -5,7 +5,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use lootify_guard_core::settings::{AUTO_LOCK_CHOICES, Settings};
 use tauri::async_runtime::spawn_blocking;
-use tauri::{State, Window};
+use tauri::{AppHandle, State, Window};
+use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_dialog::DialogExt;
 
 use crate::accounts::write_private;
@@ -72,6 +73,36 @@ pub fn set_streamer_mode(settings: State<'_, SettingsState>, on: bool) -> Result
         streamer_mode: on,
         ..settings.get()
     })
+}
+
+#[tauri::command]
+pub fn set_close_to_tray(settings: State<'_, SettingsState>, on: bool) -> Result<(), CommandError> {
+    settings.save(Settings {
+        close_to_tray: on,
+        ..settings.get()
+    })
+}
+
+/// Whether the system starts the app at login. The system holds this, not the
+/// settings file, so it stays right if the user turns it off there.
+#[tauri::command]
+pub fn launch_at_startup(app: AppHandle) -> Result<bool, CommandError> {
+    app.autolaunch().is_enabled().map_err(autostart_error)
+}
+
+#[tauri::command]
+pub fn set_launch_at_startup(app: AppHandle, on: bool) -> Result<(), CommandError> {
+    let autolaunch = app.autolaunch();
+    if on {
+        autolaunch.enable()
+    } else {
+        autolaunch.disable()
+    }
+    .map_err(autostart_error)
+}
+
+fn autostart_error(err: tauri_plugin_autostart::Error) -> CommandError {
+    CommandError::Failed(format!("couldn't change the startup item: {err}"))
 }
 
 /// Saves a copy of the vault file where the user picks. It stays encrypted with
