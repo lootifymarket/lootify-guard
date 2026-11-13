@@ -7,6 +7,8 @@ type Props = {
   onClose: () => void
   /** Focused on open. Without it the dialog itself takes focus. */
   initialFocus?: RefObject<HTMLElement | null>
+  /** For tables that need more room than a short form. */
+  wide?: boolean
   children: ReactNode
 }
 
@@ -15,6 +17,7 @@ export default function Dialog({
   title,
   onClose,
   initialFocus,
+  wide = false,
   children,
 }: Props) {
   const dialog = useRef<HTMLDialogElement>(null)
@@ -37,7 +40,7 @@ export default function Dialog({
     <dialog
       ref={dialog}
       tabIndex={-1}
-      className={styles.dialog}
+      className={wide ? `${styles.dialog} ${styles.wide}` : styles.dialog}
       aria-labelledby={titleId}
       onClose={onClose}
     >

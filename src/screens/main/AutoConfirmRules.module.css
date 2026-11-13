@@ -1,0 +1,166 @@
+.scroll {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  min-width: 420px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.accountHead,
+.ruleHead,
+.riskyHead {
+  padding: 0 0 10px;
+  color: var(--color-text-faint);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.accountHead {
+  text-align: left;
+}
+
+.ruleHead,
+.riskyHead {
+  width: 110px;
+  text-align: center;
+}
+
+.riskyHead {
+  color: var(--color-danger);
+}
+
+.allRow {
+  background: var(--color-panel);
+  border-top: 1px solid var(--color-divider);
+}
+
+.allLabel {
+  padding-left: 10px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 400;
+  text-align: left;
+}
+
+.row {
+  border-top: 1px solid var(--color-line);
+}
+
+.account {
+  padding: 6px 0 6px 10px;
+  font-weight: 400;
+  text-align: left;
+}
+
+.login {
+  display: block;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.notSignedIn {
+  display: block;
+  margin-top: 2px;
+  color: var(--color-text-faint);
+  font-size: 12px;
+}
+
+.cell {
+  text-align: center;
+}
+
+.check {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.check:disabled {
+  cursor: default;
+}
+
+.box {
+  width: 18px;
+  height: 18px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-text-faint);
+  border-radius: 5px;
+}
+
+.check[aria-checked='true'] .box,
+.check[aria-checked='mixed'] .box {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.box svg {
+  fill: none;
+  stroke: var(--color-on-accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.check:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: -4px;
+  border-radius: 8px;
+}
+
+.warning {
+  margin: 0;
+  padding: 12px 14px;
+  background: var(--color-danger-surface);
+  border: 1px solid var(--color-danger-muted);
+  border-radius: var(--radius-control);
+  color: var(--color-danger-soft);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.legend {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px 28px;
+}
+
+.term dt {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.term dd {
+  margin: 4px 0 0;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-divider);
+}
+
+.never {
+  color: var(--color-text-faint);
+  font-size: 12px;
+  line-height: 1.5;
+}

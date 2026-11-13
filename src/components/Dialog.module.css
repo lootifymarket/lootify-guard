@@ -8,6 +8,10 @@
   color: var(--color-text);
 }
 
+.wide {
+  max-width: 760px;
+}
+
 .dialog:focus {
   outline: none;
 }

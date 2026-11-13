@@ -22,6 +22,12 @@
   --color-on-accent: #ffffff;
   --color-danger: #ff4d4f;
   --color-danger-muted: #3a1416;
+  --color-danger-surface: #1a0e0f;
+  --color-danger-soft: #ff8a8c;
+  --color-warning: #e3b341;
+  --color-warning-muted: #3a2e12;
+  --color-warning-surface: #17130a;
+  --color-success: #3fb950;
 
   --font-sans: 'Geist Variable', system-ui, sans-serif;
   --font-mono: 'Geist Mono Variable', ui-monospace, monospace;

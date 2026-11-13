@@ -242,17 +242,17 @@ fn client(proxy: Option<&ProxyAddress>) -> Result<Client, SteamError> {
     builder.build().map_err(|_| SteamError::Network)
 }
 
-fn link_details(
+/// A GET to Steam's Web API on behalf of the session.
+pub(crate) fn web_api_get(
     client: &Client,
+    url: &str,
     session: &Session,
-    steam_id: u64,
-) -> Result<PublicData, SteamError> {
+    query: &[(&str, &str)],
+) -> Result<Vec<u8>, SteamError> {
     let response = client
-        .get(LINK_DETAILS_URL)
-        .query(&[
-            ("access_token", session.access_token.expose()),
-            ("steamids[0]", &steam_id.to_string()),
-        ])
+        .get(url)
+        .query(&[("access_token", session.access_token.expose())])
+        .query(query)
         .send()
         .map_err(|_| SteamError::Network)?;
     if matches!(
@@ -264,7 +264,23 @@ fn link_details(
     if !response.status().is_success() {
         return Err(SteamError::Steam(response.status().to_string()));
     }
-    let body = response.bytes().map_err(|_| SteamError::Network)?;
+    response
+        .bytes()
+        .map(|body| body.to_vec())
+        .map_err(|_| SteamError::Network)
+}
+
+fn link_details(
+    client: &Client,
+    session: &Session,
+    steam_id: u64,
+) -> Result<PublicData, SteamError> {
+    let body = web_api_get(
+        client,
+        LINK_DETAILS_URL,
+        session,
+        &[("steamids[0]", &steam_id.to_string())],
+    )?;
     let details: LinkDetails = serde_json::from_slice(&body)
         .map_err(|_| SteamError::Steam("unreadable profile".to_owned()))?;
     details

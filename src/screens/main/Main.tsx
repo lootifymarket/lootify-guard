@@ -39,6 +39,7 @@ export default function Main({ onLock, onAutoLocked }: Props) {
         <AccountPage
           key={openAccount.accountName}
           account={openAccount}
+          accounts={list.accounts}
           codesExpireAt={list.codesExpireAt}
           onBack={() => setOpenName(null)}
           onChanged={reload}

@@ -3,12 +3,12 @@ use base64::engine::general_purpose::STANDARD;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroizing;
 
-use crate::contents::{Account, Authenticator, Secret};
+use crate::contents::{Account, Authenticator, AutoConfirm, Secret};
 
 const SECRET_LEN: usize = 20;
 // The upper half of every user's SteamID64: public universe, individual account,
 // desktop instance. Groups and game servers differ here.
-const USER_ID_HIGH: u64 = 0x0110_0001;
+pub(crate) const USER_ID_HIGH: u64 = 0x0110_0001;
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 pub enum MaFileError {
@@ -94,6 +94,7 @@ pub fn parse(file: &[u8]) -> Result<Account, MaFileError> {
         password: None,
         profile: None,
         proxy: None,
+        auto_confirm: AutoConfirm::default(),
     })
 }
 

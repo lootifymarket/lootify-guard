@@ -2,6 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod accounts;
+mod auto_confirm;
 mod biometrics;
 mod confirmations;
 mod proxies;
@@ -23,7 +24,9 @@ fn main() {
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data_dir)?;
             app.manage(vault::VaultState::new(data_dir.join("vault.lgv")));
+            app.manage(auto_confirm::AutoConfirmLog::default());
             vault::watch_idle(app.handle().clone());
+            auto_confirm::watch(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -48,6 +51,9 @@ fn main() {
             accounts::set_account_proxy,
             confirmations::list_confirmations,
             confirmations::respond_to_confirmations,
+            auto_confirm::set_auto_confirm_rule,
+            auto_confirm::set_auto_confirm_paused,
+            auto_confirm::auto_confirm_log,
             sign_ins::list_sign_in_requests,
             sign_ins::answer_sign_in,
             sign_ins::allow_qr_sign_in,

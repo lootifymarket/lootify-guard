@@ -2,6 +2,13 @@ import { invoke } from '@tauri-apps/api/core'
 
 export type ConfirmationKind = 'trade' | 'marketListing' | 'apiKey' | 'other'
 
+export const CONFIRMATION_KIND_NAMES: Record<ConfirmationKind, string> = {
+  trade: 'Trade',
+  marketListing: 'Market',
+  apiKey: 'API key',
+  other: 'Other',
+}
+
 export type Confirmation = {
   id: string
   nonce: string
