@@ -12,3 +12,11 @@ export const StreamerContext = createContext<StreamerState>({
 })
 
 export const useStreamerMode = () => useContext(StreamerContext)
+
+/** What streamer mode shows instead of a hidden value, as the design has it. */
+export const MASK = {
+  code: '•••••',
+  money: '••••••',
+  id: '…••••',
+  text: '••••••',
+} as const

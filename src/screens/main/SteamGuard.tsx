@@ -8,6 +8,8 @@ import SignInRequests from './SignInRequests.tsx'
 import { matchesQuery, useCodeSecondsLeft } from './useAccounts.ts'
 import layout from './layout.module.css'
 import styles from './SteamGuard.module.css'
+import Private from '../../components/Private.tsx'
+import { MASK } from '../../lib/streamer.ts'
 
 type Props = {
   list: AccountList
@@ -60,8 +62,8 @@ export default function SteamGuard({ list, onChanged }: Props) {
                   {label(account.accountName, t.clickToCopy)}
                 </span>
               </span>
-              <span className={styles.value} data-private>
-                {account.code}
+              <span className={styles.value}>
+                <Private mask={MASK.code}>{account.code}</Private>
               </span>
             </button>
           ))}

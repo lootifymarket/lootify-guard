@@ -60,6 +60,9 @@ import SignIn from './SignIn.tsx'
 import SignOutEverywhere from './SignOutEverywhere.tsx'
 import StandingFacts from './StandingFacts.tsx'
 import styles from './AccountPage.module.css'
+import Private from '../../../components/Private.tsx'
+import { MASK } from '../../../lib/streamer.ts'
+import SteamIdLine from '../SteamIdLine.tsx'
 
 type Props = {
   account: Account
@@ -270,8 +273,8 @@ export default function AccountPage({
           <div className={styles.names}>
             <h1 className={layout.title}>{describe(account).title}</h1>
             {describe(account).details ? (
-              <span className={styles.steamId} data-private>
-                {describe(account).details}
+              <span className={styles.steamId}>
+                <SteamIdLine account={account} />
               </span>
             ) : (
               <span className={styles.muted}>{t.importedFromMaFile}</span>
@@ -293,8 +296,8 @@ export default function AccountPage({
           {t.guardTitle}
         </h2>
         <div className={styles.guard}>
-          <span className={styles.code} data-private>
-            {account.code}
+          <span className={styles.code}>
+            <Private mask={MASK.code}>{account.code}</Private>
           </span>
           <Button
             variant="secondary"
@@ -452,9 +455,10 @@ export default function AccountPage({
               {account.signedIn ? (
                 <dd
                   className={wallet === undefined ? styles.muted : styles.mono}
-                  data-private
                 >
-                  {walletText(t, wallet)}
+                  <Private mask={wallet ? MASK.money : walletText(t, wallet)}>
+                    {walletText(t, wallet)}
+                  </Private>
                 </dd>
               ) : (
                 <dd className={styles.muted}>{t.security.signInToCheck}</dd>

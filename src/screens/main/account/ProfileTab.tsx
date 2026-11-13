@@ -9,6 +9,7 @@ import dialogStyles from '../../../components/Dialog.module.css'
 import { useCopy } from '../../../lib/useCopy.ts'
 import ProfileForm from './ProfileForm.tsx'
 import styles from './AccountPage.module.css'
+import Private from '../../../components/Private.tsx'
 
 type Props = {
   accountName: string
@@ -62,8 +63,8 @@ export default function ProfileTab({
           {t.profile.tradeUrl}
         </h2>
         <div className={styles.tradeUrl}>
-          <span className={styles.tradeUrlText} data-private>
-            {url ?? t.profile.loadingUrl}
+          <span className={styles.tradeUrlText}>
+            {url ? <Private>{url}</Private> : t.profile.loadingUrl}
           </span>
           <Button
             variant="secondary"

@@ -15,7 +15,7 @@ import Icon from '../../components/Icon.tsx'
 import Skeleton from '../../components/Skeleton.tsx'
 import { fromBackend } from '../../i18n/backend/index.ts'
 import { useT } from '../../i18n/index.ts'
-import { useStreamerMode } from '../../lib/streamer.ts'
+import { MASK, useStreamerMode } from '../../lib/streamer.ts'
 import { useCopy } from '../../lib/useCopy.ts'
 import { fromAccounts } from './fromAccounts.ts'
 import GroupDialog from './groups/GroupDialog.tsx'
@@ -23,6 +23,8 @@ import ImportMaFiles from './ImportMaFiles.tsx'
 import { matchesQuery, useCodeSecondsLeft } from './useAccounts.ts'
 import layout from './layout.module.css'
 import styles from './Accounts.module.css'
+import Private from '../../components/Private.tsx'
+import SteamIdLine from './SteamIdLine.tsx'
 
 /** Every account, the playing ones, those needing a look, or a group's. */
 type Filter = 'all' | 'playing' | 'issues' | 'none' | number
@@ -384,10 +386,14 @@ function Balance({ accounts }: { accounts: Account[] }) {
     .sort((a, b) => b[1].accounts - a[1].accounts)
     .map(([currency, sum]) => formatMoney(sum.cents, currency))
   return (
-    <span className={`${styles.balance} rise`} data-private>
-      <span className={styles.statValue}>{main ?? '—'}</span>
+    <span className={`${styles.balance} rise`}>
+      <span className={styles.statValue}>
+        <Private mask={MASK.money}>{main ?? '—'}</Private>
+      </span>
       {rest.length > 0 && (
-        <span className={styles.otherCurrencies}>{rest.join(' · ')}</span>
+        <span className={styles.otherCurrencies}>
+          <Private mask="">{rest.join(' · ')}</Private>
+        </span>
       )}
     </span>
   )
@@ -455,10 +461,14 @@ function Row({
       <span role="cell">
         <Status account={account} />
       </span>
-      <span role="cell" className={styles.money} data-private>
-        {account.wallet
-          ? formatMoney(account.wallet.balance, account.wallet.currency)
-          : '—'}
+      <span role="cell" className={styles.money}>
+        {account.wallet ? (
+          <Private mask={MASK.money}>
+            {formatMoney(account.wallet.balance, account.wallet.currency)}
+          </Private>
+        ) : (
+          '—'
+        )}
       </span>
       <span
         role="cell"
@@ -509,8 +519,8 @@ function Details({
       <div className={styles.identity}>
         <span className={styles.detailsName}>{describe(account).title}</span>
         {describe(account).details && (
-          <span className={styles.steamId} data-private>
-            {describe(account).details}
+          <span className={styles.steamId}>
+            <SteamIdLine account={account} />
           </span>
         )}
       </div>
@@ -525,8 +535,8 @@ function Details({
             {label(account.accountName, t.copy)}
           </button>
         </div>
-        <span className={styles.code} data-private>
-          {account.code}
+        <span className={styles.code}>
+          <Private mask={MASK.code}>{account.code}</Private>
         </span>
         <span className={layout.bar}>
           <span
@@ -540,11 +550,19 @@ function Details({
       <dl className={styles.facts}>
         <div className={styles.fact}>
           <dt>{t.columns.wallet}</dt>
-          <dd className={styles.money} data-private>
-            {wallet ? formatMoney(wallet.balance, wallet.currency) : '—'}
+          <dd className={styles.money}>
+            {wallet ? (
+              <Private mask={MASK.money}>
+                {formatMoney(wallet.balance, wallet.currency)}
+              </Private>
+            ) : (
+              '—'
+            )}
             {wallet && wallet.pending > 0 && (
               <span className={styles.pending}>
-                {t.pending(formatMoney(wallet.pending, wallet.currency))}
+                <Private mask="">
+                  {t.pending(formatMoney(wallet.pending, wallet.currency))}
+                </Private>
               </span>
             )}
           </dd>

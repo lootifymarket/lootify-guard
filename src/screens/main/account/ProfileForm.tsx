@@ -23,6 +23,8 @@ import dialogStyles from '../../../components/Dialog.module.css'
 import Dropdown from '../../../components/Dropdown.tsx'
 import TextField from '../../../components/TextField.tsx'
 import styles from './AccountPage.module.css'
+import Private from '../../../components/Private.tsx'
+import { MASK } from '../../../lib/streamer.ts'
 
 // Each is named by the field's key in the dictionary.
 const PRIVACY_FIELDS: (keyof Privacy)[] = ['profile', 'inventory', 'games']
@@ -120,10 +122,15 @@ export default function ProfileForm({
             value={draft.customUrl}
             onChange={(event) => edit({ customUrl: event.target.value.trim() })}
           />
-          <span className={styles.fieldHint} data-private>
-            {saved.customUrl
-              ? `steamcommunity.com/id/${saved.customUrl}`
-              : `steamcommunity.com/profiles/${steamId ?? '…'}`}
+          <span className={styles.fieldHint}>
+            {saved.customUrl ? (
+              `steamcommunity.com/id/${saved.customUrl}`
+            ) : (
+              <>
+                steamcommunity.com/profiles/
+                <Private mask={MASK.id}>{steamId ?? '…'}</Private>
+              </>
+            )}
           </span>
         </div>
       </div>

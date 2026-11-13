@@ -35,6 +35,8 @@ import { useT, type Dictionary } from '../../../i18n/index.ts'
 import { useCopy } from '../../../lib/useCopy.ts'
 import layout from '../layout.module.css'
 import styles from './AddAccount.module.css'
+import Private from '../../../components/Private.tsx'
+import { MASK } from '../../../lib/streamer.ts'
 
 type Stage =
   | { step: 0 }
@@ -351,8 +353,8 @@ function Revocation({
       {code ? (
         <>
           <p className={styles.lead}>{t.revocationLead(added.accountName)}</p>
-          <span className={styles.code} data-private>
-            {code}
+          <span className={styles.code}>
+            <Private mask={MASK.code}>{code}</Private>
           </span>
           <div className={styles.codeActions}>
             <Button

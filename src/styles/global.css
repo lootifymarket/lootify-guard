@@ -23,12 +23,10 @@ input {
   color: inherit;
 }
 
-/* Streamer mode: whatever could identify an account or help rob it stays on
-   screen, blurred, so the layout doesn't jump when it's turned on. */
-:root[data-streamer] [data-private] {
-  /* In ems, so a large Guard code blurs as much as a small Steam ID. */
-  filter: blur(0.4em);
-  user-select: none;
+/* Streamer mode hides typed-in figures like a password field; elsewhere the
+   Private component puts dots in place of the value. */
+:root[data-streamer] input[data-private] {
+  -webkit-text-security: disc;
 }
 
 /* A placeholder for what's still loading, the shape of what will be there. */
