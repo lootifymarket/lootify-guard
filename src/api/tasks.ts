@@ -21,6 +21,8 @@ export type TaskInput =
   | { kind: 'goOffline' }
   /** Plays the games with card drops left until they run out. */
   | { kind: 'cardFarming' }
+  /** Discovery queues to view, up to 3, and the free daily sale item. */
+  | { kind: 'events'; queues: number; claimItem: boolean }
   /** Every tradable item to one account. */
   | { kind: 'moveToStorage'; storage: string; game: Game }
 

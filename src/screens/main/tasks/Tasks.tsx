@@ -46,6 +46,11 @@ const TASKS: { kind: Kind; name: string; text: string }[] = [
     text: 'Free licenses by store link or ID',
   },
   {
+    kind: 'events',
+    name: 'Events',
+    text: 'Discovery queue and the free sale item',
+  },
+  {
     kind: 'check',
     name: 'Check',
     text: 'Session, profile, Web API key, bans and limits',
@@ -90,6 +95,8 @@ export default function Tasks({ accounts, groups }: Props) {
   const [game, setGame] = useState<Game>('cs2')
   const [licenses, setLicenses] = useState('')
   const [boostGames, setBoostGames] = useState('')
+  const [queues, setQueues] = useState(1)
+  const [claimItem, setClaimItem] = useState(true)
   const [atOnce, setAtOnce] = useState(3)
   const [pause, setPause] = useState('medium')
   const [retry, setRetry] = useState(true)
@@ -121,10 +128,12 @@ export default function Tasks({ accounts, groups }: Props) {
       ? storage !== ''
       : kind === 'freeGames'
         ? licenses.trim() !== ''
-        : kind !== 'profile' ||
-          profile.nameTemplate.trim() !== '' ||
-          Object.keys(profile.privacy).length > 0 ||
-          profile.avatar !== null
+        : kind === 'events'
+          ? queues > 0 || claimItem
+          : kind !== 'profile' ||
+            profile.nameTemplate.trim() !== '' ||
+            Object.keys(profile.privacy).length > 0 ||
+            profile.avatar !== null
 
   async function input(): Promise<TaskInput> {
     switch (kind) {
@@ -141,6 +150,8 @@ export default function Tasks({ accounts, groups }: Props) {
       case 'goOffline':
       case 'cardFarming':
         return { kind }
+      case 'events':
+        return { kind, queues, claimItem }
       case 'profile': {
         const { avatar } = profile
         return {
@@ -280,6 +291,34 @@ export default function Tasks({ accounts, groups }: Props) {
                 App IDs or store links, up to 32. Left empty, each account plays
                 the games on its Playing tab. Accounts keep playing until Go
                 offline, and reconnect by themselves.
+              </p>
+            </div>
+          )}
+
+          {kind === 'events' && (
+            <div className={styles.options}>
+              <Dropdown
+                label="Discovery queues"
+                size="sm"
+                value={String(queues)}
+                options={[0, 1, 2, 3].map((n) => ({
+                  value: String(n),
+                  label: n === 0 ? 'None' : n === 1 ? '1 queue' : `${n} queues`,
+                }))}
+                onChange={(value) => setQueues(Number(value))}
+              />
+              <div className={styles.option}>
+                <span>Claim the free sale item</span>
+                <Toggle
+                  on={claimItem}
+                  label="Claim the free sale item"
+                  onChange={setClaimItem}
+                />
+              </div>
+              <p className={styles.note}>
+                During Steam sales and festivals, viewing the queue gives
+                trading cards and the free item is a sticker or similar. With no
+                sale on, there's nothing to get.
               </p>
             </div>
           )}
