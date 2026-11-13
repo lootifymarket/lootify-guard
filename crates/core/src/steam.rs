@@ -73,6 +73,9 @@ pub enum SteamError {
     Timeout,
     #[error("couldn't reach Steam through the proxy")]
     Proxy,
+    /// Steam turned the change down and said why, in its own words.
+    #[error("Steam said: {0}")]
+    Refused(String),
     #[error("Steam answered with something unexpected ({0})")]
     Steam(String),
 }
@@ -206,7 +209,7 @@ fn session_client(
 
 /// Steam only checks that a form's `sessionid` matches the cookie, so any value
 /// works. It is derived from the token so that the form can name the same one.
-fn session_id(session: &Session) -> String {
+pub(crate) fn session_id(session: &Session) -> String {
     Sha1::digest(session.access_token.expose().as_bytes())[..12]
         .iter()
         .map(|byte| format!("{byte:02x}"))
@@ -397,6 +400,15 @@ fn request_error(err: reqwest::Error) -> SteamError {
     } else {
         SteamError::Network
     }
+}
+
+/// Undoes the escaping of text taken out of an HTML page.
+pub(crate) fn html_unescape(text: &str) -> String {
+    text.replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&#39;", "'")
+        .replace("&amp;", "&")
 }
 
 fn community_page(response: Response) -> Result<String, SteamError> {

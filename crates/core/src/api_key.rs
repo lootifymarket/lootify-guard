@@ -2,7 +2,7 @@ use sha1::{Digest, Sha1};
 
 use crate::contents::{Account, Session};
 use crate::proxy::ProxyAddress;
-use crate::steam::{SteamError, community_get, community_post, with_session};
+use crate::steam::{SteamError, community_get, community_post, html_unescape, with_session};
 
 const API_KEY_URL: &str = "https://steamcommunity.com/dev/apikey?l=english";
 const REVOKE_URL: &str = "https://steamcommunity.com/dev/revokekey";
@@ -47,7 +47,7 @@ fn parse(page: &str) -> Result<Option<ApiKey>, SteamError> {
         text_after(page, "Domain Name: "),
     ) {
         return Ok(Some(ApiKey {
-            domain: unescape(domain),
+            domain: html_unescape(domain),
             fingerprint: Sha1::digest(key)
                 .iter()
                 .map(|byte| format!("{byte:02x}"))
@@ -71,14 +71,6 @@ fn text_after<'a>(page: &'a str, label: &str) -> Option<&'a str> {
     let rest = &page[start..];
     let text = rest[..rest.find('<').unwrap_or(rest.len())].trim();
     (!text.is_empty()).then_some(text)
-}
-
-fn unescape(text: &str) -> String {
-    text.replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&quot;", "\"")
-        .replace("&#39;", "'")
-        .replace("&amp;", "&")
 }
 
 #[cfg(test)]

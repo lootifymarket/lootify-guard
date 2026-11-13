@@ -6,6 +6,7 @@ pub mod idle;
 pub mod link;
 pub mod mafile;
 pub mod profile;
+pub mod profile_settings;
 pub mod proxy;
 pub mod sessions;
 pub mod sign_ins;
