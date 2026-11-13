@@ -87,6 +87,7 @@ export const tasks: typeof en = {
   retry: 'Повторювати невдалі акаунти (до 3 разів)',
   retryLabel: 'Повторювати невдалі акаунти',
   runOn: (target, n) => `Запустити: ${target} (${n})`,
+  started: (task, target) => `Завдання «${task}» запущено: ${target}`,
 
   profile: {
     nickname: 'Нікнейм',
@@ -113,8 +114,11 @@ export const tasks: typeof en = {
     done: 'Готово',
     toLookAt: (n) =>
       `${n} ${plural('uk', n, { one: 'потребує', few: 'потребують', other: 'потребують' })} уваги`,
-    hideAccounts: 'Сховати акаунти',
-    showAccounts: 'Показати акаунти',
+    error: 'Помилка',
+    of: (done, total) => `${done} з ${total}`,
+    stoppedToast: 'Завдання зупинено',
+    close: 'Закрити',
+    ok: 'OK',
     stop: 'Зупинити',
     waitingRetry: (tries) => `Чекає на повтор (${tries} з 3)`,
     waiting: 'Чекає',

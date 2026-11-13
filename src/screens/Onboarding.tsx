@@ -14,7 +14,12 @@ import LogoMark from '../components/LogoMark.tsx'
 import TextField from '../components/TextField.tsx'
 import Toggle from '../components/Toggle.tsx'
 import { LANGUAGES, useLanguage, useT, type Language } from '../i18n/index.ts'
-import { saveLanguage } from '../api/settings.ts'
+import {
+  AUTO_LOCK_CHOICES,
+  saveLanguage,
+  setAutoLock,
+  setLaunchAtStartup,
+} from '../api/settings.ts'
 import Dropdown from '../components/Dropdown.tsx'
 import { checkPassword } from '../lib/passwordStrength.ts'
 import styles from './Onboarding.module.css'
@@ -28,6 +33,7 @@ const PROMISE_ICONS = [
 
 const CHECK = 'M20 6L9 17l-5-5'
 const DOT = 'M12 12h.01'
+const NEVER = 'never'
 
 type Props = {
   onCreated: () => void
@@ -62,19 +68,18 @@ export default function Onboarding({ onCreated }: Props) {
           ))}
         </ol>
         <p className={styles.asideNote}>{t.asideNote}</p>
-        <LanguagePicker />
       </aside>
       <main className={styles.main}>
         <div className={styles.content}>
-          {step === 0 ? (
-            <Welcome onNext={() => setStep(1)} />
-          ) : (
+          {step === 0 && <Welcome onNext={() => setStep(1)} />}
+          {step === 1 && (
             <MasterPassword
               biometric={biometric}
               onBack={() => setStep(0)}
-              onCreated={onCreated}
+              onCreated={() => setStep(2)}
             />
           )}
+          {step === 2 && <Preferences onDone={onCreated} />}
         </div>
       </main>
     </div>
@@ -85,17 +90,22 @@ export default function Onboarding({ onCreated }: Props) {
 function LanguagePicker() {
   const { language, t, setLanguage } = useLanguage()
   return (
-    <Dropdown
-      label={t.settings.language}
-      hideLabel
-      size="sm"
-      value={language}
-      options={LANGUAGES}
-      onChange={(value) => {
-        setLanguage(value as Language)
-        void saveLanguage(value as Language)
-      }}
-    />
+    <div className={styles.option}>
+      <span className={styles.optionLabel}>{t.settings.language}</span>
+      <span className={styles.language}>
+        <Dropdown
+          label={t.settings.language}
+          hideLabel
+          size="sm"
+          value={language}
+          options={LANGUAGES}
+          onChange={(value) => {
+            setLanguage(value as Language)
+            void saveLanguage(value as Language)
+          }}
+        />
+      </span>
+    </div>
   )
 }
 
@@ -119,8 +129,81 @@ function Welcome({ onNext }: { onNext: () => void }) {
           </li>
         ))}
       </ul>
+      <LanguagePicker />
       <div className={styles.actions}>
         <Button onClick={onNext}>{t.getStarted}</Button>
+      </div>
+    </div>
+  )
+}
+
+/** The settings most worth picking up front, now that there's a vault to lock. */
+function Preferences({ onDone }: { onDone: () => void }) {
+  const words = useT()
+  const t = words.onboarding
+  const settings = words.settings
+  const [autoLock, setAutoLockChoice] = useState('15')
+  const [atStartup, setAtStartup] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  async function finish() {
+    setBusy(true)
+    setError('')
+    try {
+      await setAutoLock(autoLock === NEVER ? null : Number(autoLock))
+      if (atStartup) await setLaunchAtStartup(true)
+      onDone()
+    } catch (err) {
+      setError(errorMessage(err))
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className={styles.stepBody}>
+      <div className={styles.heading}>
+        <h1 className={styles.title}>{t.prefsTitle}</h1>
+        <p className={styles.lead}>{t.prefsLead}</p>
+      </div>
+      <div className={styles.rows}>
+        <div className={styles.row}>
+          <span>{settings.autoLock}</span>
+          <span className={styles.rowControl}>
+            <Dropdown
+              label={settings.autoLock}
+              hideLabel
+              size="sm"
+              value={autoLock}
+              options={[
+                ...AUTO_LOCK_CHOICES.map((minutes) => ({
+                  value: String(minutes),
+                  label: settings.minutes(minutes),
+                })),
+                { value: NEVER, label: settings.never },
+              ]}
+              onChange={setAutoLockChoice}
+            />
+          </span>
+        </div>
+        <div className={styles.row}>
+          <span>{settings.startup}</span>
+          <Toggle
+            on={atStartup}
+            label={settings.startup}
+            onChange={setAtStartup}
+          />
+        </div>
+      </div>
+      {error && (
+        <span className={styles.hint} data-tone="danger" role="alert">
+          {error}
+        </span>
+      )}
+      <div className={styles.actions}>
+        <Button busy={busy} disabled={busy} onClick={() => void finish()}>
+          {words.common.continue}
+        </Button>
       </div>
     </div>
   )

@@ -14,6 +14,7 @@ import Button from '../../../components/Button.tsx'
 import Dialog from '../../../components/Dialog.tsx'
 import dialogStyles from '../../../components/Dialog.module.css'
 import { useT } from '../../../i18n/index.ts'
+import { useToast } from '../../../lib/toast.ts'
 import styles from './Inventory.module.css'
 import Private from '../../../components/Private.tsx'
 import { MASK } from '../../../lib/streamer.ts'
@@ -57,6 +58,7 @@ function Form({ game, picked, onClose, onListed }: Props) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [reports, setReports] = useState<ListingReport[] | null>(null)
+  const toast = useToast()
   // Kept from before listing, as the inventory reloads without the listed items.
   const [names, setNames] = useState<Record<string, string>>({})
   const namesKey = rows.map((row) => row.name).join('\n')
@@ -109,16 +111,21 @@ function Form({ game, picked, onClose, onListed }: Props) {
     }
     setNames(listed)
     try {
-      setReports(
-        await listOnMarket(
-          currency,
-          Object.entries(groups).map(([accountName, listings]) => ({
-            accountName,
-            listings,
-          })),
-        ),
+      const done = await listOnMarket(
+        currency,
+        Object.entries(groups).map(([accountName, listings]) => ({
+          accountName,
+          listings,
+        })),
       )
       onListed()
+      // Only listings left waiting or failed are worth a closer look.
+      if (done.every((report) => report.outcome === 'done')) {
+        toast(t.listedToast(done.length))
+        onClose()
+      } else {
+        setReports(done)
+      }
     } catch (err) {
       setError(errorMessage(err))
     }

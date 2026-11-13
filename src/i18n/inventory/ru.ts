@@ -9,6 +9,7 @@ const accounts = (n: number) =>
 
 export const inventory: typeof en = {
   title: 'Инвентарь',
+  shownItems: 'Предметов',
   subtitle: 'Все предметы всех аккаунтов в одном месте.',
   items,
   account: 'Аккаунт',
@@ -55,6 +56,7 @@ export const inventory: typeof en = {
     staying: (n) =>
       ` ${items(n)} уже ${plural('ru', n, { one: 'лежит', other: 'лежат' })} там и ${plural('ru', n, { one: 'останется', other: 'останутся' })}.`,
     moving: 'Переносим…',
+    movedTo: (count, target) => `Перенесено на ${target}: ${items(count)}`,
     move: (n) => `Перенести ${items(n)}`,
   },
 
@@ -73,6 +75,7 @@ export const inventory: typeof en = {
     youGet: (money) => `вы получите ${money}`,
     youGetTotal: (money) => `Всего вы получите около ${money}`,
     listing: 'Выставляем…',
+    listedToast: (count) => `Выставлено: ${items(count)}`,
     list: (n) => `Выставить ${items(n)}`,
     listed: 'Выставлено',
     unconfirmed: 'Выставлено, но ждёт подтверждения на экране Steam Guard',

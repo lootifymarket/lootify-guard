@@ -95,7 +95,7 @@ export default function Settings({ onAutoLockChanged }: Props) {
           </h2>
           <div className={styles.row}>
             <span>{t.language}</span>
-            <span className={styles.control}>
+            <span className={styles.controlWide}>
               <Dropdown
                 label={t.language}
                 hideLabel
@@ -185,6 +185,7 @@ export default function Settings({ onAutoLockChanged }: Props) {
             <Button
               variant="secondary"
               size="sm"
+              className={styles.action}
               onClick={() => setChanging(true)}
             >
               {words.common.change}
@@ -202,6 +203,7 @@ export default function Settings({ onAutoLockChanged }: Props) {
             <Button
               variant="secondary"
               size="sm"
+              className={styles.action}
               busy={busy}
               disabled={busy}
               onClick={() =>

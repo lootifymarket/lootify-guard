@@ -24,51 +24,49 @@
 }
 
 .table {
-  flex: 999 1 560px;
+  flex: 999 1 620px;
   min-width: 0;
   overflow-x: auto;
 }
 
 .row {
-  min-width: 600px;
+  min-width: 680px;
   display: grid;
-  grid-template-columns: minmax(140px, 2fr) 64px 72px 64px 64px 150px;
-  gap: 12px;
+  grid-template-columns: minmax(220px, 2fr) 90px 120px 80px 90px 140px;
+  gap: 16px;
   align-items: center;
-  padding: 10px 4px;
+  padding: 15px 4px;
   border-top: 1px solid var(--color-line);
   font-size: 13px;
 }
 
-.row:hover {
-  background: var(--color-row-selected);
-}
-
-.head,
-.head:hover {
-  background: transparent;
+.head {
+  padding: 10px 4px;
   border-top: 0;
   color: var(--color-text-faint);
   font-size: 12px;
 }
 
+/* The whole row opens the proxy. */
 .open {
-  min-width: 0;
-  min-height: 34px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
-  padding: 0;
+  width: 100%;
   background: transparent;
-  border: 0;
+  border-right: 0;
+  border-bottom: 0;
+  border-left: 0;
   text-align: left;
   cursor: pointer;
 }
 
-.open:hover .title {
-  text-decoration: underline;
-  text-underline-offset: 3px;
+.open:hover {
+  background: var(--color-row-selected);
+}
+
+.names {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .title {
@@ -79,9 +77,9 @@
 }
 
 .open:focus-visible,
-.refresh:focus-visible {
+.delete:focus-visible {
   outline: 2px solid var(--color-text);
-  outline-offset: 2px;
+  outline-offset: -2px;
 }
 
 .country {
@@ -91,32 +89,6 @@
   color: var(--color-text-secondary);
   font-family: var(--font-mono);
   font-size: 12px;
-}
-
-.statusCell {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-}
-
-.refresh {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-}
-
-.refresh:disabled {
-  opacity: 0.4;
-  cursor: default;
 }
 
 .address {
@@ -165,7 +137,7 @@
 }
 
 .bulk {
-  flex: 1 1 240px;
+  flex: 1 1 280px;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -200,6 +172,8 @@
 
 .bulkButton {
   align-self: flex-start;
+  height: 36px;
+  padding: 0 14px;
 }
 
 .bulkReport {
@@ -276,4 +250,26 @@
   align-items: center;
   gap: 8px;
   font-size: 13px;
+}
+
+.detailsAddress {
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.delete {
+  align-self: flex-start;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--color-danger);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.delete:disabled {
+  opacity: 0.5;
+  cursor: default;
 }

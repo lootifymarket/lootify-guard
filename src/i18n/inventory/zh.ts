@@ -4,6 +4,7 @@ const items = (n: number) => `${n} 件物品`
 
 export const inventory: typeof en = {
   title: '库存',
+  shownItems: '物品',
   subtitle: '所有账户的所有物品都在这里。',
   items,
   account: '账户',
@@ -47,6 +48,7 @@ export const inventory: typeof en = {
       `${items(count)}将从 ${from} 个账户转移到 ${target}。每个账户发送交易报价，令牌自动确认，${target} 自动接受，无需手机。`,
     staying: (n) => `另有 ${items(n)}已在该账户上，保持不动。`,
     moving: '正在转移…',
+    movedTo: (count, target) => `已将 ${items(count)}转移到 ${target}`,
     move: (n) => `转移 ${items(n)}`,
   },
 
@@ -64,6 +66,7 @@ export const inventory: typeof en = {
     youGet: (money) => `你将获得 ${money}`,
     youGetTotal: (money) => `总计约获得 ${money}`,
     listing: '正在上架…',
+    listedToast: (count) => `已上架 ${items(count)}`,
     list: (n) => `上架 ${items(n)}`,
     listed: '已上架',
     unconfirmed: '已上架，但在 Steam 令牌页面等待确认',

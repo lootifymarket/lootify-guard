@@ -45,7 +45,7 @@ export default function ItemCard({
     <button
       ref={card}
       type="button"
-      className={styles.card}
+      className={`${styles.card} rise`}
       aria-pressed={picked}
       disabled={unavailable !== undefined}
       title={unavailable ? `${item.name} · ${unavailable}` : item.name}

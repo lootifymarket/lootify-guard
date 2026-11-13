@@ -338,6 +338,36 @@
   gap: 3px;
 }
 
+.optionLabel {
+  color: var(--color-text-muted);
+}
+
+.language {
+  width: 200px;
+  flex-shrink: 0;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--color-line);
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--color-line);
+  font-size: 13px;
+}
+
+.rowControl {
+  width: 220px;
+  flex-shrink: 0;
+}
+
 .optionText {
   color: var(--color-text-faint);
   font-size: 12px;

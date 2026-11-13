@@ -10,9 +10,21 @@
 }
 
 .total {
-  color: var(--color-text-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.totalLabel {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.totalValue {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 22px;
+  font-weight: 500;
 }
 
 .filters {
@@ -51,7 +63,7 @@
 }
 
 .bar {
-  min-height: 52px;
+  min-height: 58px;
   box-sizing: border-box;
   display: flex;
   flex-wrap: wrap;
@@ -59,7 +71,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 0 18px;
-  background: var(--color-panel);
+  background: var(--color-field);
   border: 1px solid var(--color-divider);
   border-radius: 12px;
   font-size: 13px;
@@ -104,6 +116,16 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
   gap: 12px;
+}
+
+.skeletonCard {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--color-field);
+  border: 1px solid var(--color-divider);
+  border-radius: 10px;
 }
 
 .error {

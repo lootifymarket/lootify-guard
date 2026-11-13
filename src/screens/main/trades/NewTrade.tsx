@@ -12,6 +12,7 @@ import Button from '../../../components/Button.tsx'
 import Dialog from '../../../components/Dialog.tsx'
 import dialogStyles from '../../../components/Dialog.module.css'
 import Dropdown from '../../../components/Dropdown.tsx'
+import Skeleton from '../../../components/Skeleton.tsx'
 import TextField from '../../../components/TextField.tsx'
 import { useT } from '../../../i18n/index.ts'
 import ItemCard from '../items/ItemCard.tsx'
@@ -218,7 +219,11 @@ function Form({
             </div>
           )}
           {!inventory && !loadError && (
-            <p className={styles.pickerNote}>{t.loadingInventory}</p>
+            <div className={styles.cards} aria-label={t.loadingInventory}>
+              {Array.from({ length: 8 }, (_, i) => (
+                <Skeleton key={i} height={170} radius={12} />
+              ))}
+            </div>
           )}
           {inventory && shown.length === 0 && (
             <p className={styles.pickerNote}>

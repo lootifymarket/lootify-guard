@@ -47,7 +47,7 @@ export const en = {
   },
 
   onboarding: {
-    steps: ['Welcome', 'Master password'],
+    steps: ['Welcome', 'Master password', 'Preferences'],
     promises: [
       {
         title: 'Stays on your computer',
@@ -100,6 +100,8 @@ export const en = {
       'If malware copies your vault file, a weak password can be cracked offline in hours, exposing every Steam Guard secret inside. A long passphrase takes years.',
     useAnyway: 'Use it anyway',
     makeStronger: 'Make it stronger',
+    prefsTitle: 'A few preferences',
+    prefsLead: 'You can change all of this later in Settings.',
   },
 
   unlock: {
@@ -183,7 +185,7 @@ export const en = {
     language: 'Language',
     streamer: 'Streamer mode',
     streamerHint:
-      'Blurs Steam Guard codes, Steam IDs, trade URLs, balances and prices, for streams and screenshots.',
+      'Hides balances, prices, Steam Guard codes, Steam IDs and trade URLs.',
     security: 'Security',
     autoLock: 'Auto-lock',
     autoLockHint:

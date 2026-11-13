@@ -1,5 +1,6 @@
 import { warningText, type TradeOffer } from '../../../api/trades.ts'
 import Button from '../../../components/Button.tsx'
+import Skeleton from '../../../components/Skeleton.tsx'
 import Dialog from '../../../components/Dialog.tsx'
 import dialogStyles from '../../../components/Dialog.module.css'
 import { useT } from '../../../i18n/index.ts'
@@ -66,7 +67,13 @@ export default function PartnerDialog({
           ))}
         </ul>
       )}
-      {!result && <p className={dialogStyles.text}>{trades.askingSteam}</p>}
+      {!result && (
+        <div className={styles.factsLoading}>
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} height={14} />
+          ))}
+        </div>
+      )}
       <div className={dialogStyles.actions}>
         <Button size="sm" onClick={onClose}>
           {t.close}

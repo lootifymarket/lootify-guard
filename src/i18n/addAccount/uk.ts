@@ -64,4 +64,5 @@ export const addAccount: typeof en = {
     `Steam надіслав SMS на ${phone}. Щойно ви введете код, Guard на телефоні перестане працювати.`,
   smsNew: (phone) =>
     `Steam надіслав SMS на ${phone}. Введіть код, щоб увімкнути новий автентифікатор.`,
+  guardAdded: 'Steam Guard додано',
 }

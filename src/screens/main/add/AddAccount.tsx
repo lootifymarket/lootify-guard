@@ -32,6 +32,7 @@ import Flag from '../../../components/Flag.tsx'
 import TextField from '../../../components/TextField.tsx'
 import Toggle from '../../../components/Toggle.tsx'
 import { useT, type Dictionary } from '../../../i18n/index.ts'
+import { useToast } from '../../../lib/toast.ts'
 import { useCopy } from '../../../lib/useCopy.ts'
 import layout from '../layout.module.css'
 import styles from './AddAccount.module.css'
@@ -58,6 +59,7 @@ type Props = {
 /** Signs in to an account that isn't in the vault and sets up Steam Guard for it here. */
 export default function AddAccount({ onCancel, onAdded, onDone }: Props) {
   const t = useT().addAccount
+  const toast = useToast()
   const [stage, setStage] = useState<Stage>({ step: 0 })
   const [asking, setAsking] = useState<Asking | null>(null)
 
@@ -126,6 +128,7 @@ export default function AddAccount({ onCancel, onAdded, onDone }: Props) {
         onAdded={(added) => {
           setAsking(null)
           setStage({ step: 2, added })
+          toast(t.guardAdded)
           onAdded()
         }}
       />
@@ -193,7 +196,10 @@ function SignIn({
   }
 
   return (
-    <form className={styles.body} onSubmit={(event) => void submit(event)}>
+    <form
+      className={`${styles.body} rise`}
+      onSubmit={(event) => void submit(event)}
+    >
       <h1 className={layout.title}>{t.signInTitle}</h1>
       <TextField
         label={t.login}
@@ -277,7 +283,7 @@ function Guard({
   }
 
   return (
-    <div className={styles.body}>
+    <div className={`${styles.body} rise`}>
       <h1 className={layout.title}>{t.guardTitle}</h1>
       <p className={styles.lead}>
         {onPhone ? t.guardOnPhone(accountName) : t.noAuthenticator(accountName)}
@@ -331,8 +337,8 @@ function Revocation({
   onDone: () => void
 }) {
   const t = useT().addAccount
+  const toast = useToast()
   const [stored, setStored] = useState(false)
-  const [saved, setSaved] = useState<string | null>(null)
   const [error, setError] = useState('')
   const { copy, label } = useCopy()
   const code = added.revocationCode
@@ -341,14 +347,14 @@ function Revocation({
     setError('')
     try {
       const name = await saveNewRevocationCode()
-      if (name) setSaved(name)
+      if (name) toast(t.savedAs(name))
     } catch (err) {
       setError(errorMessage(err))
     }
   }
 
   return (
-    <div className={styles.body}>
+    <div className={`${styles.body} rise`}>
       <h1 className={layout.title}>{t.revocationTitle}</h1>
       {code ? (
         <>
@@ -368,7 +374,6 @@ function Revocation({
               {t.saveTxt}
             </Button>
           </div>
-          {saved && <p className={styles.note}>{t.savedAs(saved)}</p>}
           {error && (
             <p className={styles.error} role="alert">
               {error}

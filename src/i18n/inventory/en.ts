@@ -2,6 +2,7 @@ const items = (n: number) => (n === 1 ? '1 item' : `${n} items`)
 
 export const inventory = {
   title: 'Inventory',
+  shownItems: 'Items',
   subtitle: 'Every item from every account in one place.',
   items,
   account: 'Account',
@@ -47,6 +48,8 @@ export const inventory = {
     staying: (n: number) =>
       ` ${n} picked ${n === 1 ? 'item is' : 'items are'} already there and stay.`,
     moving: 'Moving…',
+    movedTo: (count: number, target: string) =>
+      `Moved ${items(count)} to ${target}`,
     move: (n: number) => `Move ${items(n)}`,
   },
 
@@ -65,6 +68,7 @@ export const inventory = {
     youGet: (money: string) => `you get ${money}`,
     youGetTotal: (money: string) => `You get about ${money} in all`,
     listing: 'Listing…',
+    listedToast: (count: number) => `Listed ${items(count)}`,
     list: (n: number) => `List ${items(n)}`,
     listed: 'Listed',
     unconfirmed:

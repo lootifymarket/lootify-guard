@@ -54,7 +54,12 @@
   gap: 12px;
 }
 
+.scroll {
+  overflow-x: auto;
+}
+
 .table {
+  min-width: 900px;
   display: flex;
   flex-direction: column;
 }
@@ -63,23 +68,39 @@
 .row {
   display: grid;
   grid-template-columns:
-    minmax(170px, 1.2fr) minmax(130px, 1fr) minmax(130px, 1fr)
-    minmax(130px, 1fr) 200px;
+    minmax(200px, 1.3fr) minmax(180px, 1.2fr) minmax(180px, 1.2fr)
+    minmax(180px, 1.3fr) 220px;
   /* Every row is a grid of its own, so no column may size to its content. */
-  gap: 16px;
+  gap: 20px;
   align-items: center;
 }
 
 .head {
-  padding: 0 0 10px;
+  padding: 0 4px 10px;
   color: var(--color-text-faint);
   font-size: 12px;
 }
 
 .row {
-  padding: 14px 0;
+  padding: 18px 4px;
   border-top: 1px solid var(--color-line);
   font-size: 13px;
+}
+
+.skeletonRow {
+  padding-block: 20px;
+}
+
+.empty {
+  margin: 0;
+  padding: 32px 4px;
+  border-top: 1px solid var(--color-line);
+  color: var(--color-text-faint);
+  font-size: 13px;
+}
+
+.account {
+  width: 200px;
 }
 
 .who,
@@ -146,23 +167,37 @@
   gap: 8px;
 }
 
-.actionError,
-.actionNote {
+.actionError {
   flex-basis: 100%;
+  color: var(--color-danger);
   font-size: 12px;
   text-align: right;
-}
-
-.actionError {
-  color: var(--color-danger);
 }
 
 .actionError::first-letter {
   text-transform: uppercase;
 }
 
-.actionNote {
-  color: var(--color-text-muted);
+/* The design's offer buttons are smaller than the app's; two classes win over the button's own. */
+.actions .compact {
+  height: 32px;
+  padding: 0 14px;
+  font-size: 12px;
+}
+
+.actions .light {
+  background: var(--color-text);
+  color: var(--color-bg);
+}
+
+.actions .light:disabled {
+  background: var(--color-disabled);
+  color: var(--color-text-faint);
+}
+
+.actions .light > [aria-hidden='true'] {
+  border-color: rgb(0 0 0 / 0.25);
+  border-top-color: var(--color-bg);
 }
 
 .itemList {
@@ -216,6 +251,13 @@
   line-height: 1.5;
 }
 
+.factsLoading {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 10px 0;
+}
+
 .facts {
   margin: 0;
   display: flex;
@@ -254,13 +296,8 @@
 
 .tools {
   display: flex;
-  gap: 8px;
-}
-
-.sent {
-  margin: 0;
-  color: var(--color-text-muted);
-  font-size: 13px;
+  align-items: center;
+  gap: 10px;
 }
 
 .newTrade {

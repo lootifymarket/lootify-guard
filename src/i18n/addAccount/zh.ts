@@ -59,4 +59,5 @@ export const addAccount: typeof en = {
   smsMove: (phone) =>
     `Steam 已向${phone}发送短信。输入代码后，手机上的令牌将停止工作。`,
   smsNew: (phone) => `Steam 已向${phone}发送短信。输入代码以启用新的验证器。`,
+  guardAdded: '已添加 Steam 令牌',
 }

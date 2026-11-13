@@ -80,6 +80,7 @@ export const tasks: typeof en = {
   retry: '重试失败的账户（最多 3 次）',
   retryLabel: '重试失败的账户',
   runOn: (target, n) => `在 ${target} 上运行（${n}）`,
+  started: (task, target) => `已在 ${target} 上启动「${task}」`,
 
   profile: {
     nickname: '昵称',
@@ -105,8 +106,11 @@ export const tasks: typeof en = {
     stopped: '已停止',
     done: '完成',
     toLookAt: (n) => `${n} 个需要查看`,
-    hideAccounts: '隐藏账户',
-    showAccounts: '显示账户',
+    error: '出错',
+    of: (done, total) => `${done} / ${total}`,
+    stoppedToast: '任务已停止',
+    close: '关闭',
+    ok: '确定',
     stop: '停止',
     waitingRetry: (tries) => `等待重试（已尝试 ${tries} 次，共 3 次）`,
     waiting: '等待中',

@@ -10,23 +10,10 @@
 }
 
 .columns {
-  display: grid;
-  grid-template-columns: minmax(180px, 220px) minmax(320px, 1fr) minmax(
-      260px,
-      340px
-    );
-  align-items: start;
-  gap: 28px;
-}
-
-@media (max-width: 1100px) {
-  .columns {
-    grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
-  }
-
-  .queue {
-    grid-column: 1 / -1;
-  }
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 40px;
 }
 
 .sectionTitle {
@@ -37,23 +24,25 @@
 }
 
 .targets {
+  flex: 0 1 200px;
+  min-width: 180px;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
 .target {
-  height: 38px;
+  height: 40px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   padding: 0 12px;
   background: transparent;
   border: 0;
   border-radius: 8px;
   color: var(--color-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
   text-align: left;
   cursor: pointer;
 }
@@ -77,45 +66,88 @@
 }
 
 .setup {
+  flex: 999 1 440px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
 }
 
+.setupHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.groupName {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.members {
+  min-width: 0;
+  color: var(--color-text-faint);
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Tiles joined by hairlines: the gap shows the background through. */
 .tasks {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  background: var(--color-divider);
+  border: 1px solid var(--color-divider);
+  border-radius: 12px;
 }
 
 .task {
-  min-height: 72px;
+  min-height: 76px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 4px;
-  padding: 12px 14px;
+  padding: 16px;
   background: var(--color-panel);
-  border: 1px solid var(--color-divider);
-  border-radius: 10px;
+  border: 0;
   text-align: left;
   cursor: pointer;
 }
 
 .task[aria-checked='true'] {
-  background: var(--color-danger-surface);
-  border-color: var(--color-accent);
+  background: var(--color-selected);
 }
 
 .taskName {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
+}
+
+.taskDot {
+  width: 5px;
+  height: 5px;
+  flex: none;
+  border-radius: 50%;
+}
+
+.task[aria-checked='true'] .taskDot {
+  background: var(--color-accent);
 }
 
 .taskText {
-  color: var(--color-text-muted);
+  color: var(--color-text-faint);
   font-size: 12px;
-  line-height: 1.45;
+  line-height: 1.4;
 }
 
 .pacing {
@@ -137,10 +169,12 @@
 }
 
 .input {
-  height: 34px;
-  padding: 0 12px;
+  height: 42px;
+  padding: 0 14px;
+  background: var(--color-surface);
+  border-color: var(--color-line-strong);
   border-radius: 8px;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .note {
@@ -178,9 +212,20 @@
   font-size: 13px;
 }
 
+.retry {
+  padding: 12px 0;
+  border-top: 1px solid var(--color-line);
+  color: var(--color-text);
+}
+
 .run {
   display: flex;
   justify-content: flex-end;
+}
+
+.runButton {
+  height: 42px;
+  padding: 0 20px;
 }
 
 .error {
@@ -194,9 +239,10 @@
 }
 
 .queue {
+  flex: 1 1 280px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
 }
 
 .queueHead {
@@ -218,57 +264,73 @@
 
 .target:focus-visible,
 .task:focus-visible,
+.job:focus-visible,
 .link:focus-visible {
   outline: 2px solid var(--color-text);
   outline-offset: 2px;
 }
 
-.job {
+.empty {
+  margin: 0;
+  padding: 16px 0;
+  border-top: 1px solid var(--color-line);
+  color: var(--color-text-faint);
+  font-size: 13px;
+}
+
+.jobSkeleton {
+  padding: 16px 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 12px 14px;
-  background: var(--color-panel);
-  border: 1px solid var(--color-divider);
-  border-radius: 10px;
+  border-top: 1px solid var(--color-line);
+}
+
+.job {
+  width: 100%;
+  padding: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--color-line);
+  text-align: left;
+  cursor: pointer;
 }
 
 .jobHead {
+  width: 100%;
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.jobWords {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.jobWords .hint {
-  margin: 2px 0 0;
+  gap: 8px;
+  font-size: 13px;
 }
 
 .jobName {
-  font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .jobState {
-  color: var(--color-text-muted);
+  color: var(--color-text);
+}
+
+.job[data-state='done'] .jobState,
+.job[data-state='stopped'] .jobState {
+  color: var(--color-text-faint);
+}
+
+.job[data-state='error'] .jobState {
+  color: var(--color-danger);
+}
+
+.jobMeta {
+  color: var(--color-text-faint);
   font-size: 12px;
 }
 
-.job[data-state='running'] .jobState {
-  color: var(--color-warning);
-}
-
-.job[data-state='done'] .jobState {
-  color: var(--color-success);
-}
-
 .bar {
+  width: 100%;
   display: block;
   height: 2px;
   background: var(--color-line-strong);
@@ -277,38 +339,44 @@
 .barFill {
   display: block;
   height: 2px;
-  background: var(--color-accent);
-  transition: width 0.3s ease;
+  background: var(--color-text);
+  transition: width 0.4s;
 }
 
-.jobTools {
-  display: flex;
-  gap: 14px;
+.job[data-state='done'] .barFill,
+.job[data-state='stopped'] .barFill {
+  background: var(--color-border);
+}
+
+.job[data-state='error'] .barFill {
+  background: var(--color-danger);
 }
 
 .runs {
-  max-height: 260px;
+  max-height: 300px;
   margin: 0;
   padding: 0;
   overflow-y: auto;
   list-style: none;
-  font-size: 12px;
 }
 
 .runs li {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 7px 0;
-  border-top: 1px solid var(--color-line);
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--color-divider);
+  font-size: 13px;
 }
 
 .runName {
-  font-weight: 500;
+  flex: none;
 }
 
 .runNote {
+  min-width: 0;
   color: var(--color-text-muted);
+  text-align: right;
   overflow-wrap: anywhere;
 }
 
@@ -317,7 +385,7 @@
 }
 
 .runs li[data-state='done'] .runNote {
-  color: var(--color-success);
+  color: var(--color-text-secondary);
 }
 
 .runs li[data-state='warning'] .runNote {
@@ -325,5 +393,9 @@
 }
 
 .runs li[data-state='failed'] .runNote {
+  color: var(--color-danger);
+}
+
+.stop {
   color: var(--color-danger);
 }
