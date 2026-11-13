@@ -6,8 +6,10 @@ mod add_account;
 mod auto_confirm;
 mod biometrics;
 mod confirmations;
+mod farming;
 mod groups;
 mod inventory;
+mod playing;
 mod profile;
 mod proxies;
 mod security;
@@ -36,6 +38,8 @@ fn main() {
             app.manage(inventory::InventoryCache::default());
             app.manage(inventory::IconCache::default());
             app.manage(tasks::Tasks::default());
+            app.manage(playing::Players::default());
+            app.manage(farming::Farms::default());
             vault::watch_idle(app.handle().clone());
             auto_confirm::watch(app.handle().clone());
             Ok(())
@@ -93,6 +97,13 @@ fn main() {
             profile::save_profile,
             profile::clear_name_history,
             profile::change_avatar,
+            playing::start_playing,
+            farming::start_farming,
+            farming::farming_now,
+            playing::stop_playing,
+            playing::playing_now,
+            playing::playing_list,
+            playing::owned_games,
             tasks::start_task,
             tasks::task_queue,
             tasks::cancel_task,

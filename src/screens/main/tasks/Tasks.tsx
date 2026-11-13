@@ -16,6 +16,16 @@ type Kind = TaskInput['kind']
 
 const TASKS: { kind: Kind; name: string; text: string }[] = [
   {
+    kind: 'hourBoost',
+    name: 'Hour boost',
+    text: 'Play games on a connection that stays up',
+  },
+  {
+    kind: 'cardFarming',
+    name: 'Card farming',
+    text: 'Play the games with card drops left until they run out',
+  },
+  {
     kind: 'moveToStorage',
     name: 'Move to storage',
     text: 'Every tradable item to one account',
@@ -39,6 +49,11 @@ const TASKS: { kind: Kind; name: string; text: string }[] = [
     kind: 'check',
     name: 'Check',
     text: 'Session, profile, Web API key, bans and limits',
+  },
+  {
+    kind: 'goOffline',
+    name: 'Go offline',
+    text: 'Stop playing and sign the game connection out',
   },
 ]
 
@@ -74,6 +89,7 @@ export default function Tasks({ accounts, groups }: Props) {
   const [storage, setStorage] = useState('')
   const [game, setGame] = useState<Game>('cs2')
   const [licenses, setLicenses] = useState('')
+  const [boostGames, setBoostGames] = useState('')
   const [atOnce, setAtOnce] = useState(3)
   const [pause, setPause] = useState('medium')
   const [retry, setRetry] = useState(true)
@@ -120,6 +136,11 @@ export default function Tasks({ accounts, groups }: Props) {
         return { kind, storage, game }
       case 'freeGames':
         return { kind, licenses }
+      case 'hourBoost':
+        return { kind, games: boostGames }
+      case 'goOffline':
+      case 'cardFarming':
+        return { kind }
       case 'profile': {
         const { avatar } = profile
         return {
@@ -242,6 +263,23 @@ export default function Tasks({ accounts, groups }: Props) {
               <p className={styles.note}>
                 Each account sends an offer with all its tradable items, and the
                 storage account accepts it. No phone needed.
+              </p>
+            </div>
+          )}
+
+          {kind === 'hourBoost' && (
+            <div className={styles.optionGroup}>
+              <TextField
+                label="Games"
+                placeholder="Each account's own list"
+                className={styles.input}
+                value={boostGames}
+                onChange={(event) => setBoostGames(event.target.value)}
+              />
+              <p className={styles.note}>
+                App IDs or store links, up to 32. Left empty, each account plays
+                the games on its Playing tab. Accounts keep playing until Go
+                offline, and reconnect by themselves.
               </p>
             </div>
           )}

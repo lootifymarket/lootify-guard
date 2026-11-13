@@ -181,6 +181,9 @@ export default function Accounts({
                         {grouped.get(account.groupId)}
                       </span>
                     )}
+                    {account.playing && (
+                      <span className={styles.playingTag}>Playing</span>
+                    )}
                   </span>
                   {account.personaName ? (
                     <span className={styles.nickname}>

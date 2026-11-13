@@ -16,6 +16,7 @@ use zeroize::Zeroizing;
 
 use crate::biometrics;
 use crate::groups::{self, GroupView};
+use crate::playing::Players;
 use crate::vault::{CommandError, VaultState};
 
 // Real .maFiles are a couple of kilobytes; this only stops a wrong pick from being read whole.
@@ -46,6 +47,8 @@ pub struct AccountSummary {
     proxy_id: Option<u32>,
     group_id: Option<u32>,
     auto_confirm: AutoConfirm,
+    /// Whether the account has a game connection up or coming up.
+    playing: bool,
 }
 
 #[derive(Default, Serialize)]
@@ -63,7 +66,10 @@ pub struct FailedFile {
 }
 
 #[tauri::command]
-pub fn list_accounts(state: State<'_, VaultState>) -> Result<AccountList, CommandError> {
+pub fn list_accounts(
+    state: State<'_, VaultState>,
+    players: State<'_, Players>,
+) -> Result<AccountList, CommandError> {
     let unlocked = state.unlocked();
     let vault = unlocked.as_ref().ok_or(CommandError::Locked)?;
     let contents = Contents::from_bytes(vault.data())?;
@@ -94,6 +100,7 @@ pub fn list_accounts(state: State<'_, VaultState>) -> Result<AccountList, Comman
                 proxy_id: account.proxy,
                 group_id: account.group,
                 auto_confirm: account.auto_confirm,
+                playing: players.is_playing(&account.account_name),
             })
         })
         .collect::<Result<_, CommandError>>()?;

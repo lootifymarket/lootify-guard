@@ -16,6 +16,11 @@ export type TaskInput =
     }
   /** Store links or IDs, split by spaces, commas or lines. */
   | { kind: 'freeGames'; licenses: string }
+  /** App IDs or store links; empty plays each account's own list. */
+  | { kind: 'hourBoost'; games: string }
+  | { kind: 'goOffline' }
+  /** Plays the games with card drops left until they run out. */
+  | { kind: 'cardFarming' }
   /** Every tradable item to one account. */
   | { kind: 'moveToStorage'; storage: string; game: Game }
 

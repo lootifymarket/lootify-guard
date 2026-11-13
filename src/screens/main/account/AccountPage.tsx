@@ -49,6 +49,7 @@ import { useCodeSecondsLeft } from '../useAccounts.ts'
 import AutoConfirmRules from '../AutoConfirmRules.tsx'
 import ApiKeyAlert from './ApiKeyAlert.tsx'
 import DeviceRow from './DeviceRow.tsx'
+import PlayingTab from './PlayingTab.tsx'
 import ProfileTab from './ProfileTab.tsx'
 import layout from '../layout.module.css'
 import ConfirmOwner from './ConfirmOwner.tsx'
@@ -69,10 +70,11 @@ type Props = {
   onRemoved: () => void
 }
 
-type Tab = 'profile' | 'security'
+type Tab = 'profile' | 'playing' | 'security'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'profile', label: 'Profile' },
+  { id: 'playing', label: 'Playing' },
   { id: 'security', label: 'Security' },
 ]
 
@@ -341,6 +343,16 @@ export default function AccountPage({
           signedIn={account.signedIn}
           onChanged={onChanged}
         />
+      </div>
+
+      <div
+        role="tabpanel"
+        id="panel-playing"
+        aria-labelledby="tab-playing"
+        className={styles.panel}
+        hidden={tab !== 'playing'}
+      >
+        <PlayingTab accountName={name} signedIn={account.signedIn} />
       </div>
 
       <div

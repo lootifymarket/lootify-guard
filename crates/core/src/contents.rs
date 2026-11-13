@@ -4,6 +4,7 @@ use std::fmt;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroizing;
 
+use crate::games::PlayingList;
 use crate::proxy::{Proxy, ProxyAddress};
 
 /// What the vault holds once decrypted.
@@ -73,6 +74,12 @@ pub struct Account {
     /// They stay in the vault and never reach Steam.
     #[serde(default)]
     pub device_names: BTreeMap<String, String>,
+    /// A refresh token for signing in as the Steam client, which playing games
+    /// needs and the mobile session can't do. The app makes it itself.
+    #[serde(default)]
+    pub client_token: Option<Secret>,
+    #[serde(default)]
+    pub playing: PlayingList,
 }
 
 /// What the app may confirm for the account without asking. Everything is off until
@@ -390,6 +397,8 @@ mod tests {
             group: None,
             trusted_api_key: None,
             device_names: BTreeMap::new(),
+            client_token: None,
+            playing: PlayingList::default(),
         }
     }
 

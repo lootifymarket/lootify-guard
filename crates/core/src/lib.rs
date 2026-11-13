@@ -1,6 +1,9 @@
 pub mod api_key;
+pub mod cards;
+pub mod cm;
 pub mod confirmations;
 pub mod contents;
+pub mod games;
 pub mod guard;
 pub mod idle;
 pub mod inventory;
@@ -19,4 +22,6 @@ pub mod standing;
 pub mod steam;
 pub mod tasks;
 pub mod trades;
+mod tunnel;
 pub mod vault;
+mod wire;
