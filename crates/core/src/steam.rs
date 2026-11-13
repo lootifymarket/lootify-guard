@@ -280,6 +280,7 @@ pub(crate) fn web_api_get(
 }
 
 /// A POST to Steam's Web API on behalf of the session, for the methods that take no GET.
+/// The token goes in the body: Steam turns down a POST without one.
 pub(crate) fn web_api_post(
     client: &Client,
     url: &str,
@@ -287,7 +288,7 @@ pub(crate) fn web_api_post(
 ) -> Result<Vec<u8>, SteamError> {
     let response = client
         .post(url)
-        .query(&[("access_token", session.access_token.expose())])
+        .form(&[("access_token", session.access_token.expose())])
         .send()
         .map_err(|_| SteamError::Network)?;
     web_api_body(response)
