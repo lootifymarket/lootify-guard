@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import AccountPage from './account/AccountPage.tsx'
+import AddAccount from './add/AddAccount.tsx'
 import Accounts from './Accounts.tsx'
 import Proxies from './proxies/Proxies.tsx'
 import Sidebar, { type Section } from './Sidebar.tsx'
@@ -34,6 +35,18 @@ export default function Main({ onLock, onAutoLocked }: Props) {
       return <SteamGuard list={list} onChanged={reload} />
     }
     if (section === 'proxies') return <Proxies />
+    if (section === 'add') {
+      return (
+        <AddAccount
+          onCancel={() => select('accounts')}
+          onAdded={reload}
+          onDone={(accountName) => {
+            setSection('accounts')
+            setOpenName(accountName)
+          }}
+        />
+      )
+    }
     if (openAccount) {
       return (
         <AccountPage
@@ -50,7 +63,14 @@ export default function Main({ onLock, onAutoLocked }: Props) {
         />
       )
     }
-    return <Accounts list={list} onImported={reload} onOpen={setOpenName} />
+    return (
+      <Accounts
+        list={list}
+        onImported={reload}
+        onOpen={setOpenName}
+        onAdd={() => select('add')}
+      />
+    )
   }
 
   return (

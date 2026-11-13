@@ -6,6 +6,7 @@ import {
   type AccountList,
 } from '../../api/accounts.ts'
 import Avatar from '../../components/Avatar.tsx'
+import Button from '../../components/Button.tsx'
 import { useCopy } from '../../lib/useCopy.ts'
 import ImportMaFiles from './ImportMaFiles.tsx'
 import { matchesQuery, useCodeSecondsLeft } from './useAccounts.ts'
@@ -16,9 +17,10 @@ type Props = {
   list: AccountList
   onImported: () => void
   onOpen: (accountName: string) => void
+  onAdd: () => void
 }
 
-export default function Accounts({ list, onImported, onOpen }: Props) {
+export default function Accounts({ list, onImported, onOpen, onAdd }: Props) {
   const [query, setQuery] = useState('')
   // Logins are the only identifier every account has; Steam IDs can be missing.
   const [selectedName, setSelectedName] = useState<string | null>(null)
@@ -31,10 +33,16 @@ export default function Accounts({ list, onImported, onOpen }: Props) {
         <div className={styles.empty}>
           <h2 className={styles.emptyTitle}>No accounts yet</h2>
           <p className={styles.emptyText}>
-            Import .maFile files from Steam Desktop Authenticator, ASF or
+            Sign in to add an account and set up Steam Guard here, or import
+            .maFile files from Steam Desktop Authenticator, ASF or
             steamguard-cli. Their secrets are stored only in this vault.
           </p>
-          <ImportMaFiles variant="primary" onImported={onImported} />
+          <div className={styles.tools}>
+            <Button size="sm" onClick={onAdd}>
+              Add account
+            </Button>
+            <ImportMaFiles variant="secondary" onImported={onImported} />
+          </div>
         </div>
       </>
     )
@@ -59,6 +67,9 @@ export default function Accounts({ list, onImported, onOpen }: Props) {
             onChange={(event) => setQuery(event.target.value)}
           />
           <ImportMaFiles variant="secondary" onImported={onImported} />
+          <Button size="sm" onClick={onAdd}>
+            Add account
+          </Button>
         </div>
       </div>
       <div className={styles.body}>
