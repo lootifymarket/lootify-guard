@@ -66,6 +66,14 @@ pub fn set_auto_lock(
     Ok(())
 }
 
+#[tauri::command]
+pub fn set_streamer_mode(settings: State<'_, SettingsState>, on: bool) -> Result<(), CommandError> {
+    settings.save(Settings {
+        streamer_mode: on,
+        ..settings.get()
+    })
+}
+
 /// Saves a copy of the vault file where the user picks. It stays encrypted with
 /// the master password and opens only with it. Resolves to false when no place
 /// was picked.

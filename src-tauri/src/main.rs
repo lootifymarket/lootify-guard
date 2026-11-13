@@ -107,6 +107,7 @@ fn main() {
             profile::change_avatar,
             settings::get_settings,
             settings::set_auto_lock,
+            settings::set_streamer_mode,
             settings::export_backup,
             playing::start_playing,
             farming::start_farming,

@@ -191,7 +191,9 @@ export default function Accounts({
                     </span>
                   ) : (
                     account.steamId && (
-                      <span className={styles.steamId}>{account.steamId}</span>
+                      <span className={styles.steamId} data-private>
+                        {account.steamId}
+                      </span>
                     )
                   )}
                 </span>
@@ -253,7 +255,9 @@ function Details({
       <div className={styles.identity}>
         <span className={styles.detailsName}>{describe(account).title}</span>
         {describe(account).details && (
-          <span className={styles.steamId}>{describe(account).details}</span>
+          <span className={styles.steamId} data-private>
+            {describe(account).details}
+          </span>
         )}
       </div>
       <div className={styles.guard}>
@@ -267,7 +271,9 @@ function Details({
             {label(account.accountName, 'Copy')}
           </button>
         </div>
-        <span className={styles.code}>{account.code}</span>
+        <span className={styles.code} data-private>
+          {account.code}
+        </span>
         <span className={layout.bar}>
           <span
             className={layout.barFill}

@@ -121,7 +121,7 @@ export default function ProfileForm({
             value={draft.customUrl}
             onChange={(event) => edit({ customUrl: event.target.value.trim() })}
           />
-          <span className={styles.fieldHint}>
+          <span className={styles.fieldHint} data-private>
             {saved.customUrl
               ? `steamcommunity.com/id/${saved.customUrl}`
               : `steamcommunity.com/profiles/${steamId ?? '…'}`}

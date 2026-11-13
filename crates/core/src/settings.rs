@@ -19,6 +19,8 @@ pub struct Settings {
     pub auto_lock_minutes: Option<u32>,
     /// When the last backup was saved, in Unix seconds.
     pub last_backup_at: Option<u64>,
+    /// Blurs codes, Steam IDs, trade URLs and money, for showing the screen to others.
+    pub streamer_mode: bool,
 }
 
 impl Default for Settings {
@@ -26,6 +28,7 @@ impl Default for Settings {
         Self {
             auto_lock_minutes: Some(15),
             last_backup_at: None,
+            streamer_mode: false,
         }
     }
 }
@@ -73,6 +76,7 @@ mod tests {
         let settings = Settings {
             auto_lock_minutes: None,
             last_backup_at: Some(1_700_000_000),
+            streamer_mode: true,
         };
         settings.save(&path).unwrap();
         assert_eq!(Settings::load(&path), settings);

@@ -4,6 +4,8 @@ import {
   exportBackup,
   getSettings,
   setAutoLock,
+  setStreamerMode,
+  showStreamerMode,
   type Settings as SettingsValues,
 } from '../../../api/settings.ts'
 import {
@@ -74,6 +76,34 @@ export default function Settings({ onAutoLockChanged }: Props) {
       </div>
 
       <div className={styles.sections}>
+        <section className={styles.section} aria-labelledby="display-title">
+          <h2 id="display-title" className={styles.sectionTitle}>
+            Display
+          </h2>
+          <div className={styles.row}>
+            <span className={styles.words}>
+              <span>Streamer mode</span>
+              <span className={styles.hint}>
+                Blurs Steam Guard codes, Steam IDs, trade URLs, balances and
+                prices, for streams and screenshots.
+              </span>
+            </span>
+            <Toggle
+              on={settings?.streamerMode ?? false}
+              label="Streamer mode"
+              onChange={(on) =>
+                void act(async () => {
+                  await setStreamerMode(on)
+                  showStreamerMode(on)
+                  setSettings(
+                    (current) => current && { ...current, streamerMode: on },
+                  )
+                })
+              }
+            />
+          </div>
+        </section>
+
         <section className={styles.section} aria-labelledby="security-title">
           <h2 id="security-title" className={styles.sectionTitle}>
             Security

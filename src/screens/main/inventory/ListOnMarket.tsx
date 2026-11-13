@@ -155,7 +155,7 @@ function Form({ game, picked, onClose, onListed }: Props) {
                     <span className={styles.muted}> × {amount}</span>
                   )}
                 </span>
-                <span className={styles.muted}>
+                <span className={styles.muted} data-private>
                   {!prices && !priceError
                     ? 'Asking the market…'
                     : price
@@ -173,6 +173,7 @@ function Form({ game, picked, onClose, onListed }: Props) {
               <label className={styles.priceField}>
                 <span className={styles.hidden}>Buyer pays for {row.name}</span>
                 <input
+                  data-private
                   inputMode="decimal"
                   placeholder="0.00"
                   value={entered[row.name] ?? ''}
@@ -184,7 +185,7 @@ function Form({ game, picked, onClose, onListed }: Props) {
                   }
                 />
               </label>
-              <span className={styles.youGet}>
+              <span className={styles.youGet} data-private>
                 {own !== null
                   ? `you get ${formatMoney(sellerGets(own), currency)}`
                   : ''}
@@ -199,7 +200,7 @@ function Form({ game, picked, onClose, onListed }: Props) {
         </p>
       )}
       <div className={styles.listingFooter}>
-        <span className={styles.muted}>
+        <span className={styles.muted} data-private>
           {count > 0 && `You get about ${formatMoney(total, currency)} in all`}
         </span>
         <span className={dialogStyles.actions}>

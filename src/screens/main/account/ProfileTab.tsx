@@ -64,7 +64,9 @@ export default function ProfileTab({
           Trade URL
         </h2>
         <div className={styles.tradeUrl}>
-          <span className={styles.tradeUrlText}>{url ?? 'Loading…'}</span>
+          <span className={styles.tradeUrlText} data-private>
+            {url ?? 'Loading…'}
+          </span>
           <Button
             variant="secondary"
             size="sm"
