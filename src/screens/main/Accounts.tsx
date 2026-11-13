@@ -8,6 +8,7 @@ import {
 } from '../../api/accounts.ts'
 import Avatar from '../../components/Avatar.tsx'
 import Button from '../../components/Button.tsx'
+import { useT } from '../../i18n/index.ts'
 import { useCopy } from '../../lib/useCopy.ts'
 import GroupDialog from './groups/GroupDialog.tsx'
 import ImportMaFiles from './ImportMaFiles.tsx'
@@ -34,6 +35,7 @@ export default function Accounts({
   onOpen,
   onAdd,
 }: Props) {
+  const t = useT().accounts
   const [query, setQuery] = useState('')
   // Logins are the only identifier every account has; Steam IDs can be missing.
   const [selectedName, setSelectedName] = useState<string | null>(null)
@@ -45,17 +47,13 @@ export default function Accounts({
   if (accounts.length === 0) {
     return (
       <>
-        <h1 className={layout.title}>Accounts</h1>
+        <h1 className={layout.title}>{t.title}</h1>
         <div className={styles.empty}>
-          <h2 className={styles.emptyTitle}>No accounts yet</h2>
-          <p className={styles.emptyText}>
-            Sign in to add an account and set up Steam Guard here, or import
-            .maFile files from Steam Desktop Authenticator, ASF or
-            steamguard-cli. Their secrets are stored only in this vault.
-          </p>
+          <h2 className={styles.emptyTitle}>{t.emptyTitle}</h2>
+          <p className={styles.emptyText}>{t.emptyText}</p>
           <div className={styles.tools}>
             <Button size="sm" onClick={onAdd}>
-              Add account
+              {t.add}
             </Button>
             <ImportMaFiles variant="secondary" onImported={onImported} />
           </div>
@@ -85,25 +83,25 @@ export default function Accounts({
   return (
     <>
       <div className={layout.header}>
-        <h1 className={layout.title}>Accounts</h1>
+        <h1 className={layout.title}>{t.title}</h1>
         <div className={styles.tools}>
           <input
             type="search"
-            aria-label="Search accounts"
-            placeholder="Login or Steam ID"
+            aria-label={t.search}
+            placeholder={t.searchPlaceholder}
             className={`${layout.search} ${styles.search}`}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
           <ImportMaFiles variant="secondary" onImported={onImported} />
           <Button size="sm" onClick={onAdd}>
-            Add account
+            {t.add}
           </Button>
         </div>
       </div>
-      <div className={styles.chips} role="group" aria-label="Groups">
+      <div className={styles.chips} role="group" aria-label={t.groups}>
         <Chip
-          label="All"
+          label={t.all}
           count={accounts.length}
           on={filter === 'all'}
           onPick={() => setFilter('all')}
@@ -119,7 +117,7 @@ export default function Accounts({
         ))}
         {groups.length > 0 && loose > 0 && (
           <Chip
-            label="No group"
+            label={t.noGroup}
             count={loose}
             on={filter === 'none'}
             onPick={() => setFilter('none')}
@@ -130,7 +128,7 @@ export default function Accounts({
           className={styles.newGroup}
           onClick={() => setEditing({ group: null })}
         >
-          + New group
+          {t.newGroup}
         </button>
         {current && (
           <button
@@ -138,7 +136,7 @@ export default function Accounts({
             className={styles.editGroup}
             onClick={() => setEditing({ group: current })}
           >
-            Edit {current.name}
+            {t.editGroup(current.name)}
           </button>
         )}
       </div>
@@ -182,7 +180,7 @@ export default function Accounts({
                       </span>
                     )}
                     {account.playing && (
-                      <span className={styles.playingTag}>Playing</span>
+                      <span className={styles.playingTag}>{t.playing}</span>
                     )}
                   </span>
                   {account.personaName ? (
@@ -201,14 +199,16 @@ export default function Accounts({
               <button
                 type="button"
                 className={styles.view}
-                aria-label={`View ${account.accountName}`}
+                aria-label={t.viewAccount(account.accountName)}
                 onClick={() => onOpen(account.accountName)}
               >
-                View
+                {t.view}
               </button>
             </div>
           ))}
-          {shown.length === 0 && <p className={layout.note}>Nothing found.</p>}
+          {shown.length === 0 && (
+            <p className={layout.note}>{t.nothingFound}</p>
+          )}
         </div>
         <Details account={selected} codesExpireAt={list.codesExpireAt} />
       </div>
@@ -247,6 +247,8 @@ function Details({
   account: Account
   codesExpireAt: number
 }) {
+  const words = useT()
+  const t = words.accounts
   const { copy, label } = useCopy()
   const secondsLeft = useCodeSecondsLeft(codesExpireAt)
 
@@ -262,13 +264,13 @@ function Details({
       </div>
       <div className={styles.guard}>
         <div className={styles.guardHead}>
-          <span className={styles.guardLabel}>Steam Guard</span>
+          <span className={styles.guardLabel}>{words.guard.title}</span>
           <button
             type="button"
             className={styles.copy}
             onClick={() => copy(account.accountName, account.code)}
           >
-            {label(account.accountName, 'Copy')}
+            {label(account.accountName, t.copy)}
           </button>
         </div>
         <span className={styles.code} data-private>
@@ -280,7 +282,7 @@ function Details({
             style={{ width: `${(secondsLeft / CODE_PERIOD_SECS) * 100}%` }}
           />
         </span>
-        <span className={styles.refresh}>Refreshes in {secondsLeft} s</span>
+        <span className={styles.refresh}>{t.refreshesIn(secondsLeft)}</span>
       </div>
     </aside>
   )

@@ -1,6 +1,17 @@
 import type { Dictionary } from './en.ts'
+import { accounts } from './accounts/uk.ts'
+import { guard } from './guard/uk.ts'
+import { account } from './account/uk.ts'
+import { addAccount } from './addAccount/uk.ts'
+import { groups } from './groups/uk.ts'
 
 export const uk: Dictionary = {
+  accounts,
+  guard,
+  account,
+  addAccount,
+  groups,
+
   common: {
     back: 'Назад',
     cancel: 'Скасувати',
@@ -8,6 +19,8 @@ export const uk: Dictionary = {
     continue: 'Продовжити',
     change: 'Змінити',
     export: 'Експорт',
+    copied: 'Скопійовано',
+    copyFailed: 'Не вдалося скопіювати',
   },
 
   errors: {

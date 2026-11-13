@@ -44,6 +44,7 @@ import Button from '../../../components/Button.tsx'
 import Dropdown, { type DropdownOption } from '../../../components/Dropdown.tsx'
 import Flag from '../../../components/Flag.tsx'
 import Toggle from '../../../components/Toggle.tsx'
+import { useT, type Dictionary } from '../../../i18n/index.ts'
 import { useCopy } from '../../../lib/useCopy.ts'
 import { useCodeSecondsLeft } from '../useAccounts.ts'
 import AutoConfirmRules from '../AutoConfirmRules.tsx'
@@ -72,11 +73,8 @@ type Props = {
 
 type Tab = 'profile' | 'playing' | 'security'
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'profile', label: 'Profile' },
-  { id: 'playing', label: 'Playing' },
-  { id: 'security', label: 'Security' },
-]
+// Each is named by the tab's key in the dictionary.
+const TABS: Tab[] = ['profile', 'playing', 'security']
 
 type OpenDialog =
   'signIn' | 'reveal' | 'export' | 'remove' | 'rules' | 'signOut' | null
@@ -90,6 +88,7 @@ export default function AccountPage({
   onChanged,
   onRemoved,
 }: Props) {
+  const t = useT().account
   const [tab, setTab] = useState<Tab>('profile')
   const [dialog, setDialog] = useState<OpenDialog>(null)
   const [revocationCode, setRevocationCode] = useState<string | null>(null)
@@ -140,12 +139,12 @@ export default function AccountPage({
     account.proxyId !== null &&
     !proxies.some((proxy) => proxy.id === account.proxyId)
   const proxyOptions: DropdownOption[] = [
-    { value: '', label: 'No proxy' },
+    { value: '', label: t.security.noProxy },
     ...(proxyMissing
       ? [
           {
             value: String(account.proxyId),
-            label: 'Deleted proxy',
+            label: t.security.deletedProxy,
             disabled: true,
           },
         ]
@@ -195,7 +194,7 @@ export default function AccountPage({
     setChecked(null)
     try {
       await refreshProfile(name)
-      setChecked({ ok: true, text: 'Steam accepted the session.' })
+      setChecked({ ok: true, text: t.security.sessionAccepted })
     } catch (err) {
       setChecked({ ok: false, text: errorMessage(err) })
     } finally {
@@ -263,7 +262,7 @@ export default function AccountPage({
     <>
       <div className={styles.top}>
         <button type="button" className={styles.back} onClick={onBack}>
-          ← Accounts
+          {t.back}
         </button>
         <div className={styles.identity}>
           <Avatar name={name} src={account.avatar} size="lg" />
@@ -274,7 +273,7 @@ export default function AccountPage({
                 {describe(account).details}
               </span>
             ) : (
-              <span className={styles.muted}>Imported from .maFile</span>
+              <span className={styles.muted}>{t.importedFromMaFile}</span>
             )}
           </div>
         </div>
@@ -290,7 +289,7 @@ export default function AccountPage({
 
       <section className={styles.section} aria-labelledby="guard-title">
         <h2 id="guard-title" className={styles.sectionTitle}>
-          Steam Guard
+          {t.guardTitle}
         </h2>
         <div className={styles.guard}>
           <span className={styles.code} data-private>
@@ -301,7 +300,7 @@ export default function AccountPage({
             size="sm"
             onClick={() => copy(name, account.code)}
           >
-            {label(name, 'Copy')}
+            {label(name, t.copy)}
           </Button>
         </div>
         <span className={layout.bar}>
@@ -310,22 +309,22 @@ export default function AccountPage({
             style={{ width: `${(secondsLeft / CODE_PERIOD_SECS) * 100}%` }}
           />
         </span>
-        <span className={styles.muted}>Refreshes in {secondsLeft} s</span>
+        <span className={styles.muted}>{t.refreshesIn(secondsLeft)}</span>
       </section>
 
-      <div role="tablist" aria-label="Sections" className={styles.tabs}>
-        {TABS.map((item) => (
+      <div role="tablist" aria-label={t.sections} className={styles.tabs}>
+        {TABS.map((id) => (
           <button
-            key={item.id}
+            key={id}
             type="button"
             role="tab"
-            id={`tab-${item.id}`}
-            aria-selected={tab === item.id}
-            aria-controls={`panel-${item.id}`}
+            id={`tab-${id}`}
+            aria-selected={tab === id}
+            aria-controls={`panel-${id}`}
             className={styles.tab}
-            onClick={() => setTab(item.id)}
+            onClick={() => setTab(id)}
           >
-            {item.label}
+            {t.tabs[id]}
           </button>
         ))}
       </div>
@@ -364,13 +363,15 @@ export default function AccountPage({
         className={styles.panel}
         hidden={tab !== 'security'}
       >
-        <section className={styles.section} aria-label="Security">
+        <section className={styles.section} aria-label={t.security.title}>
           <dl className={styles.facts}>
             <div className={styles.fact}>
-              <dt>Steam session</dt>
+              <dt>{t.security.steamSession}</dt>
               <dd className={styles.reveal}>
                 <span className={account.signedIn ? undefined : styles.muted}>
-                  {account.signedIn ? 'Signed in' : 'Not signed in'}
+                  {account.signedIn
+                    ? t.security.signedIn
+                    : t.security.notSignedIn}
                 </span>
                 {account.signedIn ? (
                   <button
@@ -379,7 +380,7 @@ export default function AccountPage({
                     disabled={checking}
                     onClick={() => void checkSession()}
                   >
-                    {checking ? 'Checking…' : 'Check'}
+                    {checking ? t.security.checking : t.security.check}
                   </button>
                 ) : (
                   <button
@@ -387,13 +388,13 @@ export default function AccountPage({
                     className={styles.link}
                     onClick={() => setDialog('signIn')}
                   >
-                    Sign in
+                    {t.security.signIn}
                   </button>
                 )}
               </dd>
             </div>
             <div className={styles.fact}>
-              <dt>Web API key</dt>
+              <dt>{t.security.webApiKey}</dt>
               {account.signedIn ? (
                 <dd className={styles.reveal}>
                   <ApiKeyState apiKey={apiKey} />
@@ -403,19 +404,19 @@ export default function AccountPage({
                     disabled={checkingKey}
                     onClick={() => void checkKey()}
                   >
-                    {checkingKey ? 'Checking…' : 'Check'}
+                    {checkingKey ? t.security.checking : t.security.check}
                   </button>
                 </dd>
               ) : (
-                <dd className={styles.muted}>Sign in to check</dd>
+                <dd className={styles.muted}>{t.security.signInToCheck}</dd>
               )}
             </div>
             <div className={styles.fact}>
-              <dt>Active sessions</dt>
+              <dt>{t.security.activeSessions}</dt>
               {account.signedIn ? (
                 <dd className={styles.reveal}>
                   <span className={devices ? undefined : styles.muted}>
-                    {devicesSummary(devices)}
+                    {devicesSummary(t, devices)}
                   </span>
                   {devices && devices.length > 0 && (
                     <button
@@ -424,17 +425,17 @@ export default function AccountPage({
                       aria-expanded={devicesShown}
                       onClick={() => setDevicesShown(!devicesShown)}
                     >
-                      {devicesShown ? 'Hide' : 'Show'}
+                      {devicesShown ? t.security.hide : t.security.show}
                     </button>
                   )}
                 </dd>
               ) : (
-                <dd className={styles.muted}>Sign in to check</dd>
+                <dd className={styles.muted}>{t.security.signInToCheck}</dd>
               )}
             </div>
             {devicesShown && devices && (
               <div className={styles.devices}>
-                <dt className={styles.hidden}>Devices</dt>
+                <dt className={styles.hidden}>{t.security.devices}</dt>
                 {devices.map((device) => (
                   <DeviceRow
                     key={device.id}
@@ -446,25 +447,25 @@ export default function AccountPage({
               </div>
             )}
             <div className={styles.fact}>
-              <dt>Wallet</dt>
+              <dt>{t.security.wallet}</dt>
               {account.signedIn ? (
                 <dd
                   className={wallet === undefined ? styles.muted : styles.mono}
                   data-private
                 >
-                  {walletText(wallet)}
+                  {walletText(t, wallet)}
                 </dd>
               ) : (
-                <dd className={styles.muted}>Sign in to check</dd>
+                <dd className={styles.muted}>{t.security.signInToCheck}</dd>
               )}
             </div>
             <StandingFacts standing={standing} signedIn={account.signedIn} />
             <div className={styles.fact}>
-              <dt>Proxy</dt>
+              <dt>{t.security.proxy}</dt>
               <dd>
                 <div className={styles.proxyPicker}>
                   <Dropdown
-                    label="Proxy"
+                    label={t.security.proxy}
                     hideLabel
                     size="sm"
                     value={
@@ -477,18 +478,18 @@ export default function AccountPage({
               </dd>
             </div>
             <div className={styles.fact}>
-              <dt>Group</dt>
+              <dt>{t.security.group}</dt>
               <dd>
                 <div className={styles.proxyPicker}>
                   <Dropdown
-                    label="Group"
+                    label={t.security.group}
                     hideLabel
                     size="sm"
                     value={
                       account.groupId === null ? '' : String(account.groupId)
                     }
                     options={[
-                      { value: '', label: 'No group' },
+                      { value: '', label: t.security.noGroup },
                       ...groups.map((group) => ({
                         value: String(group.id),
                         label: group.name,
@@ -500,13 +501,13 @@ export default function AccountPage({
               </dd>
             </div>
             <div className={styles.fact}>
-              <dt>Steam ID</dt>
+              <dt>{t.security.steamId}</dt>
               <dd className={account.steamId ? styles.mono : styles.muted}>
-                {account.steamId ?? 'Appears after you sign in'}
+                {account.steamId ?? t.security.appearsAfterSignIn}
               </dd>
             </div>
             <div className={styles.fact}>
-              <dt>Revocation code</dt>
+              <dt>{t.security.revocationCode}</dt>
               {account.hasRevocationCode ? (
                 <dd className={styles.reveal}>
                   <span className={styles.revocationCode}>
@@ -521,24 +522,23 @@ export default function AccountPage({
                         : setDialog('reveal')
                     }
                   >
-                    {revocationCode ? 'Hide' : 'Show'}
+                    {revocationCode ? t.security.hide : t.security.show}
                   </button>
                 </dd>
               ) : (
-                <dd className={styles.muted}>Not in the .maFile</dd>
+                <dd className={styles.muted}>{t.security.notInMaFile}</dd>
               )}
             </div>
             <div className={styles.fact}>
-              <dt>Device ID</dt>
+              <dt>{t.security.deviceId}</dt>
               <dd className={account.deviceId ? styles.mono : styles.muted}>
-                {account.deviceId || 'Not in the .maFile'}
+                {account.deviceId || t.security.notInMaFile}
               </dd>
             </div>
           </dl>
           {proxyMissing && (
             <p className={styles.error} role="alert">
-              This account’s proxy was deleted. It can’t reach Steam until you
-              pick another proxy or No proxy.
+              {t.security.proxyDeleted}
             </p>
           )}
           {proxyError && (
@@ -569,8 +569,8 @@ export default function AccountPage({
           {signedOut !== null && (
             <p className={styles.muted} role="status">
               {signedOut === 0
-                ? 'No other device was signed in.'
-                : `Signed out ${signedOut} ${signedOut === 1 ? 'device' : 'devices'}.`}
+                ? t.security.noOtherDevice
+                : t.security.signedOutDevices(signedOut)}
             </p>
           )}
           {keyError && (
@@ -593,7 +593,7 @@ export default function AccountPage({
                 className={styles.action}
                 onClick={() => setDialog('signOut')}
               >
-                Sign out everywhere
+                {t.security.signOutEverywhere}
               </button>
             )}
             <button
@@ -601,19 +601,19 @@ export default function AccountPage({
               className={styles.action}
               onClick={() => setDialog('export')}
             >
-              Export .maFile
+              {t.security.exportMaFile}
             </button>
             <button
               type="button"
               className={`${styles.action} ${styles.danger}`}
               onClick={() => setDialog('remove')}
             >
-              Remove from Lootify Guard
+              {t.security.remove}
             </button>
           </div>
           {exported && (
             <p className={styles.muted} role="status">
-              Saved {exported}
+              {t.security.saved(exported)}
             </p>
           )}
         </section>
@@ -624,14 +624,14 @@ export default function AccountPage({
         >
           <div className={styles.sectionHead}>
             <h2 id="auto-confirm-title" className={styles.sectionTitle}>
-              Auto-confirm
+              {t.autoConfirm.title}
             </h2>
             <button
               type="button"
               className={styles.link}
               onClick={() => setDialog('rules')}
             >
-              Set for many accounts
+              {t.autoConfirm.setForMany}
             </button>
           </div>
           <div className={styles.rules}>
@@ -660,17 +660,17 @@ export default function AccountPage({
           <p className={styles.muted}>
             {!account.signedIn &&
             AUTO_CONFIRM_RULES.some(({ rule }) => account.autoConfirm[rule])
-              ? 'Nothing is confirmed until the account is signed in to Steam.'
-              : 'Checked every minute while the vault is unlocked. API keys, phone changes and account recovery are never confirmed automatically.'}
+              ? t.autoConfirm.notUntilSignedIn
+              : t.autoConfirm.howOften}
           </p>
         </section>
       </div>
 
       <ConfirmOwner
         open={dialog === 'reveal'}
-        title="Show revocation code"
-        text="The code removes Steam Guard from the account. Confirm it’s you first."
-        action="Show"
+        title={t.reveal.title}
+        text={t.reveal.text}
+        action={t.reveal.action}
         biometric={biometric}
         onConfirm={reveal}
         onBiometricsOutdated={() => setBiometric(null)}
@@ -678,9 +678,9 @@ export default function AccountPage({
       />
       <ConfirmOwner
         open={dialog === 'export'}
-        title="Export .maFile"
-        text="The file holds this account’s Steam Guard secrets unencrypted. Anyone who gets it can sign in with its codes and confirm trades. Keep it where only you can reach it."
-        action="Save file…"
+        title={t.exportFile.title}
+        text={t.exportFile.text}
+        action={t.exportFile.action}
         biometric={biometric}
         onConfirm={exportFile}
         onBiometricsOutdated={() => setBiometric(null)}
@@ -727,28 +727,33 @@ export default function AccountPage({
 }
 
 function ApiKeyState({ apiKey }: { apiKey: ApiKey | null | undefined }) {
-  if (apiKey === undefined) return <span className={styles.muted}>Unknown</span>
-  if (apiKey === null) return <span>None</span>
+  const t = useT().account.security
+  if (apiKey === undefined) {
+    return <span className={styles.muted}>{t.unknown}</span>
+  }
+  if (apiKey === null) return <span>{t.none}</span>
   return (
     <span className={apiKey.trusted ? undefined : styles.dangerText}>
       {apiKey.domain}
-      {apiKey.trusted && <span className={styles.muted}> · yours</span>}
+      {apiKey.trusted && <span className={styles.muted}>{t.yours}</span>}
     </span>
   )
 }
 
-function devicesSummary(devices: Device[] | undefined) {
-  if (devices === undefined) return 'Unknown'
+type Words = Dictionary['account']
+
+function devicesSummary(t: Words, devices: Device[] | undefined) {
+  if (devices === undefined) return t.security.unknown
   const others = devices.filter((device) => !device.thisApp).length
-  if (others === 0) return 'Only this app'
-  return `This app and ${others} ${others === 1 ? 'other device' : 'other devices'}`
+  if (others === 0) return t.security.onlyThisApp
+  return t.security.thisAppAnd(others)
 }
 
-function walletText(wallet: Wallet | null | undefined) {
-  if (wallet === undefined) return 'Unknown'
-  if (wallet === null) return 'No wallet'
+function walletText(t: Words, wallet: Wallet | null | undefined) {
+  if (wallet === undefined) return t.security.unknown
+  if (wallet === null) return t.security.noWallet
   const balance = formatMoney(wallet.balance, wallet.currency)
   return wallet.pending > 0
-    ? `${balance} · ${formatMoney(wallet.pending, wallet.currency)} pending`
+    ? t.security.pending(balance, formatMoney(wallet.pending, wallet.currency))
     : balance
 }

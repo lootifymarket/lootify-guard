@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { words } from '../i18n/index.ts'
 import type { Confirmation } from './confirmations.ts'
 
 export type AutoConfirm = {
@@ -8,29 +9,38 @@ export type AutoConfirm = {
 
 export type AutoConfirmRule = keyof AutoConfirm
 
-export const AUTO_CONFIRM_RULES: {
-  rule: AutoConfirmRule
+type RuleWords = {
   label: string
   short: string
   hint: string
   /** Shown while the rule is on, for rules that can be abused. */
   warning?: string
-}[] = [
-  {
-    rule: 'tradesToOwnAccounts',
-    label: 'Trades to my accounts',
-    short: 'To my accounts',
-    hint: 'Items going to another account in this vault. Steam is asked who the other side is; the offer’s text isn’t trusted.',
-  },
-  {
-    rule: 'anyMarketListing',
-    label: 'Any market listing',
-    short: 'Any listing',
-    hint: 'Every listing on the Steam market, made here or anywhere else.',
-    warning:
-      'Listings made by anyone who gets into this Steam session are confirmed too.',
-  },
-]
+}
+
+/**
+ * The rules with their words. The words are read when used, so they follow
+ * the language picked after this module loaded.
+ */
+export const AUTO_CONFIRM_RULES: ({ rule: AutoConfirmRule } & RuleWords)[] = (
+  ['tradesToOwnAccounts', 'anyMarketListing'] as const
+).map((rule) => {
+  const text = (): RuleWords => words().guard.rules[rule]
+  return {
+    rule,
+    get label() {
+      return text().label
+    },
+    get short() {
+      return text().short
+    },
+    get hint() {
+      return text().hint
+    },
+    get warning() {
+      return text().warning
+    },
+  }
+})
 
 export type AutoConfirmLog = {
   paused: boolean

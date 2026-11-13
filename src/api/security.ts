@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { words } from '../i18n/index.ts'
 
 export type ApiKey = {
   domain: string
@@ -18,11 +19,20 @@ export const revokeApiKey = (accountName: string) =>
 
 export type DeviceKind = 'steamClient' | 'browser' | 'mobileApp' | 'unknown'
 
+// Getters, so each read is in the language picked at that moment.
 export const DEVICE_KIND_NAMES: Record<DeviceKind, string> = {
-  steamClient: 'Steam client',
-  browser: 'Browser',
-  mobileApp: 'Mobile app',
-  unknown: 'Device',
+  get steamClient() {
+    return words().account.device.kinds.steamClient
+  },
+  get browser() {
+    return words().account.device.kinds.browser
+  },
+  get mobileApp() {
+    return words().account.device.kinds.mobileApp
+  },
+  get unknown() {
+    return words().account.device.kinds.unknown
+  },
 }
 
 export type Device = {

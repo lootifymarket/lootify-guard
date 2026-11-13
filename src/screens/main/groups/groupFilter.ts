@@ -1,5 +1,6 @@
 import type { Group } from '../../../api/accounts.ts'
 import type { DropdownOption } from '../../../components/Dropdown.tsx'
+import { words } from '../../../i18n/index.ts'
 
 /**
  * A group filter as a dropdown keeps it: '' for every account, 'none' for the
@@ -12,13 +13,14 @@ export function inGroup(groupId: number | null, filter: string) {
 }
 
 export function groupOptions(groups: Group[]): DropdownOption[] {
+  const t = words().groups
   return [
-    { value: '', label: 'All groups' },
+    { value: '', label: t.allGroups },
     ...groups.map((group) => ({
       value: String(group.id),
       label: group.name,
-      hint: `${group.count} ${group.count === 1 ? 'account' : 'accounts'}`,
+      hint: t.accountCount(group.count),
     })),
-    { value: 'none', label: 'No group' },
+    { value: 'none', label: t.noGroup },
   ]
 }

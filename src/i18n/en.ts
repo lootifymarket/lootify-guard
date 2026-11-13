@@ -1,5 +1,17 @@
+import { accounts } from './accounts/en.ts'
+import { guard } from './guard/en.ts'
+import { account } from './account/en.ts'
+import { addAccount } from './addAccount/en.ts'
+import { groups } from './groups/en.ts'
+
 /** Every word the app shows, in English. Other languages fill the same shape. */
 export const en = {
+  accounts,
+  guard,
+  account,
+  addAccount,
+  groups,
+
   common: {
     back: 'Back',
     cancel: 'Cancel',
@@ -7,6 +19,8 @@ export const en = {
     continue: 'Continue',
     change: 'Change',
     export: 'Export',
+    copied: 'Copied',
+    copyFailed: 'Couldn’t copy',
   },
 
   errors: {

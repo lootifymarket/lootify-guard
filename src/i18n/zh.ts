@@ -1,6 +1,17 @@
 import type { Dictionary } from './en.ts'
+import { accounts } from './accounts/zh.ts'
+import { guard } from './guard/zh.ts'
+import { account } from './account/zh.ts'
+import { addAccount } from './addAccount/zh.ts'
+import { groups } from './groups/zh.ts'
 
 export const zh: Dictionary = {
+  accounts,
+  guard,
+  account,
+  addAccount,
+  groups,
+
   common: {
     back: '返回',
     cancel: '取消',
@@ -8,6 +19,8 @@ export const zh: Dictionary = {
     continue: '继续',
     change: '更改',
     export: '导出',
+    copied: '已复制',
+    copyFailed: '复制失败',
   },
 
   errors: {

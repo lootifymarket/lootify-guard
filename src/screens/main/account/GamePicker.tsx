@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { OwnedGame } from '../../../api/playing.ts'
 import Button from '../../../components/Button.tsx'
+import { useT } from '../../../i18n/index.ts'
 import Dialog from '../../../components/Dialog.tsx'
 import dialogStyles from '../../../components/Dialog.module.css'
 import styles from './PlayingTab.module.css'
@@ -17,14 +18,17 @@ type Props = {
 }
 
 export default function GamePicker(props: Props) {
+  const t = useT().account.picker
   return (
-    <Dialog open={props.open} title="Add games" onClose={props.onClose}>
+    <Dialog open={props.open} title={t.title} onClose={props.onClose}>
       {props.open && <Picker {...props} />}
     </Dialog>
   )
 }
 
 function Picker({ owned, picked: initial, room, onClose, onDone }: Props) {
+  const words = useT()
+  const t = words.account.picker
   const [picked, setPicked] = useState(initial)
   const [query, setQuery] = useState('')
 
@@ -53,27 +57,19 @@ function Picker({ owned, picked: initial, room, onClose, onDone }: Props) {
   return (
     <>
       <div className={styles.pickerHead}>
-        <span className={styles.label}>
-          Picked · {picked.length} of {room}
-        </span>
+        <span className={styles.label}>{t.picked(picked.length, room)}</span>
         <input
           type="search"
-          aria-label="Find game"
-          placeholder="Name or app ID"
+          aria-label={t.find}
+          placeholder={t.findPlaceholder}
           className={styles.search}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
       </div>
       <div className={styles.list}>
-        {owned === undefined && (
-          <p className={styles.listNote}>Loading the account’s games…</p>
-        )}
-        {owned?.length === 0 && (
-          <p className={styles.listNote}>
-            Steam shows no games, or the account’s game details are private.
-          </p>
-        )}
+        {owned === undefined && <p className={styles.listNote}>{t.loading}</p>}
+        {owned?.length === 0 && <p className={styles.listNote}>{t.noGames}</p>}
         {typed !== null && !shown.some((game) => game.appId === typed) && (
           <label className={styles.row}>
             <input
@@ -82,7 +78,7 @@ function Picker({ owned, picked: initial, room, onClose, onDone }: Props) {
               disabled={full && !picked.includes(typed)}
               onChange={() => toggle(typed)}
             />
-            <span className={styles.rowName}>App {typed}</span>
+            <span className={styles.rowName}>{t.app(typed)}</span>
           </label>
         )}
         {shown.map((game) => (
@@ -95,17 +91,17 @@ function Picker({ owned, picked: initial, room, onClose, onDone }: Props) {
             />
             <span className={styles.rowName}>{game.name}</span>
             <span className={styles.rowHours}>
-              {Math.floor(game.minutes / 60)} h
+              {t.hours(Math.floor(game.minutes / 60))}
             </span>
           </label>
         ))}
       </div>
       <div className={dialogStyles.actions}>
         <Button variant="secondary" size="sm" onClick={onClose}>
-          Cancel
+          {words.common.cancel}
         </Button>
         <Button size="sm" onClick={() => onDone(picked)}>
-          Done
+          {t.done}
         </Button>
       </div>
     </>

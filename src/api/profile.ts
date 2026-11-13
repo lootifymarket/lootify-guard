@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { words } from '../i18n/index.ts'
 
 export type Wallet = {
   /** ISO 4217, or `null` for a currency the app doesn't know. */
@@ -31,10 +32,17 @@ export function formatMoney(cents: number, currency: string | null) {
 
 export type Visibility = 'private' | 'friendsOnly' | 'public'
 
+// Getters, so each read is in the language picked at that moment.
 export const VISIBILITY_NAMES: Record<Visibility, string> = {
-  public: 'Public',
-  friendsOnly: 'Friends only',
-  private: 'Private',
+  get public() {
+    return words().account.profile.visibility.public
+  },
+  get friendsOnly() {
+    return words().account.profile.visibility.friendsOnly
+  },
+  get private() {
+    return words().account.profile.visibility.private
+  },
 }
 
 export type Privacy = {

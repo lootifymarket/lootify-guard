@@ -31,11 +31,10 @@ import Dropdown, { type DropdownOption } from '../../../components/Dropdown.tsx'
 import Flag from '../../../components/Flag.tsx'
 import TextField from '../../../components/TextField.tsx'
 import Toggle from '../../../components/Toggle.tsx'
+import { useT, type Dictionary } from '../../../i18n/index.ts'
 import { useCopy } from '../../../lib/useCopy.ts'
 import layout from '../layout.module.css'
 import styles from './AddAccount.module.css'
-
-const STEPS = ['Sign in', 'Steam Guard', 'Revocation code']
 
 type Stage =
   | { step: 0 }
@@ -56,6 +55,7 @@ type Props = {
 
 /** Signs in to an account that isn't in the vault and sets up Steam Guard for it here. */
 export default function AddAccount({ onCancel, onAdded, onDone }: Props) {
+  const t = useT().addAccount
   const [stage, setStage] = useState<Stage>({ step: 0 })
   const [asking, setAsking] = useState<Asking | null>(null)
 
@@ -72,10 +72,10 @@ export default function AddAccount({ onCancel, onAdded, onDone }: Props) {
     <div className={styles.page}>
       <div className={styles.progress}>
         <span className={styles.stepName}>
-          {stage.step + 1} / {STEPS.length} · {STEPS[stage.step]}
+          {stage.step + 1} / {t.steps.length} · {t.steps[stage.step]}
         </span>
         <div className={styles.bars} aria-hidden="true">
-          {STEPS.map((name, i) => (
+          {t.steps.map((name, i) => (
             <span
               key={name}
               className={i <= stage.step ? layout.barFill : layout.bar}
@@ -140,6 +140,8 @@ function SignIn({
   onCode: (accountName: string, from: SignInCode) => void
   onSignedIn: (accountName: string, onPhone: boolean) => void
 }) {
+  const common = useT().common
+  const t = useT().addAccount
   const [login, setLogin] = useState('')
   const [password, setPassword] = useState('')
   const [proxyId, setProxyId] = useState('')
@@ -154,7 +156,7 @@ function SignIn({
   }, [])
 
   const proxyOptions: DropdownOption[] = [
-    { value: '', label: 'No proxy' },
+    { value: '', label: t.noProxy },
     ...proxies.map((proxy) => ({
       value: String(proxy.id),
       label: proxyTitle(proxy),
@@ -183,20 +185,16 @@ function SignIn({
       else onSignedIn(accountName, next.onPhone)
     } catch (err) {
       setWrongPassword(isWrongPassword(err))
-      setError(
-        isWrongPassword(err)
-          ? 'Steam says the login or password is wrong'
-          : errorMessage(err),
-      )
+      setError(isWrongPassword(err) ? t.wrongLogin : errorMessage(err))
     }
     setBusy(false)
   }
 
   return (
     <form className={styles.body} onSubmit={(event) => void submit(event)}>
-      <h1 className={layout.title}>Sign in to Steam</h1>
+      <h1 className={layout.title}>{t.signInTitle}</h1>
       <TextField
-        label="Login"
+        label={t.login}
         autoComplete="off"
         autoCapitalize="off"
         spellCheck={false}
@@ -205,21 +203,25 @@ function SignIn({
       />
       <TextField
         type="password"
-        label="Password"
+        label={t.password}
         autoComplete="off"
         value={password}
         invalid={wrongPassword}
         onChange={(event) => setPassword(event.target.value)}
       />
       <Dropdown
-        label="Proxy"
+        label={t.proxy}
         value={proxyId}
         options={proxyOptions}
         onChange={setProxyId}
       />
       <div className={styles.option}>
-        <span>Save the password, not just the session</span>
-        <Toggle on={remember} label="Save password" onChange={setRemember} />
+        <span>{t.savePassword}</span>
+        <Toggle
+          on={remember}
+          label={t.savePasswordLabel}
+          onChange={setRemember}
+        />
       </div>
       {error && (
         <p className={styles.error} role="alert">
@@ -228,40 +230,21 @@ function SignIn({
       )}
       <div className={styles.actions}>
         <Button variant="secondary" onClick={onCancel}>
-          Cancel
+          {common.cancel}
         </Button>
         <Button
           type="submit"
           busy={busy}
           disabled={!accountName || !password || busy}
         >
-          {busy ? 'Signing in…' : 'Sign in'}
+          {busy ? t.signingIn : t.signIn}
         </Button>
       </div>
     </form>
   )
 }
 
-const METHODS: {
-  method: GuardMethod
-  name: string
-  text: string
-  unavailable: string
-}[] = [
-  {
-    method: 'new',
-    name: 'Add a new authenticator',
-    text: 'Made here and confirmed with a code Steam sends by SMS or email.',
-    unavailable:
-      'Steam Guard is already on a phone. Move it instead, or import its .maFile from the accounts list.',
-  },
-  {
-    method: 'move',
-    name: 'Move from phone',
-    text: 'Officially through Steam, confirmed by SMS. Guard stops working on the phone.',
-    unavailable: 'This account has no Steam Guard on a phone to move.',
-  },
-]
+const METHODS: GuardMethod[] = ['new', 'move']
 
 function Guard({
   accountName,
@@ -274,6 +257,8 @@ function Guard({
   onBack: () => void
   onSent: (method: GuardMethod, by: ConfirmBy) => void
 }) {
+  const common = useT().common
+  const t = useT().addAccount
   const method: GuardMethod = onPhone ? 'move' : 'new'
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -291,18 +276,17 @@ function Guard({
 
   return (
     <div className={styles.body}>
-      <h1 className={layout.title}>Steam Guard</h1>
+      <h1 className={layout.title}>{t.guardTitle}</h1>
       <p className={styles.lead}>
-        {onPhone
-          ? `${accountName} has Steam Guard on a phone.`
-          : `${accountName} has no mobile authenticator.`}
+        {onPhone ? t.guardOnPhone(accountName) : t.noAuthenticator(accountName)}
       </p>
-      <div className={styles.methods} role="radiogroup" aria-label="Method">
-        {METHODS.map((item) => {
-          const available = item.method === method
+      <div className={styles.methods} role="radiogroup" aria-label={t.method}>
+        {METHODS.map((id) => {
+          const item = t.methods[id]
+          const available = id === method
           return (
             <div
-              key={item.method}
+              key={id}
               role="radio"
               aria-checked={available}
               aria-disabled={!available}
@@ -319,10 +303,7 @@ function Guard({
           )
         })}
       </div>
-      <p className={styles.note}>
-        For the first 7 days after adding Guard, trades are held. That’s how
-        Steam works.
-      </p>
+      <p className={styles.note}>{t.tradeHold}</p>
       {error && (
         <p className={styles.error} role="alert">
           {error}
@@ -330,10 +311,10 @@ function Guard({
       )}
       <div className={styles.actions}>
         <Button variant="secondary" onClick={onBack}>
-          Back
+          {common.back}
         </Button>
         <Button busy={busy} disabled={busy} onClick={() => void send()}>
-          {busy ? 'Asking Steam…' : 'Continue'}
+          {busy ? t.askingSteam : common.continue}
         </Button>
       </div>
     </div>
@@ -347,6 +328,7 @@ function Revocation({
   added: NewAccount
   onDone: () => void
 }) {
+  const t = useT().addAccount
   const [stored, setStored] = useState(false)
   const [saved, setSaved] = useState<string | null>(null)
   const [error, setError] = useState('')
@@ -365,13 +347,10 @@ function Revocation({
 
   return (
     <div className={styles.body}>
-      <h1 className={layout.title}>Revocation code</h1>
+      <h1 className={layout.title}>{t.revocationTitle}</h1>
       {code ? (
         <>
-          <p className={styles.lead}>
-            The only way to remove Steam Guard from {added.accountName} if this
-            vault is lost. Keep a copy outside this computer.
-          </p>
+          <p className={styles.lead}>{t.revocationLead(added.accountName)}</p>
           <span className={styles.code} data-private>
             {code}
           </span>
@@ -381,13 +360,13 @@ function Revocation({
               size="sm"
               onClick={() => copy('code', code)}
             >
-              {label('code', 'Copy')}
+              {label('code', t.copy)}
             </Button>
             <Button variant="secondary" size="sm" onClick={() => void save()}>
-              Save .txt
+              {t.saveTxt}
             </Button>
           </div>
-          {saved && <p className={styles.note}>Saved as {saved}</p>}
+          {saved && <p className={styles.note}>{t.savedAs(saved)}</p>}
           {error && (
             <p className={styles.error} role="alert">
               {error}
@@ -399,17 +378,15 @@ function Revocation({
               checked={stored}
               onChange={(event) => setStored(event.target.checked)}
             />
-            I stored the code somewhere safe
+            {t.stored}
           </label>
         </>
       ) : (
-        <p className={styles.lead}>
-          {added.accountName} is added, but Steam gave no revocation code.
-        </p>
+        <p className={styles.lead}>{t.noRevocation(added.accountName)}</p>
       )}
       <div className={styles.actions}>
         <Button disabled={code !== null && !stored} onClick={onDone}>
-          Done
+          {t.done}
         </Button>
       </div>
     </div>
@@ -427,15 +404,16 @@ function CodeDialog({
   onSignedIn: (accountName: string, onPhone: boolean) => void
   onAdded: (added: NewAccount) => void
 }) {
+  const t = useT().addAccount
   const field = useRef<HTMLInputElement>(null)
   const title =
     asking?.for === 'signIn'
       ? asking.from === 'phone'
-        ? 'Steam Guard code'
-        : 'Email code'
+        ? t.guardCode
+        : t.emailCode
       : asking?.method === 'move'
-        ? 'Move from phone'
-        : 'Confirmation code'
+        ? t.moveFromPhone
+        : t.confirmationCode
   return (
     <Dialog
       open={asking !== null}
@@ -469,6 +447,8 @@ function CodeForm({
   onSignedIn: (accountName: string, onPhone: boolean) => void
   onAdded: (added: NewAccount) => void
 }) {
+  const common = useT().common
+  const t = useT().addAccount
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -493,10 +473,10 @@ function CodeForm({
 
   return (
     <form className={styles.form} onSubmit={(event) => void submit(event)}>
-      <p className={dialogStyles.text}>{codeText(asking)}</p>
+      <p className={dialogStyles.text}>{codeText(t, asking)}</p>
       <TextField
         ref={field}
-        label="Code"
+        label={t.code}
         autoComplete="one-time-code"
         autoCapitalize="characters"
         spellCheck={false}
@@ -514,29 +494,23 @@ function CodeForm({
       )}
       <div className={dialogStyles.actions}>
         <Button variant="secondary" size="sm" onClick={onCancel}>
-          Cancel
+          {common.cancel}
         </Button>
         <Button type="submit" size="sm" busy={busy} disabled={!code || busy}>
-          {busy ? 'Checking…' : 'Confirm'}
+          {busy ? t.checking : t.confirm}
         </Button>
       </div>
     </form>
   )
 }
 
-function codeText(asking: Asking) {
+function codeText(t: Dictionary['addAccount'], asking: Asking) {
   if (asking.for === 'signIn') {
-    return asking.from === 'phone'
-      ? 'Enter the code Steam Guard shows in the Steam app on the account’s phone.'
-      : 'Steam sent a code to the account’s email.'
+    return asking.from === 'phone' ? t.signInPhoneText : t.signInEmailText
   }
-  if (asking.by.by === 'email') {
-    return 'Steam sent a code to the account’s email. Enter it to turn on the new authenticator.'
-  }
+  if (asking.by.by === 'email') return t.guardEmailText
   const phone = asking.by.phoneHint
-    ? `the phone ending in ${asking.by.phoneHint}`
-    : 'the account’s phone number'
-  return asking.method === 'move'
-    ? `Steam sent an SMS to ${phone}. Once you enter it, Guard stops working on the phone.`
-    : `Steam sent an SMS to ${phone}. Enter it to turn on the new authenticator.`
+    ? t.phoneEnding(asking.by.phoneHint)
+    : t.accountPhone
+  return asking.method === 'move' ? t.smsMove(phone) : t.smsNew(phone)
 }

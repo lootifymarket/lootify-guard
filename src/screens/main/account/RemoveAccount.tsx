@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { removeAccount, type Account } from '../../../api/accounts.ts'
 import { errorMessage } from '../../../api/vault.ts'
 import Button from '../../../components/Button.tsx'
+import { useT } from '../../../i18n/index.ts'
 import Dialog from '../../../components/Dialog.tsx'
 import dialogStyles from '../../../components/Dialog.module.css'
 import styles from './AccountPage.module.css'
@@ -19,12 +20,9 @@ export default function RemoveAccount({
   onClose,
   onRemoved,
 }: Props) {
+  const t = useT().account.remove
   return (
-    <Dialog
-      open={open}
-      title={`Remove ${account.accountName}?`}
-      onClose={onClose}
-    >
+    <Dialog open={open} title={t.title(account.accountName)} onClose={onClose}>
       <Form account={account} onCancel={onClose} onRemoved={onRemoved} />
     </Dialog>
   )
@@ -39,12 +37,11 @@ function Form({
   onCancel: () => void
   onRemoved: () => void
 }) {
+  const words = useT()
+  const t = words.account.remove
   const [backedUp, setBackedUp] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const backup = account.hasRevocationCode
-    ? 'the .maFile or the revocation code'
-    : 'the .maFile'
 
   async function remove() {
     setBusy(true)
@@ -61,19 +58,14 @@ function Form({
 
   return (
     <>
-      <p className={dialogStyles.text}>
-        The account is removed from this app only. Steam Guard stays on in
-        Steam, so without {backup} you lose access to it for good.
-      </p>
+      <p className={dialogStyles.text}>{t.text(account.hasRevocationCode)}</p>
       <label className={styles.check}>
         <input
           type="checkbox"
           checked={backedUp}
           onChange={(event) => setBackedUp(event.target.checked)}
         />
-        {account.hasRevocationCode
-          ? 'I exported the .maFile or saved the revocation code'
-          : 'I exported the .maFile'}
+        {t.backedUp(account.hasRevocationCode)}
       </label>
       {error && (
         <p className={dialogStyles.error} role="alert">
@@ -82,7 +74,7 @@ function Form({
       )}
       <div className={dialogStyles.actions}>
         <Button variant="secondary" size="sm" onClick={onCancel}>
-          Cancel
+          {words.common.cancel}
         </Button>
         <Button
           variant="danger"
@@ -91,7 +83,7 @@ function Form({
           disabled={!backedUp || busy}
           onClick={() => void remove()}
         >
-          Remove
+          {t.remove}
         </Button>
       </div>
     </>

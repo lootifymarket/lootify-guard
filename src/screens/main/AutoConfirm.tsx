@@ -5,9 +5,10 @@ import {
   setAutoConfirmPaused,
   type AutoConfirmLog,
 } from '../../api/autoConfirm.ts'
-import { CONFIRMATION_KIND_NAMES } from '../../api/confirmations.ts'
+import { confirmationKindName } from '../../api/confirmations.ts'
 import { errorMessage } from '../../api/vault.ts'
 import Button from '../../components/Button.tsx'
+import { useT } from '../../i18n/index.ts'
 import { ago } from '../../lib/ago.ts'
 import AutoConfirmRules from './AutoConfirmRules.tsx'
 import styles from './AutoConfirm.module.css'
@@ -16,12 +17,6 @@ import styles from './AutoConfirm.module.css'
 const POLL_MS = 10_000
 
 type State = 'running' | 'paused' | 'off'
-
-const STATE_NAMES: Record<State, string> = {
-  running: 'Running',
-  paused: 'Paused',
-  off: 'Off',
-}
 
 type Props = {
   accounts: Account[]
@@ -39,6 +34,7 @@ export default function AutoConfirm({
   onChanged,
   onConfirmed,
 }: Props) {
+  const t = useT().guard.autoConfirm
   const [log, setLog] = useState<AutoConfirmLog | null>(null)
   const [revision, setRevision] = useState(0)
   const [pausing, setPausing] = useState(false)
@@ -114,12 +110,12 @@ export default function AutoConfirm({
       <div className={styles.head}>
         <span className={styles.heading}>
           <h2 id="auto-confirm-title" className={styles.title}>
-            Auto-confirm
+            {t.title}
           </h2>
           {log && (
             <span className={styles.state} data-state={state}>
               <span className={styles.dot} aria-hidden="true" />
-              {STATE_NAMES[state]}
+              {t.states[state]}
             </span>
           )}
         </span>
@@ -130,30 +126,28 @@ export default function AutoConfirm({
             disabled={!log || pausing}
             onClick={() => void togglePause()}
           >
-            {log?.paused ? 'Resume' : 'Pause'}
+            {log?.paused ? t.resume : t.pause}
           </Button>
           <Button
             variant="secondary"
             size="sm"
             onClick={() => setRulesOpen(true)}
           >
-            Rules
+            {t.rules}
           </Button>
         </div>
       </div>
 
       <p className={styles.summary}>
         {on.length > 0
-          ? `On for ${on.length} of ${accounts.length} accounts: ${on
-              .map((account) => account.accountName)
-              .join(', ')}`
-          : 'Off for every account. Choose what to confirm with Rules.'}
+          ? t.onFor(
+              on.length,
+              accounts.length,
+              on.map((account) => account.accountName).join(', '),
+            )
+          : t.offForAll}
       </p>
-      {log?.paused && (
-        <p className={styles.paused}>
-          Paused. Nothing is confirmed automatically until you resume.
-        </p>
-      )}
+      {log?.paused && <p className={styles.paused}>{t.pausedNote}</p>}
       {error && (
         <p className={styles.failure} role="alert">
           <span className={styles.reason}>{error}</span>
@@ -167,7 +161,7 @@ export default function AutoConfirm({
       ))}
 
       {log && log.accepted.length > 0 && (
-        <ul className={styles.log} aria-label="Confirmed automatically">
+        <ul className={styles.log} aria-label={t.confirmedLog}>
           {log.accepted.map((entry) => (
             <li
               key={`${entry.accountName}\n${entry.confirmation.id}`}
@@ -179,7 +173,7 @@ export default function AutoConfirm({
                 </span>
                 <span className={styles.meta}>
                   {entry.accountName} ·{' '}
-                  {CONFIRMATION_KIND_NAMES[entry.confirmation.kind]}
+                  {confirmationKindName(entry.confirmation.kind)}
                   {entry.confirmation.summary.length > 0 &&
                     ` · ${entry.confirmation.summary.join(', ')}`}
                 </span>
@@ -190,14 +184,9 @@ export default function AutoConfirm({
         </ul>
       )}
       {log?.accepted.length === 0 && state === 'running' && (
-        <p className={styles.note}>
-          Nothing confirmed automatically since the vault was unlocked.
-        </p>
+        <p className={styles.note}>{t.nothingYet}</p>
       )}
-      <p className={styles.footnote}>
-        Checked every minute while the vault is unlocked. This list is kept in
-        memory only and clears when the vault locks.
-      </p>
+      <p className={styles.footnote}>{t.footnote}</p>
 
       <AutoConfirmRules
         open={rulesOpen}

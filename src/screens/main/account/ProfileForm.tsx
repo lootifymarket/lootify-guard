@@ -17,21 +17,15 @@ import {
 } from '../../../api/profile.ts'
 import { errorMessage } from '../../../api/vault.ts'
 import Button from '../../../components/Button.tsx'
+import { useT } from '../../../i18n/index.ts'
 import Dialog from '../../../components/Dialog.tsx'
 import dialogStyles from '../../../components/Dialog.module.css'
 import Dropdown from '../../../components/Dropdown.tsx'
 import TextField from '../../../components/TextField.tsx'
 import styles from './AccountPage.module.css'
 
-const PRIVACY_FIELDS: { key: keyof Privacy; label: string }[] = [
-  { key: 'profile', label: 'Profile' },
-  { key: 'inventory', label: 'Inventory' },
-  { key: 'games', label: 'Games' },
-]
-
-const VISIBILITY_OPTIONS = (
-  Object.entries(VISIBILITY_NAMES) as [Visibility, string][]
-).map(([value, label]) => ({ value, label }))
+// Each is named by the field's key in the dictionary.
+const PRIVACY_FIELDS: (keyof Privacy)[] = ['profile', 'inventory', 'games']
 
 type Props = {
   accountName: string
@@ -46,6 +40,8 @@ export default function ProfileForm({
   steamId,
   onChanged,
 }: Props) {
+  const words = useT()
+  const t = words.account.profile
   const [saved, setSaved] = useState<ProfileSettings | null>(null)
   const [draft, setDraft] = useState<ProfileSettings | null>(null)
   const [busy, setBusy] = useState(false)
@@ -72,12 +68,15 @@ export default function ProfileForm({
         className={status ? styles.error : styles.muted}
         role={status ? 'alert' : undefined}
       >
-        {status?.text ?? 'Loading the profile…'}
+        {status?.text ?? t.loading}
       </p>
     )
   }
 
   const changes = changesFrom(saved, draft)
+  const visibilityOptions = (
+    Object.entries(VISIBILITY_NAMES) as [Visibility, string][]
+  ).map(([value, label]) => ({ value, label }))
   const dirty = Object.keys(changes).length > 0
 
   function edit(next: Partial<ProfileSettings>) {
@@ -96,7 +95,7 @@ export default function ProfileForm({
       setSaved(
         (current) => current && { ...draft, pastNames: current.pastNames },
       )
-      setStatus({ ok: true, text: 'Saved in Steam.' })
+      setStatus({ ok: true, text: t.saved })
       if (changes.personaName !== undefined) onChanged()
     } catch (err) {
       setStatus({ ok: false, text: errorMessage(err) })
@@ -108,14 +107,14 @@ export default function ProfileForm({
     <form className={styles.section} onSubmit={(event) => void save(event)}>
       <div className={styles.profileGrid}>
         <TextField
-          label="Nickname"
+          label={t.nickname}
           value={draft.personaName}
           onChange={(event) => edit({ personaName: event.target.value })}
         />
         <div className={styles.field}>
           <TextField
-            label="Profile URL"
-            placeholder="Not set"
+            label={t.url}
+            placeholder={t.notSet}
             autoCapitalize="off"
             spellCheck={false}
             value={draft.customUrl}
@@ -130,7 +129,7 @@ export default function ProfileForm({
       </div>
       <div className={styles.field}>
         <label htmlFor={summaryId} className={styles.fieldLabel}>
-          Summary
+          {t.summary}
         </label>
         <textarea
           id={summaryId}
@@ -141,12 +140,12 @@ export default function ProfileForm({
         />
       </div>
       <div className={styles.privacyGrid}>
-        {PRIVACY_FIELDS.map(({ key, label }) => (
+        {PRIVACY_FIELDS.map((key) => (
           <Dropdown
             key={key}
-            label={label}
+            label={t.privacy[key]}
             value={draft.privacy[key]}
-            options={VISIBILITY_OPTIONS}
+            options={visibilityOptions}
             onChange={(value) =>
               edit({
                 privacy: { ...draft.privacy, [key]: value as Visibility },
@@ -157,7 +156,7 @@ export default function ProfileForm({
       </div>
       {saved.pastNames && saved.pastNames.length > 0 && (
         <div className={styles.field}>
-          <span className={styles.fieldLabel}>Past nicknames</span>
+          <span className={styles.fieldLabel}>{t.pastNames}</span>
           <ul className={styles.pastNames}>
             {saved.pastNames.map((past, i) => (
               <li key={i}>
@@ -182,15 +181,15 @@ export default function ProfileForm({
           className={styles.link}
           onClick={() => setClearing(true)}
         >
-          Clear nickname history
+          {t.clearHistory}
         </button>
         <Button type="submit" size="sm" busy={busy} disabled={!dirty || busy}>
-          {busy ? 'Saving…' : 'Save'}
+          {busy ? t.saving : words.common.save}
         </Button>
       </div>
       <Dialog
         open={clearing}
-        title="Clear nickname history?"
+        title={t.clearTitle}
         onClose={() => setClearing(false)}
       >
         <ClearNames
@@ -213,9 +212,7 @@ function changesFrom(saved: ProfileSettings, draft: ProfileSettings) {
   }
   if (draft.customUrl !== saved.customUrl) changes.customUrl = draft.customUrl
   if (draft.summary !== saved.summary) changes.summary = draft.summary
-  if (
-    PRIVACY_FIELDS.some(({ key }) => draft.privacy[key] !== saved.privacy[key])
-  ) {
+  if (PRIVACY_FIELDS.some((key) => draft.privacy[key] !== saved.privacy[key])) {
     changes.privacy = draft.privacy
   }
   return changes
@@ -230,6 +227,8 @@ function ClearNames({
   onCancel: () => void
   onCleared: () => void
 }) {
+  const words = useT()
+  const t = words.account.profile
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -248,10 +247,7 @@ function ClearNames({
 
   return (
     <>
-      <p className={dialogStyles.text}>
-        Steam removes the list of past nicknames others see on the profile. This
-        can’t be undone.
-      </p>
+      <p className={dialogStyles.text}>{t.clearText}</p>
       {error && (
         <p className={dialogStyles.error} role="alert">
           {error}
@@ -259,7 +255,7 @@ function ClearNames({
       )}
       <div className={dialogStyles.actions}>
         <Button variant="secondary" size="sm" onClick={onCancel}>
-          Cancel
+          {words.common.cancel}
         </Button>
         <Button
           size="sm"
@@ -267,7 +263,7 @@ function ClearNames({
           disabled={busy}
           onClick={() => void clear()}
         >
-          Clear
+          {t.clear}
         </Button>
       </div>
     </>

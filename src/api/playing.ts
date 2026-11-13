@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { words } from '../i18n/index.ts'
 
 /** Steam plays at most this many at once; a status counts as one. */
 export const MAX_GAMES = 32
@@ -6,11 +7,20 @@ export const MAX_GAMES = 32
 /** How the account shows to friends while connected. */
 export type Presence = 'online' | 'away' | 'busy' | 'invisible'
 
+// Getters, so each read is in the language picked at that moment.
 export const PRESENCE_NAMES: Record<Presence, string> = {
-  online: 'Online',
-  away: 'Away',
-  busy: 'Do not disturb',
-  invisible: 'Invisible',
+  get online() {
+    return words().account.playing.presences.online
+  },
+  get away() {
+    return words().account.playing.presences.away
+  },
+  get busy() {
+    return words().account.playing.presences.busy
+  },
+  get invisible() {
+    return words().account.playing.presences.invisible
+  },
 }
 
 export type PlayingList = {

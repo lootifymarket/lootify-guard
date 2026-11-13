@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { signOutOtherDevices, type Device } from '../../../api/security.ts'
 import { errorMessage } from '../../../api/vault.ts'
 import Button from '../../../components/Button.tsx'
+import { useT } from '../../../i18n/index.ts'
 import Dialog from '../../../components/Dialog.tsx'
 import dialogStyles from '../../../components/Dialog.module.css'
 import DeviceDetails from './DeviceDetails.tsx'
@@ -23,8 +24,9 @@ export default function SignOutEverywhere({
   onClose,
   onSignedOut,
 }: Props) {
+  const t = useT().account.signOut
   return (
-    <Dialog open={open} title="Sign out everywhere?" onClose={onClose}>
+    <Dialog open={open} title={t.title} onClose={onClose}>
       <Form
         accountName={accountName}
         others={devices?.filter((device) => !device.thisApp)}
@@ -46,6 +48,8 @@ function Form({
   onCancel: () => void
   onSignedOut: (count: number) => void
 }) {
+  const words = useT()
+  const t = words.account.signOut
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -66,9 +70,7 @@ function Form({
   return (
     <>
       <p className={dialogStyles.text}>
-        {others?.length === 0
-          ? 'No device but this app is signed in to the account.'
-          : 'Steam ends every session except this app. These devices will ask to sign in again:'}
+        {others?.length === 0 ? t.nothingElse : t.others}
       </p>
       {others && others.length > 0 && (
         <ul className={styles.signOutList}>
@@ -86,7 +88,7 @@ function Form({
       )}
       <div className={dialogStyles.actions}>
         <Button variant="secondary" size="sm" onClick={onCancel}>
-          Cancel
+          {words.common.cancel}
         </Button>
         <Button
           size="sm"
@@ -94,7 +96,7 @@ function Form({
           disabled={busy || others?.length === 0}
           onClick={() => void signOut()}
         >
-          {busy ? 'Signing out…' : 'Sign out everywhere'}
+          {busy ? t.signingOut : t.signOut}
         </Button>
       </div>
     </>
