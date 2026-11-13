@@ -3,6 +3,7 @@ use serde::Deserialize;
 use crate::api_key::{self, ApiKey};
 use crate::contents::Account;
 use crate::inventory::{self, Game};
+use crate::licenses::{self, Claim, Claimed, License};
 use crate::moves::{self, Moved, Side};
 use crate::profile_settings::{self, Privacy, ProfileChanges, Visibility};
 use crate::proxy::ProxyAddress;
@@ -24,6 +25,8 @@ pub enum Task {
         only_from: Option<Vec<u64>>,
     },
     Profile(ProfileTask),
+    /// Adds free games and packages to the account.
+    FreeGames(Vec<License>),
 }
 
 /// What to change on each profile; what's left out stays as it is.
@@ -85,6 +88,11 @@ pub fn run(
         Task::Check => check(account, proxy),
         Task::AcceptGifts { only_from } => accept_gifts(account, proxy, now, only_from.as_deref()),
         Task::Profile(task) => profile(task, account, proxy, number),
+        Task::FreeGames(licenses) => {
+            let (session, claims) = licenses::claim(account, proxy, licenses)?;
+            account.session = Some(session);
+            Ok(claims_summary(&claims))
+        }
     }
 }
 
@@ -207,6 +215,36 @@ fn profile(
     Ok(Outcome::Done(format!("Changed {}", changed.join(", "))))
 }
 
+fn claims_summary(claims: &[Claim]) -> Outcome {
+    let count = |wanted: Claimed| {
+        claims
+            .iter()
+            .filter(|(_, result)| result.as_ref().ok() == Some(&wanted))
+            .count()
+    };
+    let mut parts = Vec::new();
+    match count(Claimed::Added) {
+        0 => {}
+        added => parts.push(format!("Added {added}")),
+    }
+    match count(Claimed::AlreadyOwned) {
+        0 => {}
+        owned => parts.push(format!("{owned} already owned")),
+    }
+    let failed: Vec<String> = claims
+        .iter()
+        .filter_map(|(license, result)| {
+            result.as_ref().err().map(|err| format!("{license}: {err}"))
+        })
+        .collect();
+    if failed.is_empty() {
+        Outcome::Done(parts.join(", "))
+    } else {
+        parts.extend(failed);
+        Outcome::Warning(parts.join("; "))
+    }
+}
+
 /// Sends every tradable item the account has in the game to the storage
 /// account, which takes them there.
 pub fn move_to_storage(from: Side, to: Side, game: Game) -> Result<Outcome, moves::Failed> {
@@ -305,6 +343,28 @@ mod tests {
         );
         assert!(PrivacyChanges::default().is_empty());
         assert!(!changes.is_empty());
+    }
+
+    #[test]
+    fn claims_are_summed_up() {
+        assert_eq!(
+            claims_summary(&[
+                (License::App(440), Ok(Claimed::Added)),
+                (License::Package(1), Ok(Claimed::Added)),
+                (License::App(730), Ok(Claimed::AlreadyOwned)),
+            ]),
+            Outcome::Done("Added 2, 1 already owned".to_owned())
+        );
+        assert_eq!(
+            claims_summary(&[
+                (License::Package(7), Ok(Claimed::Added)),
+                (
+                    License::App(10),
+                    Err(SteamError::Refused("it isn't free in the store".to_owned()))
+                ),
+            ]),
+            Outcome::Warning("Added 1; app 10: Steam said: it isn't free in the store".to_owned())
+        );
     }
 
     #[test]

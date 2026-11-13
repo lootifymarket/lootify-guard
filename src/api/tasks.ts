@@ -14,6 +14,8 @@ export type TaskInput =
       /** The image's bytes, for every account. */
       avatar: number[] | null
     }
+  /** Store links or IDs, split by spaces, commas or lines. */
+  | { kind: 'freeGames'; licenses: string }
   /** Every tradable item to one account. */
   | { kind: 'moveToStorage'; storage: string; game: Game }
 

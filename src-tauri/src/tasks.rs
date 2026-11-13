@@ -8,6 +8,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use lootify_guard_core::contents::{Account, Contents, DamagedContents};
 use lootify_guard_core::inventory::Game;
+use lootify_guard_core::licenses::{self, MAX_LICENSES};
 use lootify_guard_core::moves::{self, Side};
 use lootify_guard_core::profile_settings::{AvatarImage, MAX_AVATAR_LEN};
 use lootify_guard_core::steam::SteamError;
@@ -102,6 +103,10 @@ pub enum TaskInput {
         name_template: Option<String>,
         privacy: PrivacyChanges,
         avatar: Option<Vec<u8>>,
+    },
+    /// Store links or IDs, as the user typed them.
+    FreeGames {
+        licenses: String,
     },
     #[serde(rename_all = "camelCase")]
     MoveToStorage {
@@ -203,6 +208,22 @@ pub fn start_task(
                 avatar,
                 account_names.len(),
             )?)),
+            TaskInput::FreeGames { licenses } => {
+                let licenses = licenses::parse(&licenses).map_err(|word| {
+                    CommandError::Failed(format!(
+                        "can't read \"{word}\": use store links, app/440 or sub/12345"
+                    ))
+                })?;
+                if licenses.is_empty() {
+                    return Err(CommandError::Failed("add a game".to_owned()));
+                }
+                if licenses.len() > MAX_LICENSES {
+                    return Err(CommandError::Failed(format!(
+                        "Steam takes about {MAX_LICENSES} free games an hour, add fewer"
+                    )));
+                }
+                Work::Each(Task::FreeGames(licenses))
+            }
             TaskInput::MoveToStorage { storage, game } => {
                 contents.account(&storage).ok_or_else(no_such_account)?;
                 // The storage account has nothing to send to itself.

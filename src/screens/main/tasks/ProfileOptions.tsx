@@ -51,7 +51,7 @@ export default function ProfileOptions({ choice, onChange }: Props) {
         <TextField
           label="Nickname"
           placeholder="Keep as is"
-          className={styles.nameInput}
+          className={styles.input}
           maxLength={40}
           value={choice.nameTemplate}
           onChange={(event) =>

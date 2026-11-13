@@ -5,6 +5,7 @@ import { startTask, type TaskInput } from '../../../api/tasks.ts'
 import { errorMessage } from '../../../api/vault.ts'
 import Button from '../../../components/Button.tsx'
 import Dropdown from '../../../components/Dropdown.tsx'
+import TextField from '../../../components/TextField.tsx'
 import Toggle from '../../../components/Toggle.tsx'
 import layout from '../layout.module.css'
 import ProfileOptions, { type ProfileChoice } from './ProfileOptions.tsx'
@@ -28,6 +29,11 @@ const TASKS: { kind: Kind; name: string; text: string }[] = [
     kind: 'profile',
     name: 'Profile',
     text: 'Nickname, avatar and privacy',
+  },
+  {
+    kind: 'freeGames',
+    name: 'Free games',
+    text: 'Free licenses by store link or ID',
   },
   {
     kind: 'check',
@@ -67,6 +73,7 @@ export default function Tasks({ accounts, groups }: Props) {
   })
   const [storage, setStorage] = useState('')
   const [game, setGame] = useState<Game>('cs2')
+  const [licenses, setLicenses] = useState('')
   const [atOnce, setAtOnce] = useState(3)
   const [pause, setPause] = useState('medium')
   const [retry, setRetry] = useState(true)
@@ -96,10 +103,12 @@ export default function Tasks({ accounts, groups }: Props) {
   const ready =
     kind === 'moveToStorage'
       ? storage !== ''
-      : kind !== 'profile' ||
-        profile.nameTemplate.trim() !== '' ||
-        Object.keys(profile.privacy).length > 0 ||
-        profile.avatar !== null
+      : kind === 'freeGames'
+        ? licenses.trim() !== ''
+        : kind !== 'profile' ||
+          profile.nameTemplate.trim() !== '' ||
+          Object.keys(profile.privacy).length > 0 ||
+          profile.avatar !== null
 
   async function input(): Promise<TaskInput> {
     switch (kind) {
@@ -109,6 +118,8 @@ export default function Tasks({ accounts, groups }: Props) {
         return { kind, onlyOwn }
       case 'moveToStorage':
         return { kind, storage, game }
+      case 'freeGames':
+        return { kind, licenses }
       case 'profile': {
         const { avatar } = profile
         return {
@@ -231,6 +242,22 @@ export default function Tasks({ accounts, groups }: Props) {
               <p className={styles.note}>
                 Each account sends an offer with all its tradable items, and the
                 storage account accepts it. No phone needed.
+              </p>
+            </div>
+          )}
+
+          {kind === 'freeGames' && (
+            <div className={styles.optionGroup}>
+              <TextField
+                label="Games"
+                placeholder="store.steampowered.com/app/440, sub/12345"
+                className={styles.input}
+                value={licenses}
+                onChange={(event) => setLicenses(event.target.value)}
+              />
+              <p className={styles.note}>
+                Store links, app/… or sub/… IDs, split by spaces or commas. A
+                plain number is an app ID. Games already owned are skipped.
               </p>
             </div>
           )}

@@ -4,6 +4,7 @@ pub mod contents;
 pub mod guard;
 pub mod idle;
 pub mod inventory;
+pub mod licenses;
 pub mod link;
 pub mod mafile;
 pub mod market;

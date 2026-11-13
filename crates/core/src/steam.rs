@@ -35,6 +35,7 @@ const AVATAR_URL: &str = "https://avatars.steamstatic.com";
 // A 64×64 JPEG is a few kilobytes; anything far bigger isn't an avatar.
 const MAX_AVATAR_LEN: usize = 256 * 1024;
 const COMMUNITY_URL: &str = "https://steamcommunity.com";
+pub(crate) const STORE_URL: &str = "https://store.steampowered.com";
 const SERVER_INFO_URL: &str = "https://api.steampowered.com/ISteamWebAPIUtil/GetServerInfo/v1/";
 // Open-source and keyless. It sees only the proxy's IP, since the lookup goes through it.
 const COUNTRY_URL: &str = "https://api.country.is/";
@@ -188,24 +189,26 @@ pub(crate) fn with_session<T>(
     Ok((session, result))
 }
 
-/// A client signed in to steamcommunity.com. Its cookies live in a jar rather than
-/// a fixed header, because Steam sets more of them on the way through redirects
-/// and keeps redirecting until it gets them back.
+/// A client signed in to steamcommunity.com and the store. Its cookies live in a
+/// jar rather than a fixed header, because Steam sets more of them on the way
+/// through redirects and keeps redirecting until it gets them back.
 fn session_client(
     proxy: Option<&ProxyAddress>,
     session: &Session,
     steam_id: u64,
 ) -> Result<Client, SteamError> {
-    let community: Url = COMMUNITY_URL.parse().expect("a valid URL");
     let jar = Jar::default();
-    jar.add_cookie_str(
-        &format!(
-            "steamLoginSecure={steam_id}%7C%7C{}; Secure; HttpOnly",
-            session.access_token.expose()
-        ),
-        &community,
-    );
-    jar.add_cookie_str(&format!("sessionid={}", session_id(session)), &community);
+    for site in [COMMUNITY_URL, STORE_URL] {
+        let site: Url = site.parse().expect("a valid URL");
+        jar.add_cookie_str(
+            &format!(
+                "steamLoginSecure={steam_id}%7C%7C{}; Secure; HttpOnly",
+                session.access_token.expose()
+            ),
+            &site,
+        );
+        jar.add_cookie_str(&format!("sessionid={}", session_id(session)), &site);
+    }
     builder(proxy)?
         .cookie_provider(Arc::new(jar))
         .build()
