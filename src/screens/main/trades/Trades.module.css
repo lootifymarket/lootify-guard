@@ -304,29 +304,24 @@
 }
 
 .pickerList {
-  height: 240px;
+  height: 360px;
   overflow-y: auto;
   border: 1px solid var(--color-line-strong);
   border-radius: var(--radius-control);
 }
 
-.pickerItem {
+.pickerTools {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--color-line);
-  font-size: 13px;
-  cursor: pointer;
-  overflow-wrap: anywhere;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 14px;
 }
 
-.pickerItem input {
-  width: 15px;
-  height: 15px;
-  margin: 0;
-  flex: 0 0 15px;
-  accent-color: var(--color-accent);
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  padding: 12px;
 }
 
 .pickerNote {

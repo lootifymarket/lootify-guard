@@ -31,6 +31,7 @@ fn main() {
             app.manage(auto_confirm::AutoConfirmLog::default());
             app.manage(add_account::AddAccountState::default());
             app.manage(trades::InventoryCache::default());
+            app.manage(trades::IconCache::default());
             vault::watch_idle(app.handle().clone());
             auto_confirm::watch(app.handle().clone());
             Ok(())
@@ -92,6 +93,7 @@ fn main() {
             trades::check_trade_partner,
             trades::tradable_items,
             trades::send_trade_offer,
+            trades::item_icons,
             proxies::list_proxies,
             proxies::add_proxies,
             proxies::add_proxy,

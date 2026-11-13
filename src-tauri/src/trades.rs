@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::{Mutex, PoisonError};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -221,6 +222,13 @@ pub struct InventoryCache {
     one_at_a_time: AsyncMutex<HashMap<(String, Game), (Instant, Tradable)>>,
 }
 
+/// Item pictures already downloaded, by Steam's name for them. They are the same
+/// for everyone, so they are kept for as long as the app runs, up to a limit.
+#[derive(Default)]
+pub struct IconCache(Mutex<HashMap<String, String>>);
+
+const MAX_CACHED_ICONS: usize = 5000;
+
 const INVENTORY_FRESH_FOR: Duration = Duration::from_secs(60);
 
 /// The account's items in the game that can be traded now.
@@ -264,6 +272,63 @@ pub async fn send_trade_offer(
     let (session, sent) = settle(&state, &account_name, result)?;
     store_session(&state, &account_name, Some(session))?;
     Ok(sent)
+}
+
+/// Pictures for the items in `icons`, through the account's proxy. A picture that
+/// fails to download is left out; the card shows without it.
+#[tauri::command]
+pub async fn item_icons(
+    state: State<'_, VaultState>,
+    cache: State<'_, IconCache>,
+    account_name: String,
+    icons: Vec<String>,
+) -> Result<HashMap<String, String>, CommandError> {
+    let mut found = HashMap::new();
+    let mut missing = Vec::new();
+    {
+        let cached = cache.0.lock().unwrap_or_else(PoisonError::into_inner);
+        for icon in icons {
+            match cached.get(&icon) {
+                Some(url) => {
+                    found.insert(icon, url.clone());
+                }
+                None => missing.push(icon),
+            }
+        }
+    }
+    if missing.is_empty() {
+        return Ok(found);
+    }
+    let (_, proxy) = account_and_proxy(&state, &account_name)?;
+    let downloaded = spawn_blocking(move || {
+        let mut downloaded = Vec::new();
+        for batch in missing.chunks(AT_ONCE) {
+            thread::scope(|scope| {
+                let running: Vec<_> = batch
+                    .iter()
+                    .map(|icon| {
+                        let proxy = proxy.as_ref();
+                        scope.spawn(move || (icon.clone(), inventory::icon(proxy, icon)))
+                    })
+                    .collect();
+                for handle in running {
+                    downloaded.push(handle.join().expect("downloading a picture never panics"));
+                }
+            });
+        }
+        downloaded
+    })
+    .await?;
+    let mut cached = cache.0.lock().unwrap_or_else(PoisonError::into_inner);
+    for (icon, result) in downloaded {
+        if let Ok(url) = result {
+            if cached.len() < MAX_CACHED_ICONS {
+                cached.insert(icon.clone(), url.clone());
+            }
+            found.insert(icon, url);
+        }
+    }
+    Ok(found)
 }
 
 fn unix_now() -> Result<u64, CommandError> {

@@ -13,6 +13,7 @@ import Dialog from '../../../components/Dialog.tsx'
 import dialogStyles from '../../../components/Dialog.module.css'
 import Dropdown from '../../../components/Dropdown.tsx'
 import TextField from '../../../components/TextField.tsx'
+import ItemCard from './ItemCard.tsx'
 import styles from './Trades.module.css'
 
 const GAME_OPTIONS = (Object.entries(GAME_NAMES) as [Game, string][]).map(
@@ -159,8 +160,36 @@ function Form({
       />
       <div className={styles.picker}>
         <div className={styles.pickerHead}>
-          <span className={styles.itemListLabel}>
-            Items · {chosen.length} selected
+          <span className={styles.pickerTools}>
+            <span className={styles.itemListLabel}>
+              Items · {chosen.length} selected
+            </span>
+            {shown.length > 0 && (
+              <button
+                type="button"
+                className={styles.check}
+                onClick={() =>
+                  setPicked(
+                    (current) =>
+                      new Set([
+                        ...current,
+                        ...shown.map((item) => item.assetId),
+                      ]),
+                  )
+                }
+              >
+                Select all
+              </button>
+            )}
+            {chosen.length > 0 && (
+              <button
+                type="button"
+                className={styles.check}
+                onClick={() => setPicked(new Set())}
+              >
+                Clear selection
+              </button>
+            )}
           </span>
           <input
             type="search"
@@ -199,21 +228,19 @@ function Form({
                 : 'No item matches.'}
             </p>
           )}
-          {shown.map((item) => (
-            <label key={item.assetId} className={styles.pickerItem}>
-              <input
-                type="checkbox"
-                checked={picked.has(item.assetId)}
-                onChange={() => toggle(item.assetId)}
-              />
-              <span
-                style={item.color ? { color: `#${item.color}` } : undefined}
-              >
-                {item.name}
-                {item.amount > 1 && ` × ${item.amount}`}
-              </span>
-            </label>
-          ))}
+          {shown.length > 0 && (
+            <div className={styles.cards}>
+              {shown.map((item) => (
+                <ItemCard
+                  key={item.assetId}
+                  accountName={from}
+                  item={item}
+                  picked={picked.has(item.assetId)}
+                  onToggle={() => toggle(item.assetId)}
+                />
+              ))}
+            </div>
+          )}
         </div>
         {tradable && tradable.held > 0 && (
           <span className={styles.pickerNote}>
