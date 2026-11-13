@@ -6,6 +6,7 @@ mod add_account;
 mod auto_confirm;
 mod biometrics;
 mod confirmations;
+mod groups;
 mod inventory;
 mod profile;
 mod proxies;
@@ -63,6 +64,10 @@ fn main() {
             add_account::add_account_confirm,
             add_account::save_new_revocation_code,
             add_account::add_account_cancel,
+            groups::create_group,
+            groups::rename_group,
+            groups::remove_group,
+            groups::set_account_group,
             confirmations::list_confirmations,
             confirmations::respond_to_confirmations,
             auto_confirm::set_auto_confirm_rule,

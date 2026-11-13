@@ -78,6 +78,7 @@ export default function SteamGuard({ list, onChanged }: Props) {
           <SignInRequests accounts={list.accounts} onChanged={onChanged} />
           <AutoConfirm
             accounts={list.accounts}
+            groups={list.groups}
             onChanged={onChanged}
             onConfirmed={() => setConfirmationsKey((key) => key + 1)}
           />

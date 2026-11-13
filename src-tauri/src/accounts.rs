@@ -15,6 +15,7 @@ use tauri_plugin_dialog::DialogExt;
 use zeroize::Zeroizing;
 
 use crate::biometrics;
+use crate::groups::{self, GroupView};
 use crate::vault::{CommandError, VaultState};
 
 // Real .maFiles are a couple of kilobytes; this only stops a wrong pick from being read whole.
@@ -26,6 +27,7 @@ const MAFILE_FILTER: (&str, &[&str]) = ("Steam Guard files", &["maFile"]);
 pub struct AccountList {
     codes_expire_at: u64,
     accounts: Vec<AccountSummary>,
+    groups: Vec<GroupView>,
 }
 
 #[derive(Serialize)]
@@ -42,6 +44,7 @@ pub struct AccountSummary {
     /// A data URL, so the page can show it without fetching anything itself.
     avatar: Option<String>,
     proxy_id: Option<u32>,
+    group_id: Option<u32>,
     auto_confirm: AutoConfirm,
 }
 
@@ -89,6 +92,7 @@ pub fn list_accounts(state: State<'_, VaultState>) -> Result<AccountList, Comman
                     .and_then(|profile| profile.avatar.as_ref())
                     .map(|avatar| format!("data:image/jpeg;base64,{avatar}")),
                 proxy_id: account.proxy,
+                group_id: account.group,
                 auto_confirm: account.auto_confirm,
             })
         })
@@ -96,6 +100,7 @@ pub fn list_accounts(state: State<'_, VaultState>) -> Result<AccountList, Comman
     Ok(AccountList {
         codes_expire_at: guard::code_expires_at(now),
         accounts,
+        groups: groups::views(&contents),
     })
 }
 

@@ -1,5 +1,5 @@
 import { useEffect, useEffectEvent, useState } from 'react'
-import type { Account } from '../../../api/accounts.ts'
+import type { Account, Group } from '../../../api/accounts.ts'
 import {
   GAME_NAMES,
   inventoryItems,
@@ -55,12 +55,13 @@ const keyOf = ({ account, item }: Owned) => `${account}/${item.assetId}`
 
 type Props = {
   accounts: Account[]
+  groups: Group[]
   /** Steam turned a session down, so the account list is out of date. */
   onChanged: () => void
 }
 
 /** Every item of every signed-in account in one grid. */
-export default function Inventory({ accounts, onChanged }: Props) {
+export default function Inventory({ accounts, groups, onChanged }: Props) {
   const signedIn = accounts.filter((account) => account.signedIn)
   const [game, setGame] = useState<Game>('cs2')
   const [accountFilter, setAccountFilter] = useState('')
@@ -114,12 +115,23 @@ export default function Inventory({ accounts, onChanged }: Props) {
     setPicked(new Set())
   }
 
+  // The filter holds a login, or "group:" and a group's id; logins have no colons.
+  function shows(filter: string, account: string) {
+    if (!filter) return true
+    if (!filter.startsWith('group:')) return account === filter
+    const groupId = Number(filter.slice('group:'.length))
+    return (
+      signedIn.find((known) => known.accountName === account)?.groupId ===
+      groupId
+    )
+  }
+
   const all: Owned[] = Object.entries(loaded).flatMap(([account, items]) =>
     items.map((item) => ({ account, item })),
   )
   const words = query.trim().toLowerCase()
   const shown = all
-    .filter(({ account }) => !accountFilter || account === accountFilter)
+    .filter(({ account }) => shows(accountFilter, account))
     .filter(({ item }) => !tradableOnly || item.tradable)
     .filter(({ item }) => item.name.toLowerCase().includes(words))
     .sort(compare(sort))
@@ -159,6 +171,11 @@ export default function Inventory({ accounts, onChanged }: Props) {
             value={accountFilter}
             options={[
               { value: '', label: 'All accounts' },
+              ...groups.map((group) => ({
+                value: `group:${group.id}`,
+                label: group.name,
+                hint: 'Group',
+              })),
               ...signedIn.map((account) => ({
                 value: account.accountName,
                 label: account.personaName || account.accountName,
@@ -296,7 +313,11 @@ export default function Inventory({ accounts, onChanged }: Props) {
               accountName={owned.account}
               item={owned.item}
               picked={picked.has(keyOf(owned))}
-              owner={accountFilter ? undefined : owned.account}
+              owner={
+                accountFilter && !accountFilter.startsWith('group:')
+                  ? undefined
+                  : owned.account
+              }
               unavailable={owned.item.tradable ? undefined : 'Not tradable now'}
               onToggle={() => toggle(owned)}
             />

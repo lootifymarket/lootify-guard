@@ -176,3 +176,69 @@
   font-size: 13px;
   line-height: 1.55;
 }
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.chip {
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.chip[aria-pressed='true'] {
+  background: var(--color-selected);
+  border-color: var(--color-text-faint);
+  color: var(--color-text);
+}
+
+.chipCount {
+  color: var(--color-text-faint);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.newGroup,
+.editGroup {
+  height: 30px;
+  padding: 0 6px;
+  background: transparent;
+  border: 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.editGroup {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.chip:focus-visible,
+.newGroup:focus-visible,
+.editGroup:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+.groupTag {
+  margin-left: 8px;
+  padding: 1px 7px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-text-faint);
+  font-size: 11px;
+  font-weight: 400;
+}

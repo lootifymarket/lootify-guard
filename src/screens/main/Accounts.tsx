@@ -4,27 +4,43 @@ import {
   describe,
   type Account,
   type AccountList,
+  type Group,
 } from '../../api/accounts.ts'
 import Avatar from '../../components/Avatar.tsx'
 import Button from '../../components/Button.tsx'
 import { useCopy } from '../../lib/useCopy.ts'
+import GroupDialog from './groups/GroupDialog.tsx'
 import ImportMaFiles from './ImportMaFiles.tsx'
 import { matchesQuery, useCodeSecondsLeft } from './useAccounts.ts'
 import layout from './layout.module.css'
 import styles from './Accounts.module.css'
 
+/** A group's id, every account, or the ones in no group. */
+type Filter = number | 'all' | 'none'
+
 type Props = {
   list: AccountList
   onImported: () => void
+  /** Groups changed. */
+  onChanged: () => void
   onOpen: (accountName: string) => void
   onAdd: () => void
 }
 
-export default function Accounts({ list, onImported, onOpen, onAdd }: Props) {
+export default function Accounts({
+  list,
+  onImported,
+  onChanged,
+  onOpen,
+  onAdd,
+}: Props) {
   const [query, setQuery] = useState('')
   // Logins are the only identifier every account has; Steam IDs can be missing.
   const [selectedName, setSelectedName] = useState<string | null>(null)
-  const { accounts } = list
+  const [filter, setFilter] = useState<Filter>('all')
+  // `null` makes a new group; a group edits it.
+  const [editing, setEditing] = useState<{ group: Group | null } | null>(null)
+  const { accounts, groups } = list
 
   if (accounts.length === 0) {
     return (
@@ -48,10 +64,23 @@ export default function Accounts({ list, onImported, onOpen, onAdd }: Props) {
     )
   }
 
+  const shown = accounts
+    .filter(
+      (account) =>
+        filter === 'all' ||
+        (filter === 'none'
+          ? account.groupId === null
+          : account.groupId === filter),
+    )
+    .filter((account) => matchesQuery(account, query))
+  // The details follow the filter, so they never show an account the list hides.
   const selected =
-    accounts.find((account) => account.accountName === selectedName) ??
+    shown.find((account) => account.accountName === selectedName) ??
+    shown[0] ??
     accounts[0]
-  const shown = accounts.filter((account) => matchesQuery(account, query))
+  const grouped = new Map(groups.map((group) => [group.id, group.name]))
+  const loose = accounts.filter((account) => account.groupId === null).length
+  const current = groups.find((group) => group.id === filter)
 
   return (
     <>
@@ -72,6 +101,59 @@ export default function Accounts({ list, onImported, onOpen, onAdd }: Props) {
           </Button>
         </div>
       </div>
+      <div className={styles.chips} role="group" aria-label="Groups">
+        <Chip
+          label="All"
+          count={accounts.length}
+          on={filter === 'all'}
+          onPick={() => setFilter('all')}
+        />
+        {groups.map((group) => (
+          <Chip
+            key={group.id}
+            label={group.name}
+            count={group.count}
+            on={filter === group.id}
+            onPick={() => setFilter(group.id)}
+          />
+        ))}
+        {groups.length > 0 && loose > 0 && (
+          <Chip
+            label="No group"
+            count={loose}
+            on={filter === 'none'}
+            onPick={() => setFilter('none')}
+          />
+        )}
+        <button
+          type="button"
+          className={styles.newGroup}
+          onClick={() => setEditing({ group: null })}
+        >
+          + New group
+        </button>
+        {current && (
+          <button
+            type="button"
+            className={styles.editGroup}
+            onClick={() => setEditing({ group: current })}
+          >
+            Edit {current.name}
+          </button>
+        )}
+      </div>
+      <GroupDialog
+        open={editing !== null}
+        accounts={accounts}
+        groups={groups}
+        group={editing?.group ?? null}
+        onClose={() => setEditing(null)}
+        onSaved={(removed) => {
+          setEditing(null)
+          if (removed) setFilter('all')
+          onChanged()
+        }}
+      />
       <div className={styles.body}>
         <div className={styles.list}>
           {shown.map((account) => (
@@ -92,7 +174,14 @@ export default function Accounts({ list, onImported, onOpen, onAdd }: Props) {
                   size="sm"
                 />
                 <span className={styles.names}>
-                  <span className={styles.login}>{account.accountName}</span>
+                  <span className={styles.login}>
+                    {account.accountName}
+                    {account.groupId !== null && filter === 'all' && (
+                      <span className={styles.groupTag}>
+                        {grouped.get(account.groupId)}
+                      </span>
+                    )}
+                  </span>
                   {account.personaName ? (
                     <span className={styles.nickname}>
                       {account.personaName}
@@ -119,6 +208,30 @@ export default function Accounts({ list, onImported, onOpen, onAdd }: Props) {
         <Details account={selected} codesExpireAt={list.codesExpireAt} />
       </div>
     </>
+  )
+}
+
+function Chip({
+  label,
+  count,
+  on,
+  onPick,
+}: {
+  label: string
+  count: number
+  on: boolean
+  onPick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      className={styles.chip}
+      aria-pressed={on}
+      onClick={onPick}
+    >
+      {label}
+      <span className={styles.chipCount}>{count}</span>
+    </button>
   )
 }
 

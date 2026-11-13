@@ -236,6 +236,7 @@ fn to_account(
         profile: None,
         proxy: None,
         auto_confirm: AutoConfirm::default(),
+        group: None,
         trusted_api_key: None,
         device_names: BTreeMap::new(),
     })

@@ -164,3 +164,7 @@
   font-size: 12px;
   line-height: 1.5;
 }
+
+.groupFilter {
+  width: 220px;
+}

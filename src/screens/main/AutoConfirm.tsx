@@ -1,5 +1,5 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
-import type { Account } from '../../api/accounts.ts'
+import type { Account, Group } from '../../api/accounts.ts'
 import {
   autoConfirmLog,
   setAutoConfirmPaused,
@@ -25,6 +25,7 @@ const STATE_NAMES: Record<State, string> = {
 
 type Props = {
   accounts: Account[]
+  groups: Group[]
   /** Something changed an account, such as a session Steam stopped accepting. */
   onChanged: () => void
   /** Auto-confirm took some confirmations, so the pending list is out of date. */
@@ -34,6 +35,7 @@ type Props = {
 /** What auto-confirm does in the background, with its pause switch and rules. */
 export default function AutoConfirm({
   accounts,
+  groups,
   onChanged,
   onConfirmed,
 }: Props) {
@@ -200,6 +202,7 @@ export default function AutoConfirm({
       <AutoConfirmRules
         open={rulesOpen}
         accounts={accounts}
+        groups={groups}
         onClose={() => setRulesOpen(false)}
         onChanged={onChanged}
       />
