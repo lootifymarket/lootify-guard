@@ -7,10 +7,12 @@ import {
   type InventoryItem,
 } from '../../../api/inventory.ts'
 import { errorMessage } from '../../../api/vault.ts'
+import Button from '../../../components/Button.tsx'
 import Dropdown from '../../../components/Dropdown.tsx'
 import Toggle from '../../../components/Toggle.tsx'
 import ItemCard from '../items/ItemCard.tsx'
 import layout from '../layout.module.css'
+import MoveItems from './MoveItems.tsx'
 import styles from './Inventory.module.css'
 
 type Sort = 'name' | 'rarity' | 'account'
@@ -67,6 +69,8 @@ export default function Inventory({ accounts, onChanged }: Props) {
   const [loaded, setLoaded] = useState<Record<string, InventoryItem[]>>({})
   const [failures, setFailures] = useState<Record<string, string>>({})
   const [picked, setPicked] = useState<Set<string>>(new Set())
+  const [moving, setMoving] = useState(false)
+  const [reloads, setReloads] = useState(0)
   const names = signedIn.map((account) => account.accountName).join('\n')
 
   // Steam may have turned the session down, which the account list should show.
@@ -92,7 +96,14 @@ export default function Inventory({ accounts, onChanged }: Props) {
     return () => {
       current = false
     }
-  }, [names, game])
+  }, [names, game, reloads])
+
+  function reload() {
+    setLoaded({})
+    setFailures({})
+    setPicked(new Set())
+    setReloads((n) => n + 1)
+  }
 
   function pickGame(next: Game) {
     setGame(next)
@@ -234,7 +245,25 @@ export default function Inventory({ accounts, onChanged }: Props) {
             Loading {waiting} more {waiting === 1 ? 'account' : 'accounts'}…
           </span>
         )}
+        <span className={styles.actions}>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={chosen.length === 0}
+            onClick={() => setMoving(true)}
+          >
+            Move to one account
+          </Button>
+        </span>
       </div>
+
+      <MoveItems
+        open={moving}
+        accounts={accounts}
+        picked={byAccount(chosen)}
+        onClose={() => setMoving(false)}
+        onMoved={reload}
+      />
 
       {Object.entries(failures).map(([account, reason]) => (
         <p key={account} className={styles.error} role="alert">
@@ -269,6 +298,14 @@ export default function Inventory({ accounts, onChanged }: Props) {
       )}
     </>
   )
+}
+
+function byAccount(owned: Owned[]) {
+  const groups: Record<string, InventoryItem[]> = {}
+  for (const { account, item } of owned) {
+    ;(groups[account] ??= []).push(item)
+  }
+  return groups
 }
 
 function compare(sort: Sort) {

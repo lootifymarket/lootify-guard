@@ -4,6 +4,10 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use lootify_guard_core::inventory::{self, Game, InventoryItem};
+use lootify_guard_core::moves::{self, Failed, Moved, Side};
+use lootify_guard_core::steam::SteamError;
+use lootify_guard_core::trades::Asset;
+use serde::{Deserialize, Serialize};
 use tauri::State;
 use tauri::async_runtime::{Mutex as AsyncMutex, spawn_blocking};
 
@@ -110,4 +114,104 @@ pub async fn item_icons(
         }
     }
     Ok(found)
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MoveGroup {
+    account_name: String,
+    assets: Vec<Asset>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MoveReport {
+    account_name: String,
+    count: usize,
+    #[serde(flatten)]
+    result: MoveResult,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase", untagged)]
+enum MoveResult {
+    Moved(Moved),
+    Failed {
+        outcome: &'static str,
+        reason: String,
+    },
+}
+
+/// Moves each account's items to `target`, one account after another, and says
+/// how it went for each. Items already on the target are left where they are.
+#[tauri::command]
+pub async fn move_items(
+    state: State<'_, VaultState>,
+    cache: State<'_, InventoryCache>,
+    target: String,
+    groups: Vec<MoveGroup>,
+) -> Result<Vec<MoveReport>, CommandError> {
+    let (mut to, to_proxy) = account_and_proxy(&state, &target)?;
+    let mut sources = Vec::new();
+    for group in groups {
+        if group.account_name == target || group.assets.is_empty() {
+            continue;
+        }
+        let (account, proxy) = account_and_proxy(&state, &group.account_name)?;
+        sources.push((account, proxy, group.assets));
+    }
+
+    let (to, done) = spawn_blocking(move || {
+        let mut done = Vec::new();
+        for (mut from, from_proxy, assets) in sources {
+            let result = moves::move_items(
+                Side {
+                    account: &mut from,
+                    proxy: from_proxy.as_ref(),
+                },
+                Side {
+                    account: &mut to,
+                    proxy: to_proxy.as_ref(),
+                },
+                &assets,
+            );
+            if let Err(Failed::To(SteamError::SessionExpired)) = result {
+                to.session = None;
+            }
+            if let Err(Failed::From(SteamError::SessionExpired)) = result {
+                from.session = None;
+            }
+            done.push((from, assets.len(), result));
+        }
+        (to, done)
+    })
+    .await?;
+
+    store_session(&state, &target, to.session.clone())?;
+    let mut reports = Vec::new();
+    for (from, count, result) in done {
+        store_session(&state, &from.account_name, from.session.clone())?;
+        reports.push(MoveReport {
+            count,
+            result: match result {
+                Ok(moved) => MoveResult::Moved(moved),
+                Err(Failed::From(err)) => MoveResult::Failed {
+                    outcome: "failed",
+                    reason: err.to_string(),
+                },
+                Err(Failed::To(err)) => MoveResult::Failed {
+                    outcome: "failed",
+                    reason: format!("{target}: {err}"),
+                },
+            },
+            account_name: from.account_name,
+        });
+    }
+
+    // What moved is no longer where the cache says.
+    let mut cached = cache.one_at_a_time.lock().await;
+    cached.retain(|(account, _), _| {
+        *account != target && !reports.iter().any(|report| &report.account_name == account)
+    });
+    Ok(reports)
 }

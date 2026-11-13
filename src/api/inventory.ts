@@ -40,3 +40,31 @@ export const itemIcons = (accountName: string, icons: string[]) =>
 /** Everything in the account's inventory for the game, sorted by name. */
 export const inventoryItems = (accountName: string, game: Game) =>
   invoke<InventoryItem[]>('inventory_items', { accountName, game })
+
+export type MoveReport = {
+  accountName: string
+  count: number
+} & (
+  | { outcome: 'done' }
+  /** Sent and confirmed, but the target couldn't take it yet. */
+  | { outcome: 'sent'; reason: string }
+  | { outcome: 'failed'; reason: string }
+)
+
+/** Moves each account's items to `target`, one account after another. */
+export const moveItems = (
+  target: string,
+  groups: { accountName: string; items: InventoryItem[] }[],
+) =>
+  invoke<MoveReport[]>('move_items', {
+    target,
+    groups: groups.map(({ accountName, items }) => ({
+      accountName,
+      assets: items.map(({ appId, contextId, assetId, amount }) => ({
+        appId,
+        contextId,
+        assetId,
+        amount,
+      })),
+    })),
+  })
