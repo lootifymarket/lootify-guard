@@ -1,3 +1,4 @@
+pub mod api_key;
 pub mod confirmations;
 pub mod contents;
 pub mod guard;
@@ -5,6 +6,8 @@ pub mod idle;
 pub mod link;
 pub mod mafile;
 pub mod proxy;
+pub mod sessions;
 pub mod sign_ins;
+pub mod standing;
 pub mod steam;
 pub mod vault;

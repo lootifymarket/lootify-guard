@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use std::error::Error;
 
 use base64::Engine;
@@ -234,6 +236,8 @@ fn to_account(
         profile: None,
         proxy: None,
         auto_confirm: AutoConfirm::default(),
+        trusted_api_key: None,
+        device_names: BTreeMap::new(),
     })
 }
 

@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use serde::{Deserialize, Serialize};
@@ -95,6 +97,8 @@ pub fn parse(file: &[u8]) -> Result<Account, MaFileError> {
         profile: None,
         proxy: None,
         auto_confirm: AutoConfirm::default(),
+        trusted_api_key: None,
+        device_names: BTreeMap::new(),
     })
 }
 
