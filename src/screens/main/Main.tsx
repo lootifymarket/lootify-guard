@@ -5,6 +5,7 @@ import Accounts from './Accounts.tsx'
 import Proxies from './proxies/Proxies.tsx'
 import Sidebar, { type Section } from './Sidebar.tsx'
 import SteamGuard from './SteamGuard.tsx'
+import Trades from './trades/Trades.tsx'
 import { useAccounts } from './useAccounts.ts'
 import { useAutoLock } from './useAutoLock.ts'
 import styles from './Main.module.css'
@@ -34,6 +35,7 @@ export default function Main({ onLock, onAutoLocked }: Props) {
     if (section === 'guard') {
       return <SteamGuard list={list} onChanged={reload} />
     }
+    if (section === 'trades') return <Trades onChanged={reload} />
     if (section === 'proxies') return <Proxies />
     if (section === 'add') {
       return (

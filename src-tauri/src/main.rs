@@ -10,6 +10,7 @@ mod profile;
 mod proxies;
 mod security;
 mod sign_ins;
+mod trades;
 mod vault;
 
 use tauri::Manager;
@@ -82,6 +83,7 @@ fn main() {
             profile::save_profile,
             profile::clear_name_history,
             profile::change_avatar,
+            trades::list_trade_offers,
             proxies::list_proxies,
             proxies::add_proxies,
             proxies::add_proxy,
