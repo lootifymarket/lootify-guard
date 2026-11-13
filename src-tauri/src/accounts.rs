@@ -42,6 +42,7 @@ pub struct AccountSummary {
     /// A data URL, so the page can show it without fetching anything itself.
     avatar: Option<String>,
     proxy_id: Option<u32>,
+    group_id: Option<u32>,
     auto_confirm: AutoConfirm,
 }
 
@@ -89,6 +90,7 @@ pub fn list_accounts(state: State<'_, VaultState>) -> Result<AccountList, Comman
                     .and_then(|profile| profile.avatar.as_ref())
                     .map(|avatar| format!("data:image/jpeg;base64,{avatar}")),
                 proxy_id: account.proxy,
+                group_id: account.group,
                 auto_confirm: account.auto_confirm,
             })
         })

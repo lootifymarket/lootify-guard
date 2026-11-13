@@ -19,6 +19,33 @@ pub struct Contents {
     /// Stops every auto-confirm rule at once, and stays that way across restarts.
     #[serde(default)]
     pub auto_confirm_paused: bool,
+    #[serde(default)]
+    pub groups: Vec<Group>,
+    /// Never reused, like proxy ids, so a stale id can't land on a new group.
+    #[serde(default)]
+    last_group_id: u32,
+}
+
+/// A set of accounts the user handles together, like "Farm" or "Storage".
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Group {
+    pub id: u32,
+    pub name: String,
+}
+
+// Group names show in narrow chips and menus.
+const MAX_GROUP_NAME: usize = 40;
+
+#[derive(Debug, PartialEq, Eq, thiserror::Error)]
+pub enum GroupError {
+    #[error("give the group a name")]
+    EmptyName,
+    #[error("keep the name under {MAX_GROUP_NAME} characters")]
+    LongName,
+    #[error("there's already a group with that name")]
+    Taken,
+    #[error("the group is no longer in the vault")]
+    Missing,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,6 +62,9 @@ pub struct Account {
     pub proxy: Option<u32>,
     #[serde(default)]
     pub auto_confirm: AutoConfirm,
+    /// The id of the group the account is in.
+    #[serde(default)]
+    pub group: Option<u32>,
     /// The fingerprint of a Web API key the user said is theirs, so it isn't flagged
     /// again. A different key on the account is flagged as usual.
     #[serde(default)]
@@ -226,6 +256,76 @@ impl Contents {
         self.proxies.len() < count
     }
 
+    /// Makes a group and returns its id.
+    pub fn add_group(&mut self, name: &str) -> Result<u32, GroupError> {
+        let name = self.group_name(name, None)?;
+        self.last_group_id += 1;
+        self.groups.push(Group {
+            id: self.last_group_id,
+            name,
+        });
+        Ok(self.last_group_id)
+    }
+
+    pub fn rename_group(&mut self, id: u32, name: &str) -> Result<(), GroupError> {
+        let name = self.group_name(name, Some(id))?;
+        self.groups
+            .iter_mut()
+            .find(|group| group.id == id)
+            .ok_or(GroupError::Missing)?
+            .name = name;
+        Ok(())
+    }
+
+    /// Removes the group; its accounts stay, in no group.
+    pub fn remove_group(&mut self, id: u32) -> bool {
+        let count = self.groups.len();
+        self.groups.retain(|group| group.id != id);
+        for account in &mut self.accounts {
+            if account.group == Some(id) {
+                account.group = None;
+            }
+        }
+        self.groups.len() < count
+    }
+
+    /// Puts the accounts in the group, or in none. Logins not in the vault are skipped.
+    pub fn set_group(
+        &mut self,
+        account_names: &[String],
+        group: Option<u32>,
+    ) -> Result<(), GroupError> {
+        if let Some(id) = group
+            && !self.groups.iter().any(|group| group.id == id)
+        {
+            return Err(GroupError::Missing);
+        }
+        for account in &mut self.accounts {
+            if account_names.contains(&account.account_name) {
+                account.group = group;
+            }
+        }
+        Ok(())
+    }
+
+    /// The name as it will be kept, checked against every other group's.
+    fn group_name(&self, name: &str, renaming: Option<u32>) -> Result<String, GroupError> {
+        let name = name.trim();
+        if name.is_empty() {
+            return Err(GroupError::EmptyName);
+        }
+        if name.chars().count() > MAX_GROUP_NAME {
+            return Err(GroupError::LongName);
+        }
+        let taken = self.groups.iter().any(|group| {
+            Some(group.id) != renaming && group.name.to_lowercase() == name.to_lowercase()
+        });
+        if taken {
+            return Err(GroupError::Taken);
+        }
+        Ok(name.to_owned())
+    }
+
     /// Adds the account unless it's already there. Steam logins are unique and
     /// case-insensitive, so the login identifies an account even without a Steam ID.
     pub fn add_account(&mut self, account: Account) -> bool {
@@ -287,6 +387,7 @@ mod tests {
             profile: None,
             proxy: None,
             auto_confirm: AutoConfirm::default(),
+            group: None,
             trusted_api_key: None,
             device_names: BTreeMap::new(),
         }
@@ -393,6 +494,41 @@ mod tests {
             "bmV3LXNlY3JldA=="
         );
         assert!(contents.has_login("TRADER_ONE"));
+    }
+
+    #[test]
+    fn group_names_are_unique_and_tidy() {
+        let mut contents = Contents::default();
+        let farm = contents.add_group("  Farm ").unwrap();
+        assert_eq!(contents.groups[0].name, "Farm");
+        assert_eq!(contents.add_group("farm"), Err(GroupError::Taken));
+        assert_eq!(contents.add_group(" "), Err(GroupError::EmptyName));
+        assert_eq!(
+            contents.add_group(&"x".repeat(41)),
+            Err(GroupError::LongName)
+        );
+        // A group may keep its own name in another case.
+        assert_eq!(contents.rename_group(farm, "FARM"), Ok(()));
+        assert_eq!(contents.rename_group(99, "Other"), Err(GroupError::Missing));
+    }
+
+    #[test]
+    fn removing_a_group_frees_its_accounts_and_its_id_is_not_reused() {
+        let mut contents = Contents::default();
+        contents.add_account(account());
+        let farm = contents.add_group("Farm").unwrap();
+        contents
+            .set_group(&["trader_one".to_owned()], Some(farm))
+            .unwrap();
+        assert_eq!(contents.accounts[0].group, Some(farm));
+
+        assert!(contents.remove_group(farm));
+        assert_eq!(contents.accounts[0].group, None);
+        assert_ne!(contents.add_group("Farm").unwrap(), farm);
+        assert_eq!(
+            contents.set_group(&["trader_one".to_owned()], Some(farm)),
+            Err(GroupError::Missing)
+        );
     }
 
     #[test]
