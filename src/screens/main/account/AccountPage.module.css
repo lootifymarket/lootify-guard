@@ -296,6 +296,8 @@
 }
 
 .devices {
+  max-height: 420px;
+  overflow-y: auto;
   padding: 4px 0 8px;
   border-top: 1px solid var(--color-line);
 }
@@ -303,6 +305,7 @@
 .device {
   margin: 0;
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
@@ -339,4 +342,37 @@
 .signOutList .device {
   padding-left: 0;
   border-bottom: 1px solid var(--color-line);
+}
+
+.deviceSide {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  white-space: nowrap;
+}
+
+.rename {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rename > :first-child {
+  flex: 1;
+}
+
+.rename input {
+  height: 34px;
+  font-size: 13px;
+}
+
+.deviceError {
+  flex-basis: 100%;
+  color: var(--color-danger);
+  font-size: 12px;
+}
+
+.deviceError::first-letter {
+  text-transform: uppercase;
 }

@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::fmt;
 
 use serde::{Deserialize, Serialize};
@@ -38,6 +39,10 @@ pub struct Account {
     /// again. A different key on the account is flagged as usual.
     #[serde(default)]
     pub trusted_api_key: Option<String>,
+    /// Names the user gave the account's signed-in devices, by Steam's device id.
+    /// They stay in the vault and never reach Steam.
+    #[serde(default)]
+    pub device_names: BTreeMap<String, String>,
 }
 
 /// What the app may confirm for the account without asking. Everything is off until
@@ -283,6 +288,7 @@ mod tests {
             proxy: None,
             auto_confirm: AutoConfirm::default(),
             trusted_api_key: None,
+            device_names: BTreeMap::new(),
         }
     }
 

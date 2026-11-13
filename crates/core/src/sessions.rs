@@ -33,6 +33,8 @@ pub enum DeviceKind {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Device {
+    /// Steam's id for the device's session, a u64 as text. Not a secret on its own.
+    pub id: String,
     pub name: String,
     pub kind: DeviceKind,
     /// The session this app itself uses.
@@ -105,6 +107,26 @@ pub fn sign_out_others(
     })
 }
 
+/// Signs one device out of the account for good. This app's own session is refused,
+/// since ending it would leave the account signed out here.
+pub fn sign_out(
+    account: &Account,
+    proxy: Option<&ProxyAddress>,
+    device_id: &str,
+) -> Result<Session, SteamError> {
+    let token_id = parse_id(device_id)?;
+    let shared_secret = &account.authenticator.shared_secret;
+    let (session, ()) = with_session(account, proxy, |client, session, steam_id| {
+        if enumerate(client, session)?.requesting_token.as_deref() == Some(device_id) {
+            return Err(SteamError::Steam(
+                "that is this app's own session".to_owned(),
+            ));
+        }
+        revoke(client, session, steam_id, shared_secret, token_id)
+    })?;
+    Ok(session)
+}
+
 fn enumerate(client: &Client, session: &Session) -> Result<Tokens, SteamError> {
     let body = web_api_post(client, ENUMERATE_URL, session)?;
     serde_json::from_slice::<Enumerated>(&body)
@@ -119,6 +141,7 @@ fn devices(tokens: Tokens) -> Vec<Device> {
         .map(|token| {
             let seen = token.last_seen.as_ref();
             Device {
+                id: token.token_id.clone(),
                 this_app: Some(&token.token_id) == tokens.requesting_token.as_ref(),
                 kind: match token.platform_type {
                     Some(1) => DeviceKind::SteamClient,

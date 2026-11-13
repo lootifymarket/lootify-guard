@@ -26,6 +26,8 @@ export const DEVICE_KIND_NAMES: Record<DeviceKind, string> = {
 }
 
 export type Device = {
+  /** Steam's id for the device's session. */
+  id: string
   name: string
   kind: DeviceKind
   /** The session this app itself uses. */
@@ -33,6 +35,8 @@ export type Device = {
   lastSeenAt: number | null
   /** City and country Steam guesses from the last IP. */
   place: string | null
+  /** The name the user gave it in this app. */
+  label: string | null
 }
 
 /** This app first, then the most recently seen. */
@@ -68,3 +72,13 @@ export type Standing = {
 
 export const checkStanding = (accountName: string) =>
   invoke<Standing>('check_standing', { accountName })
+
+export const signOutDevice = (accountName: string, deviceId: string) =>
+  invoke<void>('sign_out_device', { accountName, deviceId })
+
+/** An empty name removes the one given before. */
+export const nameDevice = (
+  accountName: string,
+  deviceId: string,
+  name: string,
+) => invoke<void>('name_device', { accountName, deviceId, name })

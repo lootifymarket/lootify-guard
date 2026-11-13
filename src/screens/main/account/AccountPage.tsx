@@ -41,7 +41,7 @@ import { useCopy } from '../../../lib/useCopy.ts'
 import { useCodeSecondsLeft } from '../useAccounts.ts'
 import AutoConfirmRules from '../AutoConfirmRules.tsx'
 import ApiKeyAlert from './ApiKeyAlert.tsx'
-import DeviceDetails from './DeviceDetails.tsx'
+import DeviceRow from './DeviceRow.tsx'
 import layout from '../layout.module.css'
 import ConfirmOwner from './ConfirmOwner.tsx'
 import RemoveAccount from './RemoveAccount.tsx'
@@ -340,10 +340,13 @@ export default function AccountPage({
           {devicesShown && devices && (
             <div className={styles.devices}>
               <dt className={styles.hidden}>Devices</dt>
-              {devices.map((device, i) => (
-                <dd key={i} className={styles.device}>
-                  <DeviceDetails device={device} />
-                </dd>
+              {devices.map((device) => (
+                <DeviceRow
+                  key={device.id}
+                  accountName={name}
+                  device={device}
+                  onChanged={() => void loadDevices()}
+                />
               ))}
             </div>
           )}

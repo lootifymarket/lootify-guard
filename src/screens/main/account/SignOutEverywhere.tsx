@@ -72,8 +72,8 @@ function Form({
       </p>
       {others && others.length > 0 && (
         <ul className={styles.signOutList}>
-          {others.map((device, i) => (
-            <li key={i} className={styles.device}>
+          {others.map((device) => (
+            <li key={device.id} className={styles.device}>
               <DeviceDetails device={device} />
             </li>
           ))}

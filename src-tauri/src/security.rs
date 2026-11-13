@@ -63,17 +63,95 @@ pub async fn revoke_api_key(
     save_trusted(&state, &account_name, None)
 }
 
-/// The devices signed in to the account, this app first.
+// A name is a note for the user, not a document.
+const MAX_DEVICE_NAME_LEN: usize = 60;
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeviceView {
+    #[serde(flatten)]
+    device: Device,
+    /// The name the user gave the device in this app.
+    label: Option<String>,
+}
+
+/// The devices signed in to the account, this app first. Names given to devices
+/// that are gone are dropped on the way.
 #[tauri::command]
 pub async fn list_devices(
     state: State<'_, VaultState>,
     account_name: String,
-) -> Result<Vec<Device>, CommandError> {
+) -> Result<Vec<DeviceView>, CommandError> {
     let (account, proxy) = account_and_proxy(&state, &account_name)?;
     let result = spawn_blocking(move || sessions::list(&account, proxy.as_ref())).await?;
     let (session, devices) = settle(&state, &account_name, result)?;
     store_session(&state, &account_name, Some(session))?;
-    Ok(devices)
+
+    let mut unlocked = state.unlocked();
+    let vault = unlocked.as_mut().ok_or(CommandError::Locked)?;
+    let mut contents = Contents::from_bytes(vault.data())?;
+    let account = contents
+        .account_mut(&account_name)
+        .ok_or_else(no_such_account)?;
+    let count = account.device_names.len();
+    account
+        .device_names
+        .retain(|id, _| devices.iter().any(|device| &device.id == id));
+    let names = account.device_names.clone();
+    if names.len() < count {
+        vault.save_data(contents.to_bytes())?;
+    }
+    Ok(devices
+        .into_iter()
+        .map(|device| DeviceView {
+            label: names.get(&device.id).cloned(),
+            device,
+        })
+        .collect())
+}
+
+/// Names a device for the user's own reference; an empty name removes it.
+#[tauri::command]
+pub fn name_device(
+    state: State<'_, VaultState>,
+    account_name: String,
+    device_id: String,
+    name: String,
+) -> Result<(), CommandError> {
+    let name = name.trim();
+    if name.chars().count() > MAX_DEVICE_NAME_LEN {
+        return Err(CommandError::Failed(format!(
+            "keep the name under {MAX_DEVICE_NAME_LEN} characters"
+        )));
+    }
+    let mut unlocked = state.unlocked();
+    let vault = unlocked.as_mut().ok_or(CommandError::Locked)?;
+    let mut contents = Contents::from_bytes(vault.data())?;
+    let names = &mut contents
+        .account_mut(&account_name)
+        .ok_or_else(no_such_account)?
+        .device_names;
+    if name.is_empty() {
+        names.remove(&device_id);
+    } else {
+        names.insert(device_id, name.to_owned());
+    }
+    vault.save_data(contents.to_bytes())?;
+    Ok(())
+}
+
+/// Signs one device out of the account.
+#[tauri::command]
+pub async fn sign_out_device(
+    state: State<'_, VaultState>,
+    account_name: String,
+    device_id: String,
+) -> Result<(), CommandError> {
+    let (account, proxy) = account_and_proxy(&state, &account_name)?;
+    let result =
+        spawn_blocking(move || sessions::sign_out(&account, proxy.as_ref(), &device_id)).await?;
+    let session = settle(&state, &account_name, result)?;
+    store_session(&state, &account_name, Some(session))
 }
 
 /// Signs every device but this app out of the account. Returns how many there were.
