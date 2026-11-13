@@ -10,6 +10,7 @@ mod profile;
 mod proxies;
 mod security;
 mod sign_ins;
+mod trades;
 mod vault;
 
 use tauri::Manager;
@@ -29,6 +30,8 @@ fn main() {
             app.manage(vault::VaultState::new(data_dir.join("vault.lgv")));
             app.manage(auto_confirm::AutoConfirmLog::default());
             app.manage(add_account::AddAccountState::default());
+            app.manage(trades::InventoryCache::default());
+            app.manage(trades::IconCache::default());
             vault::watch_idle(app.handle().clone());
             auto_confirm::watch(app.handle().clone());
             Ok(())
@@ -82,6 +85,15 @@ fn main() {
             profile::save_profile,
             profile::clear_name_history,
             profile::change_avatar,
+            trades::list_trade_offers,
+            trades::accept_trade_offer,
+            trades::decline_trade_offer,
+            trades::cancel_trade_offer,
+            trades::confirm_trade_offer,
+            trades::check_trade_partner,
+            trades::tradable_items,
+            trades::send_trade_offer,
+            trades::item_icons,
             proxies::list_proxies,
             proxies::add_proxies,
             proxies::add_proxy,

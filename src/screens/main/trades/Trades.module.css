@@ -1,0 +1,336 @@
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.subtitle {
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 26px;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.tab {
+  height: 40px;
+  margin-bottom: -1px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  color: var(--color-text-faint);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.tab[aria-selected='true'] {
+  border-bottom-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+.count {
+  color: var(--color-text-faint);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.table {
+  display: flex;
+  flex-direction: column;
+}
+
+.head,
+.row {
+  display: grid;
+  grid-template-columns:
+    minmax(170px, 1.2fr) minmax(130px, 1fr) minmax(130px, 1fr)
+    minmax(130px, 1fr) 200px;
+  /* Every row is a grid of its own, so no column may size to its content. */
+  gap: 16px;
+  align-items: center;
+}
+
+.head {
+  padding: 0 0 10px;
+  color: var(--color-text-faint);
+  font-size: 12px;
+}
+
+.row {
+  padding: 14px 0;
+  border-top: 1px solid var(--color-line);
+  font-size: 13px;
+}
+
+.who,
+.items,
+.note {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-wrap: anywhere;
+}
+
+.parties {
+  font-weight: 500;
+}
+
+.meta,
+.more,
+.nothing {
+  color: var(--color-text-faint);
+  font-size: 12px;
+}
+
+.item {
+  font-weight: 500;
+}
+
+.note {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.message {
+  color: var(--color-text-secondary);
+}
+
+.error {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 13px;
+}
+
+/* Error messages from Rust start in lower case; account names must stay as they are. */
+.reason {
+  display: inline-block;
+}
+
+.reason::first-letter {
+  text-transform: uppercase;
+}
+
+.footnote {
+  margin: 0;
+  color: var(--color-text-faint);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
+
+.actionError,
+.actionNote {
+  flex-basis: 100%;
+  font-size: 12px;
+  text-align: right;
+}
+
+.actionError {
+  color: var(--color-danger);
+}
+
+.actionError::first-letter {
+  text-transform: uppercase;
+}
+
+.actionNote {
+  color: var(--color-text-muted);
+}
+
+.itemList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.itemList ul {
+  max-height: 160px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.itemListLabel {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.risk {
+  color: var(--color-danger);
+  font-weight: 500;
+}
+
+.check {
+  align-self: flex-start;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.scam {
+  margin: 0;
+  padding: 12px 14px;
+  background: var(--color-danger-surface);
+  border: 1px solid var(--color-danger-muted);
+  border-radius: var(--radius-control);
+  color: var(--color-danger-soft);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.facts {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.facts div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--color-line);
+  font-size: 13px;
+}
+
+.facts dt {
+  color: var(--color-text-muted);
+}
+
+.facts dd {
+  margin: 0;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.warnings {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--color-danger);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.tools {
+  display: flex;
+  gap: 8px;
+}
+
+.sent {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.newTrade {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.newTradeGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pickerHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.pickerSearch {
+  width: 200px;
+  height: 32px;
+  padding: 0 12px;
+  background: var(--color-field);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.pickerSearch:focus-visible {
+  outline: none;
+  border-color: var(--color-text-muted);
+}
+
+.pickerList {
+  height: 360px;
+  overflow-y: auto;
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-control);
+}
+
+.pickerTools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 14px;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  padding: 12px;
+}
+
+.pickerNote {
+  margin: 0;
+  padding: 12px;
+  color: var(--color-text-faint);
+  font-size: 12px;
+}
+
+.picker > .pickerNote {
+  padding: 0;
+}
