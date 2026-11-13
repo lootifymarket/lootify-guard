@@ -16,6 +16,7 @@ sha1 = { version = "0.11", default-features = false, features = ["zeroize"] }
 sha2 = { version = "0.11", default-features = false, features = ["zeroize"] }
 steamguard = "0.18.4"
 thiserror = "2"
+tungstenite = { version = "0.30.0", default-features = false, features = ["handshake", "rustls-tls-webpki-roots"] }
 zeroize = { version = "1.9", features = ["serde"] }
 
 [dev-dependencies]

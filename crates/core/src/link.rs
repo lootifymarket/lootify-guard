@@ -239,6 +239,7 @@ fn to_account(
         group: None,
         trusted_api_key: None,
         device_names: BTreeMap::new(),
+        client_token: None,
     })
 }
 
