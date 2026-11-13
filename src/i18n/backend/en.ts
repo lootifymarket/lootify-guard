@@ -115,6 +115,7 @@ export const BACKEND_MESSAGES = [
   'the account no longer has a Web API key',
   'the key is still there',
   'keep the name under {} characters',
+  'keep the note under {} characters',
   "that is this app's own session",
   'unknown trade offer',
   'unknown trade partner',

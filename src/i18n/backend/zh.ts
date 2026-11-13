@@ -125,6 +125,7 @@ export const backend: Record<BackendMessage, string> = {
   'the account no longer has a Web API key': '该账户已没有 Web API 密钥',
   'the key is still there': '密钥仍然存在',
   'keep the name under {} characters': '名称请少于 {} 个字符',
+  'keep the note under {} characters': '备注请少于 {} 个字符',
   "that is this app's own session": '这是本应用自己的会话',
   'unknown trade offer': '未知的交易报价',
   'unknown trade partner': '未知的交易对象',

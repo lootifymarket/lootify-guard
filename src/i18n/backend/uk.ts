@@ -131,6 +131,8 @@ export const backend: Record<BackendMessage, string> = {
     'в акаунта більше немає ключа Web API',
   'the key is still there': 'ключ досі на місці',
   'keep the name under {} characters': 'назва має бути коротшою за {} символів',
+  'keep the note under {} characters':
+    'нотатка має бути коротшою за {} символів',
   "that is this app's own session": 'це власна сесія застосунку',
   'unknown trade offer': 'невідома пропозиція обміну',
   'unknown trade partner': 'невідомий партнер з обміну',

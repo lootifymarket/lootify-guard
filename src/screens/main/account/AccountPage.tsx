@@ -50,6 +50,7 @@ import { useCodeSecondsLeft } from '../useAccounts.ts'
 import AutoConfirmRules from '../AutoConfirmRules.tsx'
 import ApiKeyAlert from './ApiKeyAlert.tsx'
 import DeviceRow from './DeviceRow.tsx'
+import NoteField from './NoteField.tsx'
 import PlayingTab from './PlayingTab.tsx'
 import ProfileTab from './ProfileTab.tsx'
 import layout from '../layout.module.css'
@@ -499,6 +500,14 @@ export default function AccountPage({
                   />
                 </div>
               </dd>
+            </div>
+            <div className={styles.fact}>
+              <dt>{t.security.note}</dt>
+              <NoteField
+                accountName={name}
+                note={account.note}
+                onSaved={onChanged}
+              />
             </div>
             <div className={styles.fact}>
               <dt>{t.security.steamId}</dt>

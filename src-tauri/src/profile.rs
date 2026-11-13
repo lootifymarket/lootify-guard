@@ -1,4 +1,6 @@
-use lootify_guard_core::contents::{Account, Contents, Profile};
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use lootify_guard_core::contents::{Account, Contents, Profile, StoredWallet};
 use lootify_guard_core::profile::{self, Wallet};
 use lootify_guard_core::profile_settings::{self, MAX_AVATAR_LEN, ProfileChanges, ProfileSettings};
 use lootify_guard_core::steam;
@@ -44,7 +46,32 @@ pub async fn wallet_balance(
     let result = spawn_blocking(move || profile::wallet(&account, proxy.as_ref())).await?;
     let (session, wallet) = settle(&state, &account_name, result)?;
     store_session(&state, &account_name, Some(session))?;
+    keep_wallet(&state, &account_name, wallet.as_ref())?;
     Ok(wallet)
+}
+
+/// Keeps the balance with the account, so the account list shows it without asking Steam.
+fn keep_wallet(
+    state: &VaultState,
+    account_name: &str,
+    wallet: Option<&Wallet>,
+) -> Result<(), CommandError> {
+    let mut unlocked = state.unlocked();
+    let vault = unlocked.as_mut().ok_or(CommandError::Locked)?;
+    let mut contents = Contents::from_bytes(vault.data())?;
+    let account = contents
+        .account_mut(account_name)
+        .ok_or_else(no_such_account)?;
+    account.wallet = wallet.map(|wallet| StoredWallet {
+        currency: wallet.currency.map(str::to_owned),
+        balance: wallet.balance,
+        pending: wallet.pending,
+        at: SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_or(0, |since| since.as_secs()),
+    });
+    vault.save_data(contents.to_bytes())?;
+    Ok(())
 }
 
 #[tauri::command]

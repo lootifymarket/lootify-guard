@@ -141,6 +141,7 @@ export const backend: Record<BackendMessage, string> = {
   'the key is still there': 'ключ всё ещё на месте',
   'keep the name under {} characters':
     'название должно быть не длиннее {} символов',
+  'keep the note under {} characters': 'заметка должна быть короче {} символов',
   "that is this app's own session": 'это сессия самого приложения',
   'unknown trade offer': 'неизвестное предложение обмена',
   'unknown trade partner': 'неизвестный партнёр по обмену',

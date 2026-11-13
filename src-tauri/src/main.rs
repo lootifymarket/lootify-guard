@@ -81,6 +81,7 @@ fn main() {
             accounts::remove_account,
             accounts::sign_in,
             accounts::refresh_profile,
+            accounts::set_account_note,
             accounts::set_account_proxy,
             add_account::add_account_sign_in,
             add_account::add_account_sign_in_code,

@@ -516,3 +516,33 @@
   align-items: flex-start;
   gap: 6px;
 }
+
+.noteField {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.noteInput {
+  width: 240px;
+  max-width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  background: var(--color-field);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 13px;
+  text-align: right;
+}
+
+.noteInput::placeholder {
+  color: var(--color-text-faint);
+}
+
+.noteInput:focus-visible {
+  outline: none;
+  border-color: var(--color-text-muted);
+  text-align: left;
+}

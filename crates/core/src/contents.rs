@@ -80,6 +80,37 @@ pub struct Account {
     pub client_token: Option<Secret>,
     #[serde(default)]
     pub playing: PlayingList,
+    /// What the user wrote about the account, shown in the list. It stays in
+    /// the vault and never reaches Steam.
+    #[serde(default)]
+    pub note: Option<String>,
+    /// The wallet as Steam last showed it, so the list has it without asking again.
+    #[serde(default)]
+    pub wallet: Option<StoredWallet>,
+    /// What the last check found wrong, so the list can flag the account.
+    #[serde(default)]
+    pub last_check: Option<LastCheck>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StoredWallet {
+    /// ISO 4217, or `None` for a currency this app doesn't know.
+    pub currency: Option<String>,
+    /// In hundredths of the currency.
+    pub balance: u64,
+    pub pending: u64,
+    /// When it was read, in Unix seconds.
+    pub at: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LastCheck {
+    /// In Unix seconds.
+    pub at: u64,
+    /// Empty when all was clear.
+    pub problems: Vec<String>,
 }
 
 /// What the app may confirm for the account without asking. Everything is off until
@@ -399,6 +430,9 @@ mod tests {
             device_names: BTreeMap::new(),
             client_token: None,
             playing: PlayingList::default(),
+            note: None,
+            wallet: None,
+            last_check: None,
         }
     }
 

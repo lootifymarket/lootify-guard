@@ -1,7 +1,7 @@
 use serde::Deserialize;
 
 use crate::api_key::{self, ApiKey};
-use crate::contents::Account;
+use crate::contents::{Account, LastCheck};
 use crate::events::{self, SaleItem};
 use crate::inventory::{self, Game};
 use crate::licenses::{self, Claim, Claimed, License};
@@ -92,7 +92,7 @@ pub fn run(
     number: usize,
 ) -> Result<Outcome, SteamError> {
     match task {
-        Task::Check => check(account, proxy),
+        Task::Check => check(account, proxy, now),
         Task::AcceptGifts { only_from } => accept_gifts(account, proxy, now, only_from.as_deref()),
         Task::Profile(task) => profile(task, account, proxy, number),
         Task::Events { queues, claim_item } => {
@@ -120,7 +120,11 @@ pub fn run(
     }
 }
 
-fn check(account: &mut Account, proxy: Option<&ProxyAddress>) -> Result<Outcome, SteamError> {
+fn check(
+    account: &mut Account,
+    proxy: Option<&ProxyAddress>,
+    now: u64,
+) -> Result<Outcome, SteamError> {
     let (session, profile) = steam::fetch_profile(account, proxy)?;
     account.session = Some(session);
     account.profile = Some(profile);
@@ -128,14 +132,13 @@ fn check(account: &mut Account, proxy: Option<&ProxyAddress>) -> Result<Outcome,
     account.session = Some(session);
     let (session, standing) = standing::check(account, proxy)?;
     account.session = Some(session);
-    Ok(check_summary(
-        key.as_ref(),
-        account.trusted_api_key.as_deref(),
-        &standing,
-    ))
+    let problems = problems(key.as_ref(), account.trusted_api_key.as_deref(), &standing);
+    let outcome = check_outcome(&problems);
+    account.last_check = Some(LastCheck { at: now, problems });
+    Ok(outcome)
 }
 
-fn check_summary(key: Option<&ApiKey>, trusted: Option<&str>, standing: &Standing) -> Outcome {
+fn problems(key: Option<&ApiKey>, trusted: Option<&str>, standing: &Standing) -> Vec<String> {
     let mut problems = Vec::new();
     if let Some(key) = key.filter(|key| trusted != Some(key.fingerprint.as_str())) {
         problems.push(format!("Web API key for {}", key.domain));
@@ -163,6 +166,10 @@ fn check_summary(key: Option<&ApiKey>, trusted: Option<&str>, standing: &Standin
     if standing.limited == Some(true) {
         problems.push("limited".to_owned());
     }
+    problems
+}
+
+fn check_outcome(problems: &[String]) -> Outcome {
     if problems.is_empty() {
         Outcome::Done("All clear".to_owned())
     } else {
@@ -426,7 +433,7 @@ mod tests {
     #[test]
     fn a_clean_account_is_all_clear() {
         assert_eq!(
-            check_summary(None, None, &standing()),
+            check_outcome(&problems(None, None, &standing())),
             Outcome::Done("All clear".to_owned())
         );
     }
@@ -444,14 +451,14 @@ mod tests {
             bans.trade_ban = TradeBan::Probation;
         }
         assert_eq!(
-            check_summary(Some(&key), None, &standing),
+            check_outcome(&problems(Some(&key), None, &standing)),
             Outcome::Warning(
                 "Web API key for steam-trade-gift.com, VAC banned, on trade probation, limited"
                     .to_owned()
             )
         );
         assert_eq!(
-            check_summary(Some(&key), Some("abc"), &self::standing()),
+            check_outcome(&problems(Some(&key), Some("abc"), &self::standing())),
             Outcome::Done("All clear".to_owned())
         );
     }
