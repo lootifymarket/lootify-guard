@@ -1,9 +1,17 @@
+use serde::Deserialize;
+
 use crate::api_key::{self, ApiKey};
 use crate::contents::Account;
+use crate::inventory::{self, Game};
+use crate::moves::{self, Moved, Side};
+use crate::profile_settings::{self, Privacy, ProfileChanges, Visibility};
 use crate::proxy::ProxyAddress;
 use crate::standing::{self, Standing, TradeBan};
 use crate::steam::{self, SteamError};
-use crate::trades::{self, OfferState, TradeOffer};
+use crate::trades::{self, Asset, OfferState, TradeOffer};
+
+/// Steam cuts nicknames off past this many characters.
+pub const MAX_PERSONA_NAME: usize = 32;
 
 /// Something done to each account of a bulk task.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -12,7 +20,47 @@ pub enum Task {
     Check,
     /// Accepts open offers where the account gives nothing. With `only_from`, only
     /// offers from those Steam IDs, like the user's own accounts.
-    AcceptGifts { only_from: Option<Vec<u64>> },
+    AcceptGifts {
+        only_from: Option<Vec<u64>>,
+    },
+    Profile(ProfileTask),
+}
+
+/// What to change on each profile; what's left out stays as it is.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProfileTask {
+    /// `{n}` in it becomes the account's place in the task, from 1.
+    pub name_template: Option<String>,
+    pub privacy: PrivacyChanges,
+    /// A JPEG, PNG or GIF for every account.
+    pub avatar: Option<Vec<u8>>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PrivacyChanges {
+    pub profile: Option<Visibility>,
+    pub inventory: Option<Visibility>,
+    pub games: Option<Visibility>,
+}
+
+impl PrivacyChanges {
+    fn is_empty(&self) -> bool {
+        *self == Self::default()
+    }
+
+    fn over(self, current: Privacy) -> Privacy {
+        Privacy {
+            profile: self.profile.unwrap_or(current.profile),
+            inventory: self.inventory.unwrap_or(current.inventory),
+            games: self.games.unwrap_or(current.games),
+        }
+    }
+}
+
+/// The nickname for the account at `number` in the task.
+pub fn persona_name(template: &str, number: usize) -> String {
+    template.trim().replace("{n}", &number.to_string())
 }
 
 /// How it went for one account, in a few words for the queue.
@@ -23,17 +71,20 @@ pub enum Outcome {
     Warning(String),
 }
 
-/// Runs the task for the account. Its session and profile are updated in place
-/// as Steam renews them, so the caller can save them afterwards.
+/// Runs the task for the account at `number` in it, counted from 1. Its session
+/// and profile are updated in place as Steam renews them, so the caller can save
+/// them afterwards.
 pub fn run(
     task: &Task,
     account: &mut Account,
     proxy: Option<&ProxyAddress>,
     now: u64,
+    number: usize,
 ) -> Result<Outcome, SteamError> {
     match task {
         Task::Check => check(account, proxy),
         Task::AcceptGifts { only_from } => accept_gifts(account, proxy, now, only_from.as_deref()),
+        Task::Profile(task) => profile(task, account, proxy, number),
     }
 }
 
@@ -118,6 +169,75 @@ fn accept_gifts(
     })
 }
 
+fn profile(
+    task: &ProfileTask,
+    account: &mut Account,
+    proxy: Option<&ProxyAddress>,
+    number: usize,
+) -> Result<Outcome, SteamError> {
+    let mut changed = Vec::new();
+    let mut changes = ProfileChanges {
+        persona_name: task
+            .name_template
+            .as_deref()
+            .map(|template| persona_name(template, number)),
+        ..ProfileChanges::default()
+    };
+    if let Some(name) = &changes.persona_name {
+        changed.push(format!("nickname to {name}"));
+    }
+    if !task.privacy.is_empty() {
+        // Settings left alone keep what each account has, which differs.
+        let (session, current) = profile_settings::settings(account, proxy)?;
+        account.session = Some(session);
+        changes.privacy = Some(task.privacy.over(current.privacy));
+        changed.push("privacy".to_owned());
+    }
+    if changes.persona_name.is_some() || changes.privacy.is_some() {
+        account.session = Some(profile_settings::save(account, proxy, &changes)?);
+    }
+    if let Some(image) = &task.avatar {
+        account.session = Some(profile_settings::upload_avatar(account, proxy, image)?);
+        changed.push("avatar".to_owned());
+    }
+    // The account list shows the new nickname and avatar right away.
+    let (session, profile) = steam::fetch_profile(account, proxy)?;
+    account.session = Some(session);
+    account.profile = Some(profile);
+    Ok(Outcome::Done(format!("Changed {}", changed.join(", "))))
+}
+
+/// Sends every tradable item the account has in the game to the storage
+/// account, which takes them there.
+pub fn move_to_storage(from: Side, to: Side, game: Game) -> Result<Outcome, moves::Failed> {
+    let (session, items) =
+        inventory::items(from.account, from.proxy, game).map_err(moves::Failed::From)?;
+    from.account.session = Some(session);
+    let assets: Vec<Asset> = items
+        .into_iter()
+        .filter(|item| item.tradable)
+        .map(|item| Asset {
+            app_id: item.app_id,
+            context_id: item.context_id,
+            asset_id: item.asset_id,
+            amount: item.amount,
+        })
+        .collect();
+    if assets.is_empty() {
+        return Ok(Outcome::Done("Nothing to move".to_owned()));
+    }
+    let count = match assets.len() {
+        1 => "1 item".to_owned(),
+        n => format!("{n} items"),
+    };
+    Ok(match moves::move_items(from, to, &assets)? {
+        Moved::Done => Outcome::Done(format!("Moved {count}")),
+        Moved::Sent { reason } => Outcome::Warning(format!(
+            "Sent {count}, but the storage account didn't take them: {reason}"
+        )),
+    })
+}
+
 /// Open offers someone else sent where this account gives nothing.
 fn gifts<'a>(offers: &'a [TradeOffer], only_from: Option<&[u64]>) -> Vec<&'a TradeOffer> {
     offers
@@ -156,6 +276,35 @@ mod tests {
                 allowed_at: None,
             }),
         }
+    }
+
+    #[test]
+    fn nicknames_are_numbered() {
+        assert_eq!(persona_name(" farm {n} ", 7), "farm 7");
+        assert_eq!(persona_name("{n}-{n}", 12), "12-12");
+        assert_eq!(persona_name("storage", 3), "storage");
+    }
+
+    #[test]
+    fn privacy_left_alone_keeps_the_account_s_own() {
+        let current = Privacy {
+            profile: Visibility::Private,
+            inventory: Visibility::FriendsOnly,
+            games: Visibility::Private,
+        };
+        let changes = PrivacyChanges {
+            inventory: Some(Visibility::Public),
+            ..PrivacyChanges::default()
+        };
+        assert_eq!(
+            changes.over(current),
+            Privacy {
+                inventory: Visibility::Public,
+                ..current
+            }
+        );
+        assert!(PrivacyChanges::default().is_empty());
+        assert!(!changes.is_empty());
     }
 
     #[test]

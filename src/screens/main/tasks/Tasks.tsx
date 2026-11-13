@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import type { Account, Group } from '../../../api/accounts.ts'
+import { GAME_NAMES, type Game } from '../../../api/inventory.ts'
 import { startTask, type TaskInput } from '../../../api/tasks.ts'
 import { errorMessage } from '../../../api/vault.ts'
 import Button from '../../../components/Button.tsx'
 import Dropdown from '../../../components/Dropdown.tsx'
 import Toggle from '../../../components/Toggle.tsx'
 import layout from '../layout.module.css'
+import ProfileOptions, { type ProfileChoice } from './ProfileOptions.tsx'
 import Queue from './Queue.tsx'
 import styles from './Tasks.module.css'
 
@@ -13,16 +15,28 @@ type Kind = TaskInput['kind']
 
 const TASKS: { kind: Kind; name: string; text: string }[] = [
   {
-    kind: 'check',
-    name: 'Check',
-    text: 'Session, profile, Web API key, bans and limits',
+    kind: 'moveToStorage',
+    name: 'Move to storage',
+    text: 'Every tradable item to one account',
   },
   {
     kind: 'acceptGifts',
     name: 'Accept gifts',
     text: 'Incoming offers where the account gives nothing',
   },
+  {
+    kind: 'profile',
+    name: 'Profile',
+    text: 'Nickname, avatar and privacy',
+  },
+  {
+    kind: 'check',
+    name: 'Check',
+    text: 'Session, profile, Web API key, bans and limits',
+  },
 ]
+
+const MAX_AVATAR_BYTES = 1024 * 1024
 
 const AT_ONCE = [1, 2, 3, 5, 10]
 
@@ -46,6 +60,13 @@ export default function Tasks({ accounts, groups }: Props) {
   const [target, setTarget] = useState<Target>('all')
   const [kind, setKind] = useState<Kind>('check')
   const [onlyOwn, setOnlyOwn] = useState(true)
+  const [profile, setProfile] = useState<ProfileChoice>({
+    nameTemplate: '',
+    privacy: {},
+    avatar: null,
+  })
+  const [storage, setStorage] = useState('')
+  const [game, setGame] = useState<Game>('cs2')
   const [atOnce, setAtOnce] = useState(3)
   const [pause, setPause] = useState('medium')
   const [retry, setRetry] = useState(true)
@@ -67,17 +88,55 @@ export default function Tasks({ accounts, groups }: Props) {
   ]
   const chosen = targets.find((item) => item.id === target) ?? targets[0]
   const task = TASKS.find((item) => item.kind === kind) ?? TASKS[0]
+  // The storage account has nothing to send to itself.
+  const runOn =
+    kind === 'moveToStorage'
+      ? chosen.accounts.filter((account) => account.accountName !== storage)
+      : chosen.accounts
+  const ready =
+    kind === 'moveToStorage'
+      ? storage !== ''
+      : kind !== 'profile' ||
+        profile.nameTemplate.trim() !== '' ||
+        Object.keys(profile.privacy).length > 0 ||
+        profile.avatar !== null
+
+  async function input(): Promise<TaskInput> {
+    switch (kind) {
+      case 'check':
+        return { kind }
+      case 'acceptGifts':
+        return { kind, onlyOwn }
+      case 'moveToStorage':
+        return { kind, storage, game }
+      case 'profile': {
+        const { avatar } = profile
+        return {
+          kind,
+          nameTemplate: profile.nameTemplate.trim() || null,
+          privacy: profile.privacy,
+          avatar: avatar
+            ? Array.from(new Uint8Array(await avatar.arrayBuffer()))
+            : null,
+        }
+      }
+    }
+  }
 
   async function run() {
     const range = PAUSES.find((item) => item.value === pause) ?? PAUSES[0]
+    if (kind === 'profile' && (profile.avatar?.size ?? 0) > MAX_AVATAR_BYTES) {
+      setError('The image is over 1 MB')
+      return
+    }
     setBusy(true)
     setError('')
     try {
       await startTask({
-        task: kind === 'check' ? { kind } : { kind, onlyOwn },
-        title: task.name,
+        task: await input(),
+        title: kind === 'moveToStorage' ? `Move to ${storage}` : task.name,
         target: chosen.name,
-        accountNames: chosen.accounts.map((account) => account.accountName),
+        accountNames: runOn.map((account) => account.accountName),
         pacing: { atOnce, pauseMin: range.min, pauseMax: range.max, retry },
       })
       setStarted((n) => n + 1)
@@ -139,6 +198,47 @@ export default function Tasks({ accounts, groups }: Props) {
             ))}
           </div>
 
+          {kind === 'moveToStorage' && (
+            <div className={styles.options}>
+              <div className={styles.pacing}>
+                <Dropdown
+                  label="To"
+                  size="sm"
+                  value={storage}
+                  options={[
+                    { value: '', label: 'Pick an account', disabled: true },
+                    ...accounts.map((account) => ({
+                      value: account.accountName,
+                      label: account.personaName || account.accountName,
+                      hint: account.personaName
+                        ? account.accountName
+                        : undefined,
+                    })),
+                  ]}
+                  onChange={setStorage}
+                />
+                <Dropdown
+                  label="Game"
+                  size="sm"
+                  value={game}
+                  options={(Object.keys(GAME_NAMES) as Game[]).map((value) => ({
+                    value,
+                    label: GAME_NAMES[value],
+                  }))}
+                  onChange={(value) => setGame(value as Game)}
+                />
+              </div>
+              <p className={styles.note}>
+                Each account sends an offer with all its tradable items, and the
+                storage account accepts it. No phone needed.
+              </p>
+            </div>
+          )}
+
+          {kind === 'profile' && (
+            <ProfileOptions choice={profile} onChange={setProfile} />
+          )}
+
           {kind === 'acceptGifts' && (
             <div className={styles.option}>
               <span>Only from my accounts</span>
@@ -186,10 +286,10 @@ export default function Tasks({ accounts, groups }: Props) {
           <div className={styles.run}>
             <Button
               busy={busy}
-              disabled={busy || chosen.accounts.length === 0}
+              disabled={busy || !ready || runOn.length === 0}
               onClick={() => void run()}
             >
-              Run on {chosen.name} ({chosen.accounts.length})
+              Run on {chosen.name} ({runOn.length})
             </Button>
           </div>
         </section>

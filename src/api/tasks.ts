@@ -1,7 +1,21 @@
 import { invoke } from '@tauri-apps/api/core'
+import type { Game } from './inventory.ts'
+import type { Visibility } from './profile.ts'
 
 export type TaskInput =
-  { kind: 'check' } | { kind: 'acceptGifts'; onlyOwn: boolean }
+  | { kind: 'check' }
+  | { kind: 'acceptGifts'; onlyOwn: boolean }
+  | {
+      kind: 'profile'
+      /** `{n}` becomes the account's place in the task, from 1. */
+      nameTemplate: string | null
+      /** A setting left out keeps what each account has. */
+      privacy: Partial<Record<'profile' | 'inventory' | 'games', Visibility>>
+      /** The image's bytes, for every account. */
+      avatar: number[] | null
+    }
+  /** Every tradable item to one account. */
+  | { kind: 'moveToStorage'; storage: string; game: Game }
 
 export type Pacing = {
   /** How many accounts run at the same time. */

@@ -6,14 +6,20 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use lootify_guard_core::contents::{Contents, DamagedContents};
+use lootify_guard_core::contents::{Account, Contents, DamagedContents};
+use lootify_guard_core::inventory::Game;
+use lootify_guard_core::moves::{self, Side};
+use lootify_guard_core::profile_settings::{AvatarImage, MAX_AVATAR_LEN};
 use lootify_guard_core::steam::SteamError;
-use lootify_guard_core::tasks::{self, Outcome, Task};
+use lootify_guard_core::tasks::{
+    self, MAX_PERSONA_NAME, Outcome, PrivacyChanges, ProfileTask, Task, persona_name,
+};
 use lootify_guard_core::vault::VaultError;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, State};
 
 use crate::accounts::{account_and_proxy, no_such_account};
+use crate::inventory::InventoryCache;
 use crate::vault::{CommandError, VaultState};
 
 // A failed account goes to the back of the line, up to this many tries in all.
@@ -91,6 +97,27 @@ pub enum TaskInput {
     AcceptGifts {
         only_own: bool,
     },
+    #[serde(rename_all = "camelCase")]
+    Profile {
+        name_template: Option<String>,
+        privacy: PrivacyChanges,
+        avatar: Option<Vec<u8>>,
+    },
+    #[serde(rename_all = "camelCase")]
+    MoveToStorage {
+        storage: String,
+        game: Game,
+    },
+}
+
+/// What each account of a job does.
+enum Work {
+    Each(Task),
+    /// Takes two accounts, so it's done here rather than as a core task.
+    MoveTo {
+        storage: String,
+        game: Game,
+    },
 }
 
 #[derive(Deserialize)]
@@ -145,10 +172,10 @@ pub fn start_task(
         task,
         title,
         target,
-        account_names,
+        mut account_names,
         pacing,
     } = request;
-    let task = {
+    let work = {
         let unlocked = state.unlocked();
         let vault = unlocked.as_ref().ok_or(CommandError::Locked)?;
         let contents = Contents::from_bytes(vault.data())?;
@@ -156,8 +183,8 @@ pub fn start_task(
             contents.account(name).ok_or_else(no_such_account)?;
         }
         match task {
-            TaskInput::Check => Task::Check,
-            TaskInput::AcceptGifts { only_own } => Task::AcceptGifts {
+            TaskInput::Check => Work::Each(Task::Check),
+            TaskInput::AcceptGifts { only_own } => Work::Each(Task::AcceptGifts {
                 only_from: only_own.then(|| {
                     contents
                         .accounts
@@ -165,7 +192,23 @@ pub fn start_task(
                         .filter_map(|account| account.steam_id)
                         .collect()
                 }),
-            },
+            }),
+            TaskInput::Profile {
+                name_template,
+                privacy,
+                avatar,
+            } => Work::Each(Task::Profile(profile_task(
+                name_template,
+                privacy,
+                avatar,
+                account_names.len(),
+            )?)),
+            TaskInput::MoveToStorage { storage, game } => {
+                contents.account(&storage).ok_or_else(no_such_account)?;
+                // The storage account has nothing to send to itself.
+                account_names.retain(|name| *name != storage);
+                Work::MoveTo { storage, game }
+            }
         }
     };
     if account_names.is_empty() {
@@ -214,7 +257,7 @@ pub fn start_task(
         let line: Mutex<VecDeque<usize>> = Mutex::new((0..account_names.len()).collect());
         thread::scope(|scope| {
             for _ in 0..at_once {
-                scope.spawn(|| work(&app, id, &task, &account_names, &line, &pacing, &cancelled));
+                scope.spawn(|| worker(&app, id, &work, &account_names, &line, &pacing, &cancelled));
             }
         });
         let tasks = app.state::<Tasks>();
@@ -231,11 +274,43 @@ pub fn start_task(
     Ok(id)
 }
 
+fn profile_task(
+    name_template: Option<String>,
+    privacy: PrivacyChanges,
+    avatar: Option<Vec<u8>>,
+    count: usize,
+) -> Result<ProfileTask, CommandError> {
+    let fail = |reason: &str| Err(CommandError::Failed(reason.to_owned()));
+    let name_template = name_template.filter(|template| !template.trim().is_empty());
+    if name_template.is_none() && privacy == PrivacyChanges::default() && avatar.is_none() {
+        return fail("pick something to change");
+    }
+    // `{n}` is longest for the last account.
+    if let Some(template) = &name_template
+        && persona_name(template, count).chars().count() > MAX_PERSONA_NAME
+    {
+        return fail("the nickname would be over 32 characters");
+    }
+    if let Some(image) = &avatar {
+        if image.len() > MAX_AVATAR_LEN {
+            return fail("the image is over 1 MB");
+        }
+        if AvatarImage::of(image).is_none() {
+            return fail("the image isn't a JPEG, PNG or GIF");
+        }
+    }
+    Ok(ProfileTask {
+        name_template,
+        privacy,
+        avatar,
+    })
+}
+
 /// One worker: takes accounts off the line until it's empty or the job stops.
-fn work(
+fn worker(
     app: &AppHandle,
     job: u32,
-    task: &Task,
+    work: &Work,
     account_names: &[String],
     line: &Mutex<VecDeque<usize>>,
     pacing: &Pacing,
@@ -274,7 +349,7 @@ fn work(
             .map_or(0, |job| job.runs[run].tries)
             + 1;
         tasks.set(job, run, RunState::Running, Some(tries));
-        let next = match run_one(&state, task, &account_names[run]) {
+        let next = match run_one(app, &state, work, &account_names[run], run + 1) {
             Ok(Outcome::Done(note)) => RunState::Done { note },
             Ok(Outcome::Warning(note)) => RunState::Warning { note },
             Err(Failed::Vault(CommandError::Locked)) => {
@@ -285,10 +360,12 @@ fn work(
                 }
             }
             // A dead session won't come back by trying again; anything else from Steam may.
-            Err(Failed::Steam(err))
+            Err(failed)
                 if pacing.retry
                     && tries < MAX_TRIES
-                    && !matches!(err, SteamError::SessionExpired) =>
+                    && failed
+                        .steam()
+                        .is_some_and(|err| !matches!(err, SteamError::SessionExpired)) =>
             {
                 line.lock()
                     .unwrap_or_else(PoisonError::into_inner)
@@ -297,6 +374,9 @@ fn work(
             }
             Err(Failed::Steam(err)) => RunState::Failed {
                 reason: err.to_string(),
+            },
+            Err(Failed::Storage(name, err)) => RunState::Failed {
+                reason: format!("{name}: {err}"),
             },
             Err(Failed::Vault(err)) => RunState::Failed {
                 reason: match err {
@@ -311,7 +391,18 @@ fn work(
 
 enum Failed {
     Steam(SteamError),
+    /// From the storage account a move goes to, by its name.
+    Storage(String, SteamError),
     Vault(CommandError),
+}
+
+impl Failed {
+    fn steam(&self) -> Option<&SteamError> {
+        match self {
+            Self::Steam(err) | Self::Storage(_, err) => Some(err),
+            Self::Vault(_) => None,
+        }
+    }
 }
 
 impl From<CommandError> for Failed {
@@ -332,26 +423,71 @@ impl From<VaultError> for Failed {
     }
 }
 
-/// Runs the task for one account and saves what changed on it.
-fn run_one(state: &VaultState, task: &Task, account_name: &str) -> Result<Outcome, Failed> {
+/// Runs the work for the account at `number` in the job, from 1, and saves what
+/// changed on the accounts it took.
+fn run_one(
+    app: &AppHandle,
+    state: &VaultState,
+    work: &Work,
+    account_name: &str,
+    number: usize,
+) -> Result<Outcome, Failed> {
     let (mut account, proxy) = account_and_proxy(state, account_name)?;
-    let result = tasks::run(task, &mut account, proxy.as_ref(), now());
-    if let Err(SteamError::SessionExpired) = result {
-        account.session = None;
+    match work {
+        Work::Each(task) => {
+            let result = tasks::run(task, &mut account, proxy.as_ref(), now(), number);
+            if let Err(SteamError::SessionExpired) = result {
+                account.session = None;
+            }
+            save(state, &[&account])?;
+            result.map_err(Failed::Steam)
+        }
+        Work::MoveTo { storage, game } => {
+            let (mut to, to_proxy) = account_and_proxy(state, storage)?;
+            let result = tasks::move_to_storage(
+                Side {
+                    account: &mut account,
+                    proxy: proxy.as_ref(),
+                },
+                Side {
+                    account: &mut to,
+                    proxy: to_proxy.as_ref(),
+                },
+                *game,
+            );
+            match result {
+                Err(moves::Failed::From(SteamError::SessionExpired)) => account.session = None,
+                Err(moves::Failed::To(SteamError::SessionExpired)) => to.session = None,
+                _ => {}
+            }
+            save(state, &[&account, &to])?;
+            // What moved is no longer where the inventory screen last saw it.
+            app.state::<InventoryCache>()
+                .forget_blocking(&[account_name, storage]);
+            result.map_err(|failed| match failed {
+                moves::Failed::From(err) => Failed::Steam(err),
+                moves::Failed::To(err) => Failed::Storage(storage.clone(), err),
+            })
+        }
     }
+}
 
+/// Saves the sessions and profiles the accounts came back with.
+fn save(state: &VaultState, accounts: &[&Account]) -> Result<(), Failed> {
     let mut unlocked = state.unlocked();
     let vault = unlocked.as_mut().ok_or(CommandError::Locked)?;
     let mut contents = Contents::from_bytes(vault.data())?;
-    let stored = contents
-        .account_mut(account_name)
-        .ok_or_else(no_such_account)?;
-    stored.session = account.session;
-    if account.profile.is_some() {
-        stored.profile = account.profile;
+    for account in accounts {
+        let stored = contents
+            .account_mut(&account.account_name)
+            .ok_or_else(no_such_account)?;
+        stored.session = account.session.clone();
+        if account.profile.is_some() {
+            stored.profile = account.profile.clone();
+        }
     }
     vault.save_data(contents.to_bytes())?;
-    result.map_err(Failed::Steam)
+    Ok(())
 }
 
 /// Jobs newest first.

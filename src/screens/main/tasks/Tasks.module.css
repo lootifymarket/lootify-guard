@@ -124,6 +124,51 @@
   gap: 12px;
 }
 
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.optionGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nameInput {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.note {
+  margin: 0;
+  color: var(--color-text-faint);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.privacy {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.avatarName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.avatarActions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
 .option {
   display: flex;
   justify-content: space-between;
