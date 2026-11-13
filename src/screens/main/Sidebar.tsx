@@ -3,7 +3,7 @@ import LogoMark from '../../components/LogoMark.tsx'
 import { useSecondsLeft } from './useAccounts.ts'
 import styles from './Sidebar.module.css'
 
-export type Section = 'accounts' | 'guard' | 'proxies'
+export type Section = 'accounts' | 'guard' | 'proxies' | 'add'
 
 const SECTIONS: { id: Section; label: string; icon: string }[] = [
   {
@@ -21,6 +21,7 @@ const SECTIONS: { id: Section; label: string; icon: string }[] = [
     label: 'Proxies',
     icon: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM2 12h20M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10 15 15 0 0 1-4-10 15 15 0 0 1 4-10z',
   },
+  { id: 'add', label: 'Add account', icon: 'M12 5v14M5 12h14' },
 ]
 
 const LOCK = 'M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4'

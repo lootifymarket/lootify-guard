@@ -374,7 +374,10 @@ pub fn set_account_proxy(
     Ok(())
 }
 
-fn find<'a>(contents: &'a Contents, account_name: &str) -> Result<&'a Account, CommandError> {
+pub(crate) fn find<'a>(
+    contents: &'a Contents,
+    account_name: &str,
+) -> Result<&'a Account, CommandError> {
     contents.account(account_name).ok_or_else(no_such_account)
 }
 
@@ -420,7 +423,7 @@ fn no_such_account() -> CommandError {
 }
 
 // The file holds every secret of the account, so only the user may read it.
-fn write_private(path: &Path, contents: &[u8]) -> io::Result<()> {
+pub(crate) fn write_private(path: &Path, contents: &[u8]) -> io::Result<()> {
     let mut options = OpenOptions::new();
     options.write(true).create(true).truncate(true);
     #[cfg(unix)]
@@ -438,7 +441,7 @@ fn read_mafile(path: &Path) -> Result<Account, String> {
     mafile::parse(&file).map_err(|err| err.to_string())
 }
 
-fn file_name(path: &Path) -> String {
+pub(crate) fn file_name(path: &Path) -> String {
     path.file_name()
         .unwrap_or(path.as_os_str())
         .to_string_lossy()

@@ -220,18 +220,36 @@ impl Contents {
     /// Adds the account unless it's already there. Steam logins are unique and
     /// case-insensitive, so the login identifies an account even without a Steam ID.
     pub fn add_account(&mut self, account: Account) -> bool {
-        let is_same = |known: &Account| {
-            known
-                .account_name
-                .eq_ignore_ascii_case(&account.account_name)
-                || (known.steam_id.is_some() && known.steam_id == account.steam_id)
-        };
-        if self.accounts.iter().any(is_same) {
+        if self
+            .accounts
+            .iter()
+            .any(|known| same_account(known, &account))
+        {
             return false;
         }
         self.accounts.push(account);
         true
     }
+
+    /// Adds an account whose Guard was just set up here, dropping any copy already in
+    /// the vault: Steam has made that copy's secrets useless.
+    pub fn put_account(&mut self, account: Account) {
+        self.accounts.retain(|known| !same_account(known, &account));
+        self.accounts.push(account);
+    }
+
+    pub fn has_login(&self, account_name: &str) -> bool {
+        self.accounts
+            .iter()
+            .any(|known| known.account_name.eq_ignore_ascii_case(account_name))
+    }
+}
+
+fn same_account(known: &Account, account: &Account) -> bool {
+    known
+        .account_name
+        .eq_ignore_ascii_case(&account.account_name)
+        || (known.steam_id.is_some() && known.steam_id == account.steam_id)
 }
 
 #[cfg(test)]
@@ -344,6 +362,26 @@ mod tests {
 
         assert_eq!(contents.accounts.len(), 1);
         assert_eq!(contents.accounts[0].account_name, "trader_one");
+    }
+
+    #[test]
+    fn a_new_guard_replaces_the_old_copy() {
+        let mut contents = Contents::default();
+        contents.add_account(account());
+
+        let mut moved = account();
+        moved.account_name = "Trader_One".to_owned();
+        moved.authenticator.shared_secret = "bmV3LXNlY3JldA==".to_owned().into();
+        contents.put_account(moved);
+
+        let [kept] = contents.accounts.as_slice() else {
+            panic!("expected one account");
+        };
+        assert_eq!(
+            kept.authenticator.shared_secret.expose(),
+            "bmV3LXNlY3JldA=="
+        );
+        assert!(contents.has_login("TRADER_ONE"));
     }
 
     #[test]
