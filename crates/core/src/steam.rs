@@ -50,6 +50,14 @@ pub enum SteamError {
     GuardCodeRejected,
     #[error("Steam wants a confirmation this app can't give, such as an email code")]
     UnsupportedConfirmation,
+    #[error("wrong code, check it and try again")]
+    WrongCode,
+    #[error("Steam wants a phone number on the account first")]
+    NeedsPhone,
+    #[error("open the link in the email Steam sent, then try again")]
+    ConfirmEmail,
+    #[error("the account already has Steam Guard on another device")]
+    GuardElsewhere,
     #[error("the Steam session has ended, sign in again")]
     SessionExpired,
     #[error("not a link from a Steam sign-in QR code")]
@@ -81,15 +89,7 @@ pub fn sign_in(
         .map_err(|_| SteamError::Network)?
         .server_time();
 
-    let mut login = UserLogin::new(
-        transport,
-        DeviceDetails {
-            friendly_name: "Lootify Guard".to_owned(),
-            platform_type: EAuthTokenPlatformType::k_EAuthTokenPlatformType_MobileApp,
-            os_type: ANDROID_OS_TYPE,
-            gaming_device_type: PHONE_DEVICE_TYPE,
-        },
-    );
+    let mut login = mobile_login(transport);
     let confirmations = login
         .begin_auth_via_credentials(&account.account_name, password)
         .map_err(login_error)?;
@@ -115,18 +115,37 @@ pub fn sign_in(
     let tokens = login
         .poll_until_tokens()
         .map_err(|_| SteamError::Steam("no session was issued".to_owned()))?;
-    let steam_id = tokens
+    Ok(SignedIn {
+        steam_id: steam_id_of(&tokens)?,
+        session: session_of(&tokens),
+    })
+}
+
+pub(crate) fn mobile_login(transport: WebApiTransport) -> UserLogin<WebApiTransport> {
+    UserLogin::new(
+        transport,
+        DeviceDetails {
+            friendly_name: "Lootify Guard".to_owned(),
+            platform_type: EAuthTokenPlatformType::k_EAuthTokenPlatformType_MobileApp,
+            os_type: ANDROID_OS_TYPE,
+            gaming_device_type: PHONE_DEVICE_TYPE,
+        },
+    )
+}
+
+pub(crate) fn steam_id_of(tokens: &Tokens) -> Result<u64, SteamError> {
+    Ok(tokens
         .refresh_token()
         .decode()
         .map_err(|_| SteamError::Steam("unreadable session token".to_owned()))?
-        .steam_id();
-    Ok(SignedIn {
-        steam_id,
-        session: Session {
-            access_token: tokens.access_token().expose_secret().to_owned().into(),
-            refresh_token: tokens.refresh_token().expose_secret().to_owned().into(),
-        },
-    })
+        .steam_id())
+}
+
+pub(crate) fn session_of(tokens: &Tokens) -> Session {
+    Session {
+        access_token: tokens.access_token().expose_secret().to_owned().into(),
+        refresh_token: tokens.refresh_token().expose_secret().to_owned().into(),
+    }
 }
 
 /// Runs `op` with the account's session. Access tokens last about a day: when
@@ -231,7 +250,7 @@ fn proxy_country(client: &Client) -> Option<String> {
     country_code(&answer.country)
 }
 
-fn client(proxy: Option<&ProxyAddress>) -> Result<Client, SteamError> {
+pub(crate) fn client(proxy: Option<&ProxyAddress>) -> Result<Client, SteamError> {
     let mut builder = Client::builder()
         .connect_timeout(CONNECT_TIMEOUT)
         .timeout(REQUEST_TIMEOUT);
@@ -341,7 +360,7 @@ fn avatar_url(digest: &str) -> Result<String, SteamError> {
     Ok(format!("{AVATAR_URL}/{hex}_medium.jpg"))
 }
 
-fn login_error(err: LoginError) -> SteamError {
+pub(crate) fn login_error(err: LoginError) -> SteamError {
     match err {
         LoginError::BadCredentials => SteamError::BadCredentials,
         LoginError::TooManyAttempts => SteamError::TooManyAttempts,
@@ -352,7 +371,7 @@ fn login_error(err: LoginError) -> SteamError {
     }
 }
 
-fn guard_code_error(err: UpdateAuthSessionError) -> SteamError {
+pub(crate) fn guard_code_error(err: UpdateAuthSessionError) -> SteamError {
     match err {
         UpdateAuthSessionError::IncorrectSteamGuardCode => SteamError::GuardCodeRejected,
         UpdateAuthSessionError::TooManyAttempts => SteamError::TooManyAttempts,

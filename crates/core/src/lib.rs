@@ -2,6 +2,7 @@ pub mod confirmations;
 pub mod contents;
 pub mod guard;
 pub mod idle;
+pub mod link;
 pub mod mafile;
 pub mod proxy;
 pub mod sign_ins;
