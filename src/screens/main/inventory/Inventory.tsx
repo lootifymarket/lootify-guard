@@ -12,6 +12,7 @@ import Dropdown from '../../../components/Dropdown.tsx'
 import Toggle from '../../../components/Toggle.tsx'
 import ItemCard from '../items/ItemCard.tsx'
 import layout from '../layout.module.css'
+import ListOnMarket from './ListOnMarket.tsx'
 import MoveItems from './MoveItems.tsx'
 import styles from './Inventory.module.css'
 
@@ -70,6 +71,7 @@ export default function Inventory({ accounts, onChanged }: Props) {
   const [failures, setFailures] = useState<Record<string, string>>({})
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [moving, setMoving] = useState(false)
+  const [listing, setListing] = useState(false)
   const [reloads, setReloads] = useState(0)
   const names = signedIn.map((account) => account.accountName).join('\n')
 
@@ -254,6 +256,14 @@ export default function Inventory({ accounts, onChanged }: Props) {
           >
             Move to one account
           </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={!chosen.some(({ item }) => item.marketable)}
+            onClick={() => setListing(true)}
+          >
+            Steam market
+          </Button>
         </span>
       </div>
 
@@ -263,6 +273,13 @@ export default function Inventory({ accounts, onChanged }: Props) {
         picked={byAccount(chosen)}
         onClose={() => setMoving(false)}
         onMoved={reload}
+      />
+      <ListOnMarket
+        open={listing}
+        game={game}
+        picked={byAccount(chosen)}
+        onClose={() => setListing(false)}
+        onListed={reload}
       />
 
       {Object.entries(failures).map(([account, reason]) => (

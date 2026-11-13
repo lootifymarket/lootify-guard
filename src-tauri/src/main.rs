@@ -96,6 +96,8 @@ fn main() {
             trades::send_trade_offer,
             inventory::item_icons,
             inventory::move_items,
+            inventory::market_prices,
+            inventory::list_on_market,
             proxies::list_proxies,
             proxies::add_proxies,
             proxies::add_proxy,

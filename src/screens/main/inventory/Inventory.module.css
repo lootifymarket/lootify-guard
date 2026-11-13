@@ -160,6 +160,83 @@
   color: var(--color-danger);
 }
 
+.reports li[data-outcome='waiting'] .reportOutcome {
+  color: var(--color-warning);
+}
+
 .reports li[data-outcome='done'] .reportOutcome {
   color: var(--color-success);
+}
+
+.listings {
+  max-height: 340px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--color-line);
+}
+
+.listing {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 110px 130px;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-line);
+  font-size: 13px;
+}
+
+.listingWords {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.listingName {
+  overflow: hidden;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.priceField input {
+  width: 100%;
+  height: 34px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  background: var(--color-field);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  text-align: right;
+}
+
+.priceField input:focus-visible {
+  outline: none;
+  border-color: var(--color-text-muted);
+}
+
+.youGet {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  text-align: right;
+}
+
+.listingFooter {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

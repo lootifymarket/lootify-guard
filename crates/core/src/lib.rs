@@ -6,6 +6,7 @@ pub mod idle;
 pub mod inventory;
 pub mod link;
 pub mod mafile;
+pub mod market;
 pub mod moves;
 pub mod partner;
 pub mod profile;

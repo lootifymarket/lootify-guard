@@ -4,6 +4,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use lootify_guard_core::inventory::{self, Game, InventoryItem};
+use lootify_guard_core::market::{self, Listed, Listing, Prices};
 use lootify_guard_core::moves::{self, Failed, Moved, Side};
 use lootify_guard_core::steam::SteamError;
 use lootify_guard_core::trades::Asset;
@@ -213,5 +214,87 @@ pub async fn move_items(
     cached.retain(|(account, _), _| {
         *account != target && !reports.iter().any(|report| &report.account_name == account)
     });
+    Ok(reports)
+}
+
+/// Market prices for the items, in the account's wallet currency.
+#[tauri::command]
+pub async fn market_prices(
+    state: State<'_, VaultState>,
+    account_name: String,
+    game: Game,
+    names: Vec<String>,
+) -> Result<Prices, CommandError> {
+    let (account, proxy) = account_and_proxy(&state, &account_name)?;
+    let result =
+        spawn_blocking(move || market::prices(&account, proxy.as_ref(), game, &names)).await?;
+    let (session, prices) = settle(&state, &account_name, result)?;
+    store_session(&state, &account_name, Some(session))?;
+    Ok(prices)
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListingGroup {
+    account_name: String,
+    listings: Vec<Listing>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListingReport {
+    account_name: String,
+    asset_id: String,
+    #[serde(flatten)]
+    listed: Listed,
+}
+
+/// Lists each account's items on the Steam market and confirms the listings in
+/// Guard, one account after another.
+#[tauri::command]
+pub async fn list_on_market(
+    state: State<'_, VaultState>,
+    cache: State<'_, InventoryCache>,
+    currency: String,
+    groups: Vec<ListingGroup>,
+) -> Result<Vec<ListingReport>, CommandError> {
+    let mut reports = Vec::new();
+    for group in groups {
+        let (account, proxy) = account_and_proxy(&state, &group.account_name)?;
+        let listings = group.listings.clone();
+        let currency = currency.clone();
+        let result =
+            spawn_blocking(move || market::list(&account, proxy.as_ref(), &currency, &listings))
+                .await?;
+        let outcomes = match settle(&state, &group.account_name, result) {
+            Ok((session, outcomes)) => {
+                store_session(&state, &group.account_name, Some(session))?;
+                outcomes
+            }
+            Err(CommandError::Failed(reason)) => group
+                .listings
+                .iter()
+                .map(|_| Listed::Failed {
+                    reason: reason.clone(),
+                })
+                .collect(),
+            Err(err) => return Err(err),
+        };
+        reports.extend(
+            group
+                .listings
+                .iter()
+                .zip(outcomes)
+                .map(|(listing, listed)| ListingReport {
+                    account_name: group.account_name.clone(),
+                    asset_id: listing.asset_id.clone(),
+                    listed,
+                }),
+        );
+    }
+
+    // Listed items leave the inventory.
+    let mut cached = cache.one_at_a_time.lock().await;
+    cached.retain(|(account, _), _| !reports.iter().any(|report| &report.account_name == account));
     Ok(reports)
 }

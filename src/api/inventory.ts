@@ -68,3 +68,72 @@ export const moveItems = (
       })),
     })),
   })
+
+export type Price = {
+  /** As the buyer pays, in hundredths of the wallet currency. */
+  lowest: number | null
+  median: number | null
+}
+
+export type Prices = {
+  /** ISO 4217, or `null` when the wallet's currency isn't one the app knows. */
+  currency: string | null
+  /** By market name; names Steam had no price for are left out. */
+  prices: Record<string, Price>
+}
+
+/** Market prices, in the account's wallet currency, for up to 20 names. */
+export const marketPrices = (
+  accountName: string,
+  game: Game,
+  names: string[],
+) => invoke<Prices>('market_prices', { accountName, game, names })
+
+export type ListingReport = {
+  accountName: string
+  assetId: string
+} & (
+  | { outcome: 'done' }
+  /** Listed, but its confirmation wasn't found; it's on the Steam Guard screen. */
+  | { outcome: 'unconfirmed' }
+  | { outcome: 'needsEmail' }
+  | { outcome: 'failed'; reason: string }
+)
+
+/** Lists items at what the buyer pays, in `currency`, and confirms them in Guard. */
+export const listOnMarket = (
+  currency: string,
+  groups: {
+    accountName: string
+    listings: { item: InventoryItem; price: number }[]
+  }[],
+) =>
+  invoke<ListingReport[]>('list_on_market', {
+    currency,
+    groups: groups.map(({ accountName, listings }) => ({
+      accountName,
+      listings: listings.map(({ item, price }) => ({
+        appId: item.appId,
+        contextId: item.contextId,
+        assetId: item.assetId,
+        amount: item.amount,
+        name: item.name,
+        price,
+      })),
+    })),
+  })
+
+// Steam's cut and the game's, as in `market.rs`; only for showing an estimate.
+const STEAM_FEE = 0.05
+const GAME_FEE = 0.1
+
+/** About what the seller gets when the buyer pays `price`, in hundredths. */
+export function sellerGets(price: number) {
+  const pays = (receive: number) =>
+    receive +
+    Math.max(Math.floor(receive * STEAM_FEE), 1) +
+    Math.max(Math.floor(receive * GAME_FEE), 1)
+  let receive = Math.floor(price / (1 + STEAM_FEE + GAME_FEE)) + 2
+  while (receive > 0 && pays(receive) > price) receive -= 1
+  return receive
+}
