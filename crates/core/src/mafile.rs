@@ -95,6 +95,7 @@ pub fn parse(file: &[u8]) -> Result<Account, MaFileError> {
         profile: None,
         proxy: None,
         auto_confirm: AutoConfirm::default(),
+        trusted_api_key: None,
     })
 }
 

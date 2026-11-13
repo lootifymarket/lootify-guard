@@ -418,7 +418,7 @@ pub(crate) fn settle<T>(
     Ok(result?)
 }
 
-fn no_such_account() -> CommandError {
+pub(crate) fn no_such_account() -> CommandError {
     CommandError::Failed("the account is no longer in the vault".to_owned())
 }
 

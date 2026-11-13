@@ -1,3 +1,4 @@
+pub mod api_key;
 pub mod confirmations;
 pub mod contents;
 pub mod guard;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useEffectEvent, useState } from 'react'
 import {
   CODE_PERIOD_SECS,
   describe,
@@ -19,6 +19,7 @@ import {
   proxyTitle,
   type Proxy,
 } from '../../../api/proxies.ts'
+import { checkApiKey, type ApiKey } from '../../../api/security.ts'
 import {
   biometricStatus,
   errorMessage,
@@ -32,6 +33,7 @@ import Toggle from '../../../components/Toggle.tsx'
 import { useCopy } from '../../../lib/useCopy.ts'
 import { useCodeSecondsLeft } from '../useAccounts.ts'
 import AutoConfirmRules from '../AutoConfirmRules.tsx'
+import ApiKeyAlert from './ApiKeyAlert.tsx'
 import layout from '../layout.module.css'
 import ConfirmOwner from './ConfirmOwner.tsx'
 import RemoveAccount from './RemoveAccount.tsx'
@@ -66,6 +68,10 @@ export default function AccountPage({
   const [proxyError, setProxyError] = useState('')
   const [ruleError, setRuleError] = useState('')
   const [checking, setChecking] = useState(false)
+  // `undefined` until Steam was asked, `null` when the account has no key.
+  const [apiKey, setApiKey] = useState<ApiKey | null | undefined>(undefined)
+  const [checkingKey, setCheckingKey] = useState(false)
+  const [keyError, setKeyError] = useState('')
   const [checked, setChecked] = useState<{ ok: boolean; text: string } | null>(
     null,
   )
@@ -79,6 +85,11 @@ export default function AccountPage({
     )
     void listProxies().then(setProxies)
   }, [])
+
+  const checkKeyOnOpen = useEffectEvent(() => {
+    if (account.signedIn) void checkKey()
+  })
+  useEffect(() => checkKeyOnOpen(), [])
 
   const proxyMissing =
     account.proxyId !== null &&
@@ -138,6 +149,20 @@ export default function AccountPage({
     }
   }
 
+  async function checkKey() {
+    setCheckingKey(true)
+    setKeyError('')
+    try {
+      setApiKey(await checkApiKey(name))
+    } catch (err) {
+      setKeyError(errorMessage(err))
+      // The backend drops a session Steam turned down, which the page should show.
+      onChanged()
+    } finally {
+      setCheckingKey(false)
+    }
+  }
+
   async function reveal(password: string | null) {
     setRevocationCode(await revealRevocationCode(name, password))
     setDialog(null)
@@ -169,6 +194,14 @@ export default function AccountPage({
           </div>
         </div>
       </div>
+
+      {apiKey && !apiKey.trusted && (
+        <ApiKeyAlert
+          accountName={name}
+          apiKey={apiKey}
+          onChanged={() => void checkKey()}
+        />
+      )}
 
       <section className={styles.section} aria-labelledby="guard-title">
         <h2 id="guard-title" className={styles.sectionTitle}>
@@ -223,6 +256,24 @@ export default function AccountPage({
                 </button>
               )}
             </dd>
+          </div>
+          <div className={styles.fact}>
+            <dt>Web API key</dt>
+            {account.signedIn ? (
+              <dd className={styles.reveal}>
+                <ApiKeyState apiKey={apiKey} />
+                <button
+                  type="button"
+                  className={styles.link}
+                  disabled={checkingKey}
+                  onClick={() => void checkKey()}
+                >
+                  {checkingKey ? 'Checking…' : 'Check'}
+                </button>
+              </dd>
+            ) : (
+              <dd className={styles.muted}>Sign in to check</dd>
+            )}
           </div>
           <div className={styles.fact}>
             <dt>Proxy</dt>
@@ -286,6 +337,11 @@ export default function AccountPage({
         {proxyError && (
           <p className={styles.error} role="alert">
             {proxyError}
+          </p>
+        )}
+        {keyError && (
+          <p className={styles.error} role="alert">
+            {keyError}
           </p>
         )}
         {checked && (
@@ -390,6 +446,7 @@ export default function AccountPage({
         onSignedIn={() => {
           setDialog(null)
           void checkSession()
+          void checkKey()
         }}
       />
       <AutoConfirmRules
@@ -405,5 +462,16 @@ export default function AccountPage({
         onRemoved={onRemoved}
       />
     </>
+  )
+}
+
+function ApiKeyState({ apiKey }: { apiKey: ApiKey | null | undefined }) {
+  if (apiKey === undefined) return <span className={styles.muted}>Unknown</span>
+  if (apiKey === null) return <span>None</span>
+  return (
+    <span className={apiKey.trusted ? undefined : styles.dangerText}>
+      {apiKey.domain}
+      {apiKey.trusted && <span className={styles.muted}> · yours</span>}
+    </span>
   )
 }

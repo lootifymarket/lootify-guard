@@ -1,9 +1,11 @@
 use std::time::{Duration, Instant};
 
+use aes_gcm::aead::Generate;
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use reqwest::StatusCode;
-use reqwest::blocking::Client;
+use reqwest::blocking::{Client, Response};
+use reqwest::header::COOKIE;
 use serde::Deserialize;
 use steamguard::protobufs::steammessages_auth_steamclient::{
     EAuthSessionGuardType, EAuthTokenPlatformType,
@@ -287,6 +289,70 @@ pub(crate) fn web_api_get(
         .bytes()
         .map(|body| body.to_vec())
         .map_err(|_| SteamError::Network)
+}
+
+/// A page on steamcommunity.com, signed in with the session's web cookie. Steam
+/// sends a signed-out visitor to its login page, which means the session ended.
+pub(crate) fn community_get(
+    client: &Client,
+    url: &str,
+    session: &Session,
+    steam_id: u64,
+) -> Result<String, SteamError> {
+    let response = client
+        .get(url)
+        .header(COOKIE, community_cookie(session, steam_id, None))
+        .send()
+        .map_err(|_| SteamError::Network)?;
+    community_page(response)
+}
+
+/// A form sent to steamcommunity.com. Steam checks that the form's `sessionid`
+/// matches the cookie, so a fresh one goes in both.
+pub(crate) fn community_post(
+    client: &Client,
+    url: &str,
+    session: &Session,
+    steam_id: u64,
+    form: &[(&str, &str)],
+) -> Result<String, SteamError> {
+    let session_id: String = <[u8; 12]>::generate()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect();
+    let mut fields = vec![("sessionid", session_id.as_str())];
+    fields.extend_from_slice(form);
+    let response = client
+        .post(url)
+        .header(
+            COOKIE,
+            community_cookie(session, steam_id, Some(&session_id)),
+        )
+        .form(&fields)
+        .send()
+        .map_err(|_| SteamError::Network)?;
+    community_page(response)
+}
+
+fn community_cookie(session: &Session, steam_id: u64, session_id: Option<&str>) -> String {
+    let mut cookie = format!(
+        "steamLoginSecure={steam_id}%7C%7C{}",
+        session.access_token.expose()
+    );
+    if let Some(session_id) = session_id {
+        cookie.push_str(&format!("; sessionid={session_id}"));
+    }
+    cookie
+}
+
+fn community_page(response: Response) -> Result<String, SteamError> {
+    if response.url().path().starts_with("/login") {
+        return Err(SteamError::SessionExpired);
+    }
+    if !response.status().is_success() {
+        return Err(SteamError::Steam(response.status().to_string()));
+    }
+    response.text().map_err(|_| SteamError::Network)
 }
 
 fn link_details(

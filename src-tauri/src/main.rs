@@ -7,6 +7,7 @@ mod auto_confirm;
 mod biometrics;
 mod confirmations;
 mod proxies;
+mod security;
 mod sign_ins;
 mod vault;
 
@@ -62,6 +63,9 @@ fn main() {
             auto_confirm::set_auto_confirm_rule,
             auto_confirm::set_auto_confirm_paused,
             auto_confirm::auto_confirm_log,
+            security::check_api_key,
+            security::trust_api_key,
+            security::revoke_api_key,
             sign_ins::list_sign_in_requests,
             sign_ins::answer_sign_in,
             sign_ins::allow_qr_sign_in,
