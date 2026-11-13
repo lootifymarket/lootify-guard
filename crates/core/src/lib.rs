@@ -16,5 +16,6 @@ pub mod sessions;
 pub mod sign_ins;
 pub mod standing;
 pub mod steam;
+pub mod tasks;
 pub mod trades;
 pub mod vault;

@@ -1,0 +1,284 @@
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.subtitle {
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) minmax(320px, 1fr) minmax(
+      260px,
+      340px
+    );
+  align-items: start;
+  gap: 28px;
+}
+
+@media (max-width: 1100px) {
+  .columns {
+    grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+  }
+
+  .queue {
+    grid-column: 1 / -1;
+  }
+}
+
+.sectionTitle {
+  margin: 0 0 10px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.targets {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.target {
+  height: 38px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.target[aria-pressed='true'] {
+  background: var(--color-selected);
+  color: var(--color-text);
+}
+
+.count {
+  color: var(--color-text-faint);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.hint {
+  margin: 8px 0 0;
+  color: var(--color-text-faint);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.setup {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tasks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.task {
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 12px 14px;
+  background: var(--color-panel);
+  border: 1px solid var(--color-divider);
+  border-radius: 10px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.task[aria-checked='true'] {
+  background: var(--color-danger-surface);
+  border-color: var(--color-accent);
+}
+
+.taskName {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.taskText {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.pacing {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.run {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.error {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 13px;
+}
+
+.error::first-letter {
+  text-transform: uppercase;
+}
+
+.queue {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.queueHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.link {
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.target:focus-visible,
+.task:focus-visible,
+.link:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+.job {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  background: var(--color-panel);
+  border: 1px solid var(--color-divider);
+  border-radius: 10px;
+}
+
+.jobHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.jobWords {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.jobWords .hint {
+  margin: 2px 0 0;
+}
+
+.jobName {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.jobState {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.job[data-state='running'] .jobState {
+  color: var(--color-warning);
+}
+
+.job[data-state='done'] .jobState {
+  color: var(--color-success);
+}
+
+.bar {
+  display: block;
+  height: 2px;
+  background: var(--color-line-strong);
+}
+
+.barFill {
+  display: block;
+  height: 2px;
+  background: var(--color-accent);
+  transition: width 0.3s ease;
+}
+
+.jobTools {
+  display: flex;
+  gap: 14px;
+}
+
+.runs {
+  max-height: 260px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  font-size: 12px;
+}
+
+.runs li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 0;
+  border-top: 1px solid var(--color-line);
+}
+
+.runName {
+  font-weight: 500;
+}
+
+.runNote {
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.runNote::first-letter {
+  text-transform: uppercase;
+}
+
+.runs li[data-state='done'] .runNote {
+  color: var(--color-success);
+}
+
+.runs li[data-state='warning'] .runNote {
+  color: var(--color-warning);
+}
+
+.runs li[data-state='failed'] .runNote {
+  color: var(--color-danger);
+}
