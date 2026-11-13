@@ -26,8 +26,17 @@
   border-top-color: var(--rarity);
 }
 
-.card:active {
+.card:active:not(:disabled) {
   transform: scale(0.98);
+}
+
+.card:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.card:disabled .check {
+  visibility: hidden;
 }
 
 .card[aria-pressed='true'] {
@@ -114,4 +123,12 @@
   border-color: var(--color-accent);
   color: var(--color-on-accent);
   transform: scale(1.06);
+}
+
+.foot {
+  overflow: hidden;
+  color: var(--color-text-faint);
+  font-size: 11px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }

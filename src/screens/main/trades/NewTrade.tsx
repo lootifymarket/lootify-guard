@@ -2,18 +2,18 @@ import { useEffect, useEffectEvent, useState, type FormEvent } from 'react'
 import type { Account } from '../../../api/accounts.ts'
 import {
   GAME_NAMES,
-  sendTradeOffer,
-  tradableItems,
+  inventoryItems,
   type Game,
-  type Tradable,
-} from '../../../api/trades.ts'
+  type InventoryItem,
+} from '../../../api/inventory.ts'
+import { sendTradeOffer } from '../../../api/trades.ts'
 import { errorMessage } from '../../../api/vault.ts'
 import Button from '../../../components/Button.tsx'
 import Dialog from '../../../components/Dialog.tsx'
 import dialogStyles from '../../../components/Dialog.module.css'
 import Dropdown from '../../../components/Dropdown.tsx'
 import TextField from '../../../components/TextField.tsx'
-import ItemCard from './ItemCard.tsx'
+import ItemCard from '../items/ItemCard.tsx'
 import styles from './Trades.module.css'
 
 const GAME_OPTIONS = (Object.entries(GAME_NAMES) as [Game, string][]).map(
@@ -51,14 +51,14 @@ function Form({
   const [tradeUrl, setTradeUrl] = useState('')
   const [message, setMessage] = useState('')
   const [query, setQuery] = useState('')
-  const [tradable, setTradable] = useState<Tradable | null>(null)
+  const [inventory, setInventory] = useState<InventoryItem[] | null>(null)
   const [loadError, setLoadError] = useState('')
   const [attempt, setAttempt] = useState(0)
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
-  const loaded = useEffectEvent((items: Tradable) => setTradable(items))
+  const loaded = useEffectEvent((items: InventoryItem[]) => setInventory(items))
   const failed = useEffectEvent((err: unknown) =>
     setLoadError(errorMessage(err)),
   )
@@ -66,7 +66,7 @@ function Form({
     if (!from) return
     // An answer for an account or game no longer picked is dropped.
     let current = true
-    void tradableItems(from, game).then(
+    void inventoryItems(from, game).then(
       (items) => current && loaded(items),
       (err: unknown) => current && failed(err),
     )
@@ -78,7 +78,7 @@ function Form({
   function choose(next: { from?: string; game?: Game }) {
     if (next.from !== undefined) setFrom(next.from)
     if (next.game !== undefined) setGame(next.game)
-    setTradable(null)
+    setInventory(null)
     setLoadError('')
     setPicked(new Set())
   }
@@ -91,7 +91,8 @@ function Form({
     })
   }
 
-  const items = tradable?.items ?? []
+  const items = inventory?.filter((item) => item.tradable) ?? []
+  const held = (inventory?.length ?? 0) - items.length
   const shown = items.filter((item) =>
     item.name.toLowerCase().includes(query.trim().toLowerCase()),
   )
@@ -218,10 +219,10 @@ function Form({
               </button>
             </div>
           )}
-          {!tradable && !loadError && (
+          {!inventory && !loadError && (
             <p className={styles.pickerNote}>Loading the inventory…</p>
           )}
-          {tradable && shown.length === 0 && (
+          {inventory && shown.length === 0 && (
             <p className={styles.pickerNote}>
               {items.length === 0
                 ? 'Nothing here can be traded now.'
@@ -242,10 +243,9 @@ function Form({
             </div>
           )}
         </div>
-        {tradable && tradable.held > 0 && (
+        {held > 0 && (
           <span className={styles.pickerNote}>
-            {tradable.held} more {tradable.held === 1 ? 'item is' : 'items are'}{' '}
-            under a trade hold.
+            {held} more {held === 1 ? 'item' : 'items'} can’t be traded now.
           </span>
         )}
       </div>

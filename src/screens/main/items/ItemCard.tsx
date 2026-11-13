@@ -5,7 +5,7 @@ import {
   type CSSProperties,
   type RefObject,
 } from 'react'
-import type { InventoryItem } from '../../../api/trades.ts'
+import type { InventoryItem } from '../../../api/inventory.ts'
 import Icon from '../../../components/Icon.tsx'
 import { useItemIcon } from './itemIcons.ts'
 import styles from './ItemCard.module.css'
@@ -20,6 +20,10 @@ type Props = {
   accountName: string
   item: InventoryItem
   picked: boolean
+  /** The account it's on, when items of many accounts show together. */
+  owner?: string
+  /** Shown but can't be picked, like an item under a trade hold. */
+  unavailable?: string
   onToggle: () => void
 }
 
@@ -27,6 +31,8 @@ export default function ItemCard({
   accountName,
   item,
   picked,
+  owner,
+  unavailable,
   onToggle,
 }: Props) {
   const card = useRef<HTMLButtonElement>(null)
@@ -39,7 +45,8 @@ export default function ItemCard({
       type="button"
       className={styles.card}
       aria-pressed={picked}
-      title={item.name}
+      disabled={unavailable !== undefined}
+      title={unavailable ? `${item.name} · ${unavailable}` : item.name}
       style={
         { '--rarity': `#${item.rarityColor ?? NO_RARITY}` } as CSSProperties
       }
@@ -62,8 +69,16 @@ export default function ItemCard({
           >
             {title}
           </span>
-          {item.amount > 1 && (
-            <span className={styles.meta}>{item.amount} pcs</span>
+          {(item.amount > 1 || owner || unavailable) && (
+            <span className={styles.foot}>
+              {[
+                unavailable,
+                item.amount > 1 ? `${item.amount} pcs` : null,
+                owner,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
           )}
         </span>
       </span>

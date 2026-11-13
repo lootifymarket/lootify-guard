@@ -1,0 +1,122 @@
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.subtitle {
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.total {
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.account {
+  width: 200px;
+}
+
+.game {
+  width: 170px;
+}
+
+.sort {
+  width: 190px;
+}
+
+.search {
+  flex: 1 1 180px;
+  min-width: 0;
+  /* As tall as the small dropdowns next to it. */
+  height: 34px;
+  box-sizing: border-box;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.bar {
+  min-height: 52px;
+  box-sizing: border-box;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 18px;
+  background: var(--color-panel);
+  border: 1px solid var(--color-divider);
+  border-radius: 12px;
+  font-size: 13px;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.bar[data-picked='true'] {
+  background: var(--color-danger-surface);
+  border-color: var(--color-danger-muted);
+}
+
+.barWords {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 14px;
+}
+
+.muted {
+  color: var(--color-text-faint);
+}
+
+.link {
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.link:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+.error {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 13px;
+}
+
+/* Error messages from Rust start in lower case; account names must stay as they are. */
+.reason {
+  display: inline-block;
+}
+
+.reason::first-letter {
+  text-transform: uppercase;
+}

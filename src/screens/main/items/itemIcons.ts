@@ -1,5 +1,5 @@
 import { useEffect, useSyncExternalStore } from 'react'
-import { itemIcons } from '../../../api/trades.ts'
+import { itemIcons } from '../../../api/inventory.ts'
 
 // Pictures are the same for every account; the account only picks the proxy.
 const loaded = new Map<string, string>()
