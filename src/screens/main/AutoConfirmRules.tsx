@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Account } from '../../api/accounts.ts'
+import type { Account, Group } from '../../api/accounts.ts'
 import {
   AUTO_CONFIRM_RULES,
   setAutoConfirmRule,
@@ -8,7 +8,9 @@ import {
 import { errorMessage } from '../../api/vault.ts'
 import Button from '../../components/Button.tsx'
 import Dialog from '../../components/Dialog.tsx'
+import Dropdown from '../../components/Dropdown.tsx'
 import dialogStyles from '../../components/Dialog.module.css'
+import { groupOptions, inGroup } from './groups/groupFilter.ts'
 import styles from './AutoConfirmRules.module.css'
 
 const TICK = 'M20 6L9 17l-5-5'
@@ -17,6 +19,7 @@ const DASH = 'M6 12h12'
 type Props = {
   open: boolean
   accounts: Account[]
+  groups: Group[]
   onClose: () => void
   onChanged: () => void
 }
@@ -25,12 +28,29 @@ type Props = {
 export default function AutoConfirmRules({
   open,
   accounts,
+  groups,
   onClose,
   onChanged,
 }: Props) {
+  const [groupFilter, setGroupFilter] = useState('')
+  const shown = accounts.filter((account) =>
+    inGroup(account.groupId, groupFilter),
+  )
   return (
     <Dialog open={open} title="Auto-confirm rules" wide onClose={onClose}>
-      <Table accounts={accounts} onChanged={onChanged} />
+      {groups.length > 0 && (
+        <div className={styles.groupFilter}>
+          <Dropdown
+            label="Group"
+            hideLabel
+            size="sm"
+            value={groupFilter}
+            options={groupOptions(groups)}
+            onChange={setGroupFilter}
+          />
+        </div>
+      )}
+      <Table accounts={shown} onChanged={onChanged} />
       <div className={styles.footer}>
         <span className={styles.never}>
           API keys, phone changes and account recovery are never confirmed

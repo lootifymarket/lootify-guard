@@ -19,13 +19,9 @@ impl From<GroupError> for CommandError {
     }
 }
 
-/// Groups in the order they were made.
-#[tauri::command]
-pub fn list_groups(state: State<'_, VaultState>) -> Result<Vec<GroupView>, CommandError> {
-    let unlocked = state.unlocked();
-    let vault = unlocked.as_ref().ok_or(CommandError::Locked)?;
-    let contents = Contents::from_bytes(vault.data())?;
-    Ok(contents
+/// Groups in the order they were made, with how many accounts each has.
+pub(crate) fn views(contents: &Contents) -> Vec<GroupView> {
+    contents
         .groups
         .iter()
         .map(|group| GroupView {
@@ -37,7 +33,7 @@ pub fn list_groups(state: State<'_, VaultState>) -> Result<Vec<GroupView>, Comma
                 .filter(|account| account.group == Some(group.id))
                 .count(),
         })
-        .collect())
+        .collect()
 }
 
 /// Makes a group with these accounts in it, taking them out of any other.

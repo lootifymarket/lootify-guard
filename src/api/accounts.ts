@@ -14,12 +14,22 @@ export type Account = {
   /** A data URL, or null before the profile was fetched. */
   avatar: string | null
   proxyId: number | null
+  groupId: number | null
   autoConfirm: AutoConfirm
+}
+
+export type Group = {
+  id: number
+  name: string
+  /** How many accounts are in it. */
+  count: number
 }
 
 export type AccountList = {
   codesExpireAt: number
   accounts: Account[]
+  /** In the order they were made. */
+  groups: Group[]
 }
 
 export type ImportReport = {

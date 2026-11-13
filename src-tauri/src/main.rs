@@ -64,7 +64,6 @@ fn main() {
             add_account::add_account_confirm,
             add_account::save_new_revocation_code,
             add_account::add_account_cancel,
-            groups::list_groups,
             groups::create_group,
             groups::rename_group,
             groups::remove_group,

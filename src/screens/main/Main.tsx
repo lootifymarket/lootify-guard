@@ -40,7 +40,13 @@ export default function Main({ onLock, onAutoLocked }: Props) {
       return <Trades accounts={list.accounts} onChanged={reload} />
     }
     if (section === 'inventory') {
-      return <Inventory accounts={list.accounts} onChanged={reload} />
+      return (
+        <Inventory
+          accounts={list.accounts}
+          groups={list.groups}
+          onChanged={reload}
+        />
+      )
     }
     if (section === 'proxies') return <Proxies />
     if (section === 'add') {
@@ -61,6 +67,7 @@ export default function Main({ onLock, onAutoLocked }: Props) {
           key={openAccount.accountName}
           account={openAccount}
           accounts={list.accounts}
+          groups={list.groups}
           codesExpireAt={list.codesExpireAt}
           onBack={() => setOpenName(null)}
           onChanged={reload}
@@ -75,6 +82,7 @@ export default function Main({ onLock, onAutoLocked }: Props) {
       <Accounts
         list={list}
         onImported={reload}
+        onChanged={reload}
         onOpen={setOpenName}
         onAdd={() => select('add')}
       />

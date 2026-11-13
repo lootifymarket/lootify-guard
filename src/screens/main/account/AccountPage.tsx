@@ -7,6 +7,7 @@ import {
   revealRevocationCode,
   setAccountProxy,
   type Account,
+  type Group,
 } from '../../../api/accounts.ts'
 import {
   AUTO_CONFIRM_RULES,
@@ -19,6 +20,7 @@ import {
   proxyTitle,
   type Proxy,
 } from '../../../api/proxies.ts'
+import { setAccountGroup } from '../../../api/groups.ts'
 import {
   formatMoney,
   walletBalance,
@@ -60,6 +62,7 @@ type Props = {
   account: Account
   /** Every account, for setting auto-confirm rules on many at once. */
   accounts: Account[]
+  groups: Group[]
   codesExpireAt: number
   onBack: () => void
   onChanged: () => void
@@ -79,6 +82,7 @@ type OpenDialog =
 export default function AccountPage({
   account,
   accounts,
+  groups,
   codesExpireAt,
   onBack,
   onChanged,
@@ -92,6 +96,7 @@ export default function AccountPage({
   const [proxies, setProxies] = useState<Proxy[]>([])
   const [proxyError, setProxyError] = useState('')
   const [ruleError, setRuleError] = useState('')
+  const [groupError, setGroupError] = useState('')
   const [checking, setChecking] = useState(false)
   // `undefined` until Steam was asked, `null` when the account has no key.
   const [apiKey, setApiKey] = useState<ApiKey | null | undefined>(undefined)
@@ -159,6 +164,16 @@ export default function AccountPage({
       await setAccountProxy(name, value === '' ? null : Number(value))
     } catch (err) {
       setProxyError(errorMessage(err))
+    }
+    onChanged()
+  }
+
+  async function changeGroup(value: string) {
+    setGroupError('')
+    try {
+      await setAccountGroup([name], value === '' ? null : Number(value))
+    } catch (err) {
+      setGroupError(errorMessage(err))
     }
     onChanged()
   }
@@ -447,6 +462,29 @@ export default function AccountPage({
               </dd>
             </div>
             <div className={styles.fact}>
+              <dt>Group</dt>
+              <dd>
+                <div className={styles.proxyPicker}>
+                  <Dropdown
+                    label="Group"
+                    hideLabel
+                    size="sm"
+                    value={
+                      account.groupId === null ? '' : String(account.groupId)
+                    }
+                    options={[
+                      { value: '', label: 'No group' },
+                      ...groups.map((group) => ({
+                        value: String(group.id),
+                        label: group.name,
+                      })),
+                    ]}
+                    onChange={(value) => void changeGroup(value)}
+                  />
+                </div>
+              </dd>
+            </div>
+            <div className={styles.fact}>
               <dt>Steam ID</dt>
               <dd className={account.steamId ? styles.mono : styles.muted}>
                 {account.steamId ?? 'Appears after you sign in'}
@@ -491,6 +529,11 @@ export default function AccountPage({
           {proxyError && (
             <p className={styles.error} role="alert">
               {proxyError}
+            </p>
+          )}
+          {groupError && (
+            <p className={styles.error} role="alert">
+              {groupError}
             </p>
           )}
           {walletError && (
@@ -654,6 +697,7 @@ export default function AccountPage({
       <AutoConfirmRules
         open={dialog === 'rules'}
         accounts={accounts}
+        groups={groups}
         onClose={() => setDialog(null)}
         onChanged={onChanged}
       />
