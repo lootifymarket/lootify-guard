@@ -2,6 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod accounts;
+mod add_account;
 mod auto_confirm;
 mod biometrics;
 mod confirmations;
@@ -25,6 +26,7 @@ fn main() {
             std::fs::create_dir_all(&data_dir)?;
             app.manage(vault::VaultState::new(data_dir.join("vault.lgv")));
             app.manage(auto_confirm::AutoConfirmLog::default());
+            app.manage(add_account::AddAccountState::default());
             vault::watch_idle(app.handle().clone());
             auto_confirm::watch(app.handle().clone());
             Ok(())
@@ -49,6 +51,12 @@ fn main() {
             accounts::sign_in,
             accounts::refresh_profile,
             accounts::set_account_proxy,
+            add_account::add_account_sign_in,
+            add_account::add_account_sign_in_code,
+            add_account::add_account_guard,
+            add_account::add_account_confirm,
+            add_account::save_new_revocation_code,
+            add_account::add_account_cancel,
             confirmations::list_confirmations,
             confirmations::respond_to_confirmations,
             auto_confirm::set_auto_confirm_rule,
