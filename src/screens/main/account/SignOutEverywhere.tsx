@@ -1,13 +1,17 @@
 import { useState } from 'react'
-import { signOutOtherDevices } from '../../../api/security.ts'
+import { signOutOtherDevices, type Device } from '../../../api/security.ts'
 import { errorMessage } from '../../../api/vault.ts'
 import Button from '../../../components/Button.tsx'
 import Dialog from '../../../components/Dialog.tsx'
 import dialogStyles from '../../../components/Dialog.module.css'
+import DeviceDetails from './DeviceDetails.tsx'
+import styles from './AccountPage.module.css'
 
 type Props = {
   open: boolean
   accountName: string
+  /** `undefined` when the list couldn't be loaded. */
+  devices: Device[] | undefined
   onClose: () => void
   onSignedOut: (count: number) => void
 }
@@ -15,6 +19,7 @@ type Props = {
 export default function SignOutEverywhere({
   open,
   accountName,
+  devices,
   onClose,
   onSignedOut,
 }: Props) {
@@ -22,6 +27,7 @@ export default function SignOutEverywhere({
     <Dialog open={open} title="Sign out everywhere?" onClose={onClose}>
       <Form
         accountName={accountName}
+        others={devices?.filter((device) => !device.thisApp)}
         onCancel={onClose}
         onSignedOut={onSignedOut}
       />
@@ -31,10 +37,12 @@ export default function SignOutEverywhere({
 
 function Form({
   accountName,
+  others,
   onCancel,
   onSignedOut,
 }: {
   accountName: string
+  others: Device[] | undefined
   onCancel: () => void
   onSignedOut: (count: number) => void
 }) {
@@ -58,9 +66,19 @@ function Form({
   return (
     <>
       <p className={dialogStyles.text}>
-        Steam ends every session except this app. The Steam app on phones, Steam
-        on computers and browsers will ask to sign in again.
+        {others?.length === 0
+          ? 'No device but this app is signed in to the account.'
+          : 'Steam ends every session except this app. These devices will ask to sign in again:'}
       </p>
+      {others && others.length > 0 && (
+        <ul className={styles.signOutList}>
+          {others.map((device, i) => (
+            <li key={i} className={styles.device}>
+              <DeviceDetails device={device} />
+            </li>
+          ))}
+        </ul>
+      )}
       {error && (
         <p className={dialogStyles.error} role="alert">
           {error}
@@ -73,7 +91,7 @@ function Form({
         <Button
           size="sm"
           busy={busy}
-          disabled={busy}
+          disabled={busy || others?.length === 0}
           onClick={() => void signOut()}
         >
           {busy ? 'Signing out…' : 'Sign out everywhere'}

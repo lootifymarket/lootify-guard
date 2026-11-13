@@ -22,7 +22,6 @@ import {
 import {
   checkApiKey,
   checkStanding,
-  DEVICE_KIND_NAMES,
   listDevices,
   type ApiKey,
   type Device,
@@ -38,11 +37,11 @@ import Button from '../../../components/Button.tsx'
 import Dropdown, { type DropdownOption } from '../../../components/Dropdown.tsx'
 import Flag from '../../../components/Flag.tsx'
 import Toggle from '../../../components/Toggle.tsx'
-import { ago } from '../../../lib/ago.ts'
 import { useCopy } from '../../../lib/useCopy.ts'
 import { useCodeSecondsLeft } from '../useAccounts.ts'
 import AutoConfirmRules from '../AutoConfirmRules.tsx'
 import ApiKeyAlert from './ApiKeyAlert.tsx'
+import DeviceDetails from './DeviceDetails.tsx'
 import layout from '../layout.module.css'
 import ConfirmOwner from './ConfirmOwner.tsx'
 import RemoveAccount from './RemoveAccount.tsx'
@@ -343,24 +342,7 @@ export default function AccountPage({
               <dt className={styles.hidden}>Devices</dt>
               {devices.map((device, i) => (
                 <dd key={i} className={styles.device}>
-                  <span className={styles.deviceWords}>
-                    <span>
-                      {device.name || DEVICE_KIND_NAMES[device.kind]}
-                      {device.thisApp && (
-                        <span className={styles.muted}> · this app</span>
-                      )}
-                    </span>
-                    <span className={styles.muted}>
-                      {[DEVICE_KIND_NAMES[device.kind], device.place]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </span>
-                  </span>
-                  {device.lastSeenAt !== null && (
-                    <span className={styles.muted}>
-                      {ago(device.lastSeenAt)}
-                    </span>
-                  )}
+                  <DeviceDetails device={device} />
                 </dd>
               ))}
             </div>
@@ -571,6 +553,7 @@ export default function AccountPage({
       <SignOutEverywhere
         open={dialog === 'signOut'}
         accountName={name}
+        devices={devices}
         onClose={() => setDialog(null)}
         onSignedOut={(count) => {
           setDialog(null)
