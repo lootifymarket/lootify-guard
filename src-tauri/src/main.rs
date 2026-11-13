@@ -13,17 +13,24 @@ mod playing;
 mod profile;
 mod proxies;
 mod security;
+mod settings;
 mod sign_ins;
 mod tasks;
 mod trades;
+mod tray;
 mod vault;
 
-use tauri::Manager;
 use tauri::webview::{PermissionKind, PermissionResponse};
+use tauri::{AppHandle, Manager, RunEvent, WindowEvent};
+use tauri_plugin_autostart::MacosLauncher;
 
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_autostart::init(
+            MacosLauncher::LaunchAgent,
+            Some(vec![tray::HIDDEN_ARG]),
+        ))
         // The camera reads sign-in QR codes; nothing else the page might ask for is needed.
         .on_permission_request(|_, kind| match kind {
             PermissionKind::Camera => PermissionResponse::Allow,
@@ -32,7 +39,12 @@ fn main() {
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data_dir)?;
-            app.manage(vault::VaultState::new(data_dir.join("vault.lgv")));
+            let settings = settings::SettingsState::load(data_dir.join("settings.json"));
+            app.manage(vault::VaultState::new(
+                data_dir.join("vault.lgv"),
+                settings.get().auto_lock(),
+            ));
+            app.manage(settings);
             app.manage(auto_confirm::AutoConfirmLog::default());
             app.manage(add_account::AddAccountState::default());
             app.manage(inventory::InventoryCache::default());
@@ -40,6 +52,10 @@ fn main() {
             app.manage(tasks::Tasks::default());
             app.manage(playing::Players::default());
             app.manage(farming::Farms::default());
+            tray::install(app.handle())?;
+            if std::env::args().any(|arg| arg == tray::HIDDEN_ARG) {
+                tray::hide_window(app.handle());
+            }
             vault::watch_idle(app.handle().clone());
             auto_confirm::watch(app.handle().clone());
             Ok(())
@@ -52,6 +68,8 @@ fn main() {
             vault::unlock_with_biometrics,
             vault::enable_biometrics,
             vault::change_password,
+            vault::change_master_password,
+            vault::disable_biometrics,
             vault::lock_vault,
             vault::erase_vault,
             vault::report_activity,
@@ -97,6 +115,13 @@ fn main() {
             profile::save_profile,
             profile::clear_name_history,
             profile::change_avatar,
+            settings::get_settings,
+            settings::set_auto_lock,
+            settings::set_streamer_mode,
+            settings::set_close_to_tray,
+            settings::launch_at_startup,
+            settings::set_launch_at_startup,
+            settings::export_backup,
             playing::start_playing,
             farming::start_farming,
             farming::farming_now,
@@ -128,6 +153,29 @@ fn main() {
             proxies::remove_proxy,
             proxies::check_proxy,
         ])
-        .run(tauri::generate_context!())
-        .expect("failed to run tauri application");
+        .on_window_event(|window, event| {
+            if let WindowEvent::CloseRequested { api, .. } = event
+                && window
+                    .state::<settings::SettingsState>()
+                    .get()
+                    .close_to_tray
+            {
+                api.prevent_close();
+                let _ = window.hide();
+            }
+        })
+        .build(tauri::generate_context!())
+        .expect("failed to build tauri application")
+        .run(on_run_event);
 }
+
+/// Clicking the Dock icon brings back a window that was closed to the tray.
+#[cfg(target_os = "macos")]
+fn on_run_event(app: &AppHandle, event: RunEvent) {
+    if let RunEvent::Reopen { .. } = event {
+        tray::show_window(app);
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn on_run_event(_: &AppHandle, _: RunEvent) {}

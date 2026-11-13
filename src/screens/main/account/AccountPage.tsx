@@ -270,7 +270,7 @@ export default function AccountPage({
           <div className={styles.names}>
             <h1 className={layout.title}>{describe(account).title}</h1>
             {describe(account).details ? (
-              <span className={styles.steamId}>
+              <span className={styles.steamId} data-private>
                 {describe(account).details}
               </span>
             ) : (
@@ -293,7 +293,9 @@ export default function AccountPage({
           Steam Guard
         </h2>
         <div className={styles.guard}>
-          <span className={styles.code}>{account.code}</span>
+          <span className={styles.code} data-private>
+            {account.code}
+          </span>
           <Button
             variant="secondary"
             size="sm"
@@ -448,6 +450,7 @@ export default function AccountPage({
               {account.signedIn ? (
                 <dd
                   className={wallet === undefined ? styles.muted : styles.mono}
+                  data-private
                 >
                   {walletText(wallet)}
                 </dd>

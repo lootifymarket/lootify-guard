@@ -6,6 +6,7 @@ import Inventory from './inventory/Inventory.tsx'
 import Proxies from './proxies/Proxies.tsx'
 import Sidebar, { type Section } from './Sidebar.tsx'
 import SteamGuard from './SteamGuard.tsx'
+import Settings from './settings/Settings.tsx'
 import Tasks from './tasks/Tasks.tsx'
 import Trades from './trades/Trades.tsx'
 import { useAccounts } from './useAccounts.ts'
@@ -22,7 +23,8 @@ export default function Main({ onLock, onAutoLocked }: Props) {
   const [section, setSection] = useState<Section>('accounts')
   const [openName, setOpenName] = useState<string | null>(null)
   const { list, error, reload } = useAccounts()
-  const locksAt = useAutoLock(onAutoLocked)
+  const [autoLockVersion, setAutoLockVersion] = useState(0)
+  const locksAt = useAutoLock(onAutoLocked, autoLockVersion)
   const openAccount = list?.accounts.find(
     (account) => account.accountName === openName,
   )
@@ -53,6 +55,13 @@ export default function Main({ onLock, onAutoLocked }: Props) {
       return <Tasks accounts={list.accounts} groups={list.groups} />
     }
     if (section === 'proxies') return <Proxies />
+    if (section === 'settings') {
+      return (
+        <Settings
+          onAutoLockChanged={() => setAutoLockVersion((version) => version + 1)}
+        />
+      )
+    }
     if (section === 'add') {
       return (
         <AddAccount

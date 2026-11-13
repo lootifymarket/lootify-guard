@@ -58,7 +58,9 @@ export default function SteamGuard({ list, onChanged }: Props) {
                   {label(account.accountName, 'Click to copy')}
                 </span>
               </span>
-              <span className={styles.value}>{account.code}</span>
+              <span className={styles.value} data-private>
+                {account.code}
+              </span>
             </button>
           ))}
           {shown.length === 0 && (

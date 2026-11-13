@@ -1,6 +1,6 @@
 use std::fs;
 use std::io;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard, PoisonError};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -15,10 +15,10 @@ use tauri::async_runtime::spawn_blocking;
 use tauri::{AppHandle, Manager, State};
 use zeroize::Zeroizing;
 
+use crate::accounts::confirm_owner;
 use crate::biometrics::{self, BiometricError};
 
 const UNLOCK_REASON: &str = "unlock your vault";
-const AUTO_LOCK_AFTER: Duration = Duration::from_secs(15 * 60);
 const IDLE_CHECK_EVERY: Duration = Duration::from_secs(10);
 
 pub struct VaultState {
@@ -28,12 +28,21 @@ pub struct VaultState {
 }
 
 impl VaultState {
-    pub fn new(path: PathBuf) -> Self {
+    /// `auto_lock` is how long the vault may sit idle; `None` never locks it.
+    pub fn new(path: PathBuf, auto_lock: Option<Duration>) -> Self {
         Self {
             path,
             unlocked: Mutex::new(None),
-            idle: Mutex::new(IdleTimer::new(AUTO_LOCK_AFTER, SystemTime::now())),
+            idle: Mutex::new(IdleTimer::new(auto_lock, SystemTime::now())),
         }
+    }
+
+    pub(crate) fn path(&self) -> &Path {
+        &self.path
+    }
+
+    pub(crate) fn set_auto_lock(&self, auto_lock: Option<Duration>) {
+        self.idle().set_timeout(auto_lock);
     }
 
     /// The open vault, if any. A vault that has sat idle too long is dropped here, so
@@ -246,6 +255,24 @@ pub async fn change_password(
     Ok(())
 }
 
+/// Changes the password from the settings. The current one has to be given: an
+/// unlocked vault alone isn't enough, since anyone can walk up to the computer.
+#[tauri::command]
+pub async fn change_master_password(
+    state: State<'_, VaultState>,
+    current: String,
+    password: String,
+) -> Result<(), CommandError> {
+    confirm_owner(&state, Some(current), "change the master password").await?;
+    change_password(state, password).await
+}
+
+#[tauri::command]
+pub fn disable_biometrics() -> Result<(), CommandError> {
+    biometrics::forget()?;
+    Ok(())
+}
+
 #[tauri::command]
 pub fn lock_vault(state: State<'_, VaultState>) {
     *state.unlocked() = None;
@@ -264,24 +291,24 @@ pub fn erase_vault(state: State<'_, VaultState>) -> Result<(), CommandError> {
 }
 
 /// Called by the UI on user activity. Returns when the vault will lock if nothing
-/// else happens, in Unix seconds.
+/// else happens, in Unix seconds, or `None` when it never locks by itself.
 #[tauri::command]
-pub fn report_activity(state: State<'_, VaultState>) -> Result<u64, CommandError> {
+pub fn report_activity(state: State<'_, VaultState>) -> Result<Option<u64>, CommandError> {
     if state.unlocked().is_none() {
         return Err(CommandError::Locked);
     }
     let mut idle = state.idle();
     idle.touch(SystemTime::now());
-    Ok(unix_secs(idle.deadline()))
+    Ok(idle.deadline().map(unix_secs))
 }
 
 /// When the vault will lock, in Unix seconds, without counting this call as activity.
 #[tauri::command]
-pub fn auto_lock_deadline(state: State<'_, VaultState>) -> Result<u64, CommandError> {
+pub fn auto_lock_deadline(state: State<'_, VaultState>) -> Result<Option<u64>, CommandError> {
     if state.unlocked().is_none() {
         return Err(CommandError::Locked);
     }
-    Ok(unix_secs(state.idle().deadline()))
+    Ok(state.idle().deadline().map(unix_secs))
 }
 
 fn unix_secs(time: SystemTime) -> u64 {

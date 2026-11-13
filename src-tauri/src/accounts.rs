@@ -314,7 +314,7 @@ pub async fn refresh_profile(
 /// Asks for the master password again, or for biometrics when there is no password,
 /// before secrets leave the vault. An unlocked vault alone isn't enough: anyone can
 /// walk up to an unattended computer.
-async fn confirm_owner(
+pub(crate) async fn confirm_owner(
     state: &VaultState,
     password: Option<String>,
     reason: &'static str,

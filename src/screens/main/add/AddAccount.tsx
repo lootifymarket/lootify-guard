@@ -372,7 +372,9 @@ function Revocation({
             The only way to remove Steam Guard from {added.accountName} if this
             vault is lost. Keep a copy outside this computer.
           </p>
-          <span className={styles.code}>{code}</span>
+          <span className={styles.code} data-private>
+            {code}
+          </span>
           <div className={styles.codeActions}>
             <Button
               variant="secondary"

@@ -17,6 +17,7 @@ pub mod profile;
 pub mod profile_settings;
 pub mod proxy;
 pub mod sessions;
+pub mod settings;
 pub mod sign_ins;
 pub mod standing;
 pub mod steam;

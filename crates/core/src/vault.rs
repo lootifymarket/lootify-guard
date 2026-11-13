@@ -282,7 +282,7 @@ fn cipher(key: &[u8; KEY_LEN]) -> Aes256Gcm {
 
 // Writes next to the target and renames over it, so a crash mid-save leaves
 // the previous vault intact instead of a truncated one.
-fn write_atomically(path: &Path, contents: &[u8]) -> io::Result<()> {
+pub(crate) fn write_atomically(path: &Path, contents: &[u8]) -> io::Result<()> {
     let mut tmp_name = path.file_name().unwrap_or_default().to_owned();
     tmp_name.push(".tmp");
     let tmp_path = path.with_file_name(tmp_name);

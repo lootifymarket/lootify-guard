@@ -37,15 +37,25 @@ export const enableBiometrics = () => invoke<void>('enable_biometrics')
 export const changePassword = (password: string) =>
   invoke<void>('change_password', { password })
 
+/** Fails with a wrong-password error when `current` isn't the master password. */
+export const changeMasterPassword = (current: string, password: string) =>
+  invoke<void>('change_master_password', { current, password })
+
+export const disableBiometrics = () => invoke<void>('disable_biometrics')
+
 export const lockVault = () => invoke<void>('lock_vault')
 
 export const eraseVault = () => invoke<void>('erase_vault')
 
-/** Counts as user activity. Resolves to when the vault locks, in Unix seconds. */
-export const reportActivity = () => invoke<number>('report_activity')
+/**
+ * Counts as user activity. Resolves to when the vault locks, in Unix seconds,
+ * or `null` when it never locks by itself.
+ */
+export const reportActivity = () => invoke<number | null>('report_activity')
 
-/** When the vault locks, in Unix seconds, without counting as activity. */
-export const autoLockDeadline = () => invoke<number>('auto_lock_deadline')
+/** When the vault locks, without counting as activity. */
+export const autoLockDeadline = () =>
+  invoke<number | null>('auto_lock_deadline')
 
 function errorKind(error: unknown) {
   return (error as CommandError | undefined)?.kind
