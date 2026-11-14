@@ -1,6 +1,29 @@
-# Lootify Guard
+<div align="center">
+  <img src="src-tauri/icons/icon.png" width="96" alt="">
+  <h1>Lootify Guard</h1>
+  <p>Many Steam accounts in one desktop app: Guard codes, confirmations, trades, inventories and proxies.<br>A companion to <a href="https://lootify.market">Lootify Market</a>. For macOS and Windows.</p>
+  <p><a href="https://github.com/lootifymarket/lootify-guard/releases/latest"><b>Download</b></a></p>
+</div>
 
-Desktop app for managing Steam accounts: Steam Guard codes, trade and market confirmations, inventories and proxies for many accounts in one place. A companion to [Lootify Market](https://lootify.market). Windows and macOS.
+![Accounts](.github/assets/accounts.png)
+
+## What it does
+
+- **Steam Guard.** Codes for every account, trade and market confirmations, sign-in approvals and QR sign-in, and auto-confirm rules you set per account.
+- **Accounts.** Sign in and set up Guard, import `.maFile` from SDA, ASF or steamguard-cli, or move Guard over from a phone.
+- **Profiles.** Nickname, avatar, privacy, custom URL, trade URL and wallet, plus checks for foreign Web API keys, signed-in devices, bans, limited status and market access.
+- **Trades and inventory** across all accounts: accept and send offers, move items to one account, list them on the Steam market.
+- **Proxies and tasks.** A proxy per account, groups, and bulk tasks with delays between accounts: hour boost, card farming, free games, sale events, profile changes.
+- **Steam in a tab**, signed in as the account and going through its proxy.
+- English, Russian, Ukrainian and Chinese.
+
+![Steam Guard](.github/assets/guard.png)
+
+## Your data stays on your computer
+
+- Passwords, Guard secrets and Steam tokens live in an encrypted vault (Argon2id and AES-256-GCM), unlocked with a master password or Touch ID. They're never sent anywhere, Lootify's servers included.
+- An account with a proxy talks to Steam only through that proxy.
+- No telemetry.
 
 ## Install
 
@@ -16,17 +39,27 @@ The builds aren't signed yet, so the system warns before the first launch:
 
 `SHA256SUMS.txt` in each release lists the files' checksums.
 
-## Development
+## Building from source
 
 You need Rust (stable), Node.js 22+ and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for your OS.
 
 ```sh
 npm install
-npm run tauri dev
+npm run tauri dev     # run it
+npm run tauri build   # build an installer
 ```
+
+The Rust code is in `crates/core` (Steam, the vault, everything that doesn't need a window) and `src-tauri` (the app around it). The interface is React in `src`.
 
 ## Releasing
 
 1. Raise the version on `dev`: `npm run release:version 0.2.0`, and merge it.
-2. Merge `dev` into `main`. GitHub Actions builds both platforms into a draft release.
-3. Check the draft and publish it. Publishing makes the `v0.2.0` tag.
+2. Open a PR from `dev` into `main`. What it says becomes the release notes.
+3. Merge it. GitHub Actions builds both platforms into a draft release.
+4. Check the draft and publish it. Publishing makes the `v0.2.0` tag.
+
+## License
+
+[GPL-3.0](LICENSE). You can use, change and share it, and anything built from it has to stay open under the same license.
+
+Lootify Guard isn't affiliated with Valve. Steam is a trademark of Valve Corporation.
