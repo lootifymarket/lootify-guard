@@ -59,3 +59,24 @@ export const browserReload = (accountName: string) =>
 /** `null` once the tab is closed. */
 export const browserState = (accountName: string) =>
   invoke<BrowserState | null>('browser_state', { accountName })
+
+/** A page saved to the bar under the address, the same for every account. */
+export type Bookmark = {
+  url: string
+  title: string
+  /** The site's icon as a data URL, when it had one to give. */
+  icon: string | null
+}
+
+export const listBookmarks = () => invoke<Bookmark[]>('list_bookmarks')
+
+/**
+ * Saves the page the account's tab is on, fetching its site's icon. Resolves to
+ * every bookmark.
+ */
+export const bookmarkPage = (accountName: string) =>
+  invoke<Bookmark[]>('bookmark_page', { accountName })
+
+/** Resolves to every bookmark left. */
+export const removeBookmark = (url: string) =>
+  invoke<Bookmark[]>('remove_bookmark', { url })

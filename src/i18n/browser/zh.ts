@@ -34,4 +34,10 @@ export const browser: typeof en = {
   signedIn: '登录时间',
   signedInAgo: (when: string) => `${when}前`,
   endSession: '结束会话',
+  bookmarks: '书签',
+  bookmarkThis: '将此页加入书签',
+  unbookmark: '从书签中移除',
+  pinnedHere: '固定书签，无法移除',
+  pinned: '已固定',
+  removeBookmark: '移除书签',
 }

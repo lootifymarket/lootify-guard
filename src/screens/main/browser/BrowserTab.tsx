@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { CODE_PERIOD_SECS, type Account } from '../../../api/accounts.ts'
 import {
+  bookmarkPage,
   browserBack,
   browserForward,
   browserNavigate,
@@ -8,8 +9,11 @@ import {
   browserSnapshot,
   browserState,
   hideBrowser,
+  listBookmarks,
   openBrowser,
   placeBrowser,
+  removeBookmark,
+  type Bookmark,
   type Bounds,
   type BrowserState,
 } from '../../../api/browser.ts'
@@ -28,12 +32,32 @@ import { ago } from '../../../lib/ago.ts'
 import { MASK } from '../../../lib/streamer.ts'
 import { useToast } from '../../../lib/toast.ts'
 import { useCodeSecondsLeft } from '../useAccounts.ts'
+import lootifyMarketIcon from '../../../assets/lootify-market.png'
+import steamIcon from '../../../assets/steam.png'
 import styles from './BrowserTab.module.css'
 
 const BACK_ICON = 'M15 18l-6-6 6-6'
 const FORWARD_ICON = 'M9 18l6-6-6-6'
 const RELOAD_ICON = 'M23 4v6h-6M20.5 15a9 9 0 1 1-2.1-9.4L23 10'
 const LOCK_ICON = 'M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4'
+const STAR_ICON =
+  'M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z'
+const PIN_ICON = 'M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4'
+// Always on the bar and never removed: the two sites the app is for.
+const PINNED = [
+  {
+    id: 'steam',
+    title: 'Steam',
+    url: 'https://store.steampowered.com/',
+    icon: steamIcon,
+  },
+  {
+    id: 'lootify',
+    title: 'Lootify Market',
+    url: 'https://lootify.market/',
+    icon: lootifyMarketIcon,
+  },
+] as const
 const SHIELD_ICON = 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'
 // The address and the spinner follow the page closely; Steam is the slow part.
 const STATE_EVERY_MS = 400
@@ -43,6 +67,28 @@ const CONFIRMATIONS_EVERY_MS = 30_000
 function boundsOf(element: HTMLElement): Bounds {
   const rect = element.getBoundingClientRect()
   return { x: rect.left, y: rect.top, width: rect.width, height: rect.height }
+}
+
+/** The icon the app has of its own for the sites it's for, or `null`. */
+function builtInIcon(address: string) {
+  const host = new URL(address).hostname
+  if (host === 'steamcommunity.com' || host.endsWith('steampowered.com')) {
+    return steamIcon
+  }
+  return host === 'lootify.market' || host.endsWith('.lootify.market')
+    ? lootifyMarketIcon
+    : null
+}
+
+/** The site's own icon, else the app's for the sites it knows, else a letter. */
+function BookmarkIcon({ bookmark }: { bookmark: Bookmark }) {
+  const icon = bookmark.icon ?? builtInIcon(bookmark.url)
+  if (icon) return <img className={styles.siteIcon} src={icon} alt="" />
+  return (
+    <span className={styles.letter} aria-hidden="true">
+      {bookmark.title.slice(0, 1).toUpperCase()}
+    </span>
+  )
 }
 
 type Props = {
@@ -75,6 +121,9 @@ export default function BrowserTab({
   const [snapshot, setSnapshot] = useState<string | null>(null)
   const [draft, setDraft] = useState<string | null>(null)
   const [badAddress, setBadAddress] = useState(false)
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>([])
+  const [bookmarkError, setBookmarkError] = useState<string | null>(null)
+  const [savingBookmark, setSavingBookmark] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [state, setState] = useState<BrowserState | null>(null)
@@ -210,6 +259,31 @@ export default function BrowserTab({
     }
   }
 
+  useEffect(() => {
+    let active = true
+    listBookmarks().then(
+      (next) => {
+        if (active) setBookmarks(next)
+      },
+      () => {},
+    )
+    return () => {
+      active = false
+    }
+  }, [])
+
+  async function changeBookmarks(change: Promise<Bookmark[]>) {
+    setSavingBookmark(true)
+    try {
+      setBookmarks(await change)
+      setBookmarkError(null)
+    } catch (err) {
+      setBookmarkError(errorMessage(err))
+    } finally {
+      setSavingBookmark(false)
+    }
+  }
+
   async function go(address: string) {
     try {
       await browserNavigate(name, address)
@@ -229,6 +303,13 @@ export default function BrowserTab({
   }
 
   const url = state?.url ? new URL(state.url) : null
+  const pinnedHere = PINNED.some((pinned) => pinned.url === state?.url)
+  const savedHere = bookmarks.find((saved) => saved.url === state?.url)
+  const starTip = pinnedHere
+    ? t.pinnedHere
+    : savedHere
+      ? t.unbookmark
+      : t.bookmarkThis
   const loading = !error && (!opened || (state?.loading ?? true))
   const bar = `${(secondsLeft / CODE_PERIOD_SECS) * 100}%`
   const proxyName = proxy ? proxyTitle(proxy) : t.noProxy
@@ -317,6 +398,21 @@ export default function BrowserTab({
               }}
             />
           )}
+          <button
+            type="button"
+            className={styles.star}
+            aria-pressed={pinnedHere || savedHere !== undefined}
+            aria-label={starTip}
+            title={starTip}
+            disabled={!url || pinnedHere || savingBookmark}
+            onClick={() =>
+              void changeBookmarks(
+                savedHere ? removeBookmark(savedHere.url) : bookmarkPage(name),
+              )
+            }
+          >
+            <Icon path={STAR_ICON} size={15} stroke={1.9} />
+          </button>
         </form>
         <span
           className={styles.badge}
@@ -340,8 +436,64 @@ export default function BrowserTab({
             <span className={styles.count}>{confirmations.length}</span>
           )}
         </button>
-        {loading && <span className={styles.loading} />}
       </div>
+
+      <nav className={styles.bookmarks} aria-label={t.bookmarks}>
+        {PINNED.map((pinned) => (
+          <span
+            key={pinned.id}
+            className={styles.bookmark}
+            data-current={pinned.url === state?.url}
+          >
+            <button
+              type="button"
+              className={styles.bookmarkOpen}
+              title={`${pinned.title} · ${t.pinned}`}
+              disabled={!opened}
+              onClick={() => void browserNavigate(name, pinned.url)}
+            >
+              <img className={styles.siteIcon} src={pinned.icon} alt="" />
+              {pinned.title}
+              <span className={styles.pin}>
+                <Icon path={PIN_ICON} size={10} stroke={2.4} />
+              </span>
+            </button>
+          </span>
+        ))}
+        {bookmarks.map((saved) => (
+          <span
+            key={saved.url}
+            className={styles.bookmark}
+            data-current={saved.url === state?.url}
+          >
+            <button
+              type="button"
+              className={styles.bookmarkOpen}
+              title={saved.url}
+              disabled={!opened}
+              onClick={() => void browserNavigate(name, saved.url)}
+            >
+              <BookmarkIcon bookmark={saved} />
+              {saved.title}
+            </button>
+            <button
+              type="button"
+              className={styles.bookmarkRemove}
+              aria-label={`${t.removeBookmark} ${saved.title}`}
+              title={t.removeBookmark}
+              onClick={() => void changeBookmarks(removeBookmark(saved.url))}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+        {bookmarkError && (
+          <span className={styles.bookmarkError} role="alert">
+            {bookmarkError}
+          </span>
+        )}
+        {loading && <span className={styles.loading} />}
+      </nav>
 
       <div className={styles.body}>
         <div ref={area} className={styles.page}>

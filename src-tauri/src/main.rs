@@ -171,6 +171,9 @@ fn main() {
             browser::browser_forward,
             browser::browser_reload,
             browser::browser_state,
+            browser::list_bookmarks,
+            browser::bookmark_page,
+            browser::remove_bookmark,
         ])
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event

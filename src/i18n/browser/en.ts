@@ -32,4 +32,10 @@ export const browser = {
   signedIn: 'Signed in',
   signedInAgo: (when: string) => `${when} ago`,
   endSession: 'End session',
+  bookmarks: 'Bookmarks',
+  bookmarkThis: 'Bookmark this page',
+  unbookmark: 'Remove from bookmarks',
+  pinnedHere: 'Pinned bookmark, can’t be removed',
+  pinned: 'pinned',
+  removeBookmark: 'Remove bookmark',
 }

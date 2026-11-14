@@ -318,7 +318,7 @@ pub(crate) fn client(proxy: Option<&ProxyAddress>) -> Result<Client, SteamError>
     builder(proxy)?.build().map_err(|_| SteamError::Network)
 }
 
-fn builder(proxy: Option<&ProxyAddress>) -> Result<ClientBuilder, SteamError> {
+pub(crate) fn builder(proxy: Option<&ProxyAddress>) -> Result<ClientBuilder, SteamError> {
     let mut builder = Client::builder()
         .connect_timeout(CONNECT_TIMEOUT)
         .timeout(REQUEST_TIMEOUT);

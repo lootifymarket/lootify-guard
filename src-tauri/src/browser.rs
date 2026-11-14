@@ -3,7 +3,10 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use lootify_guard_core::browser::{History, may_open, profile_url, session_cookies, typed_url};
+use lootify_guard_core::browser::{
+    Bookmark, History, add_bookmark, may_open, profile_url, session_cookies, site_icon, typed_url,
+};
+use lootify_guard_core::contents::Contents;
 use lootify_guard_core::forward::Forwarder;
 use lootify_guard_core::steam::{self, SteamError};
 use serde::{Deserialize, Serialize};
@@ -43,6 +46,8 @@ struct Tab {
 struct PageState {
     loading: bool,
     history: History,
+    /// What the page calls itself, for a bookmark of it.
+    title: String,
 }
 
 impl Browsers {
@@ -231,6 +236,10 @@ fn tab_builder(
             NewWindowResponse::Deny
         })
         .on_permission_request(|_, _| PermissionResponse::Deny)
+        .on_document_title_changed({
+            let page = page.clone();
+            move |_, title| page_state(&page).title = title
+        })
         .on_page_load(move |webview, payload| {
             let mut page = page_state(&page);
             match payload.event() {
@@ -438,21 +447,95 @@ pub struct BrowserState {
 
 /// `None` once the tab is closed, as when the vault locked.
 #[tauri::command]
-pub fn browser_state(browsers: State<'_, Browsers>, account_name: String) -> Option<BrowserState> {
-    let tabs = browsers.tabs();
-    let tab = tabs.get(&account_name)?;
-    let page = page_state(&tab.page);
-    Some(BrowserState {
+pub async fn browser_state(
+    browsers: State<'_, Browsers>,
+    account_name: String,
+) -> Result<Option<BrowserState>, CommandError> {
+    let Some((webview, page, opened_at)) = browsers
+        .tabs()
+        .get(&account_name)
+        .map(|tab| (tab.webview.clone(), tab.page.clone(), tab.opened_at))
+    else {
+        return Ok(None);
+    };
+    // Asked of the page itself: single-page sites change the address without
+    // loading anything, so no load ever tells of it.
+    let shown = webview.url().ok();
+    let mut page = page_state(&page);
+    if !page.loading
+        && let Some(url) = &shown
+    {
+        page.history.arrived(url);
+    }
+    Ok(Some(BrowserState {
         url: page.history.current().map(ToString::to_string),
         loading: page.loading,
         can_go_back: page.history.can_go_back(),
         can_go_forward: page.history.can_go_forward(),
-        opened_at: tab.opened_at,
-    })
+        opened_at,
+    }))
 }
 
 fn unix_now() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_or(0, |since| since.as_secs())
+}
+
+#[tauri::command]
+pub fn list_bookmarks(state: State<'_, VaultState>) -> Result<Vec<Bookmark>, CommandError> {
+    let unlocked = state.unlocked();
+    let vault = unlocked.as_ref().ok_or(CommandError::Locked)?;
+    Ok(Contents::from_bytes(vault.data())?.bookmarks)
+}
+
+/// Saves the page the account's tab is on, with its site's icon. Returns every bookmark.
+#[tauri::command]
+pub async fn bookmark_page(
+    state: State<'_, VaultState>,
+    browsers: State<'_, Browsers>,
+    account_name: String,
+) -> Result<Vec<Bookmark>, CommandError> {
+    let (url, title) = browsers.with_tab(&account_name, |tab| {
+        let page = page_state(&tab.page);
+        let url = page
+            .history
+            .current()
+            .cloned()
+            .ok_or_else(|| CommandError::Failed("the page hasn't loaded yet".to_owned()))?;
+        Ok((url, page.title.clone()))
+    })?;
+    let (_, proxy) = account_and_proxy(&state, &account_name)?;
+    let icon = {
+        let url = url.clone();
+        spawn_blocking(move || site_icon(&url, proxy.as_ref())).await?
+    };
+    change_bookmarks(&state, |bookmarks| {
+        add_bookmark(bookmarks, &url, &title, icon)
+            .map_err(|err| CommandError::Failed(err.to_string()))
+    })
+}
+
+/// Returns every bookmark left.
+#[tauri::command]
+pub fn remove_bookmark(
+    state: State<'_, VaultState>,
+    url: String,
+) -> Result<Vec<Bookmark>, CommandError> {
+    change_bookmarks(&state, |bookmarks| {
+        bookmarks.retain(|saved| saved.url != url);
+        Ok(())
+    })
+}
+
+fn change_bookmarks(
+    state: &VaultState,
+    change: impl FnOnce(&mut Vec<Bookmark>) -> Result<(), CommandError>,
+) -> Result<Vec<Bookmark>, CommandError> {
+    let mut unlocked = state.unlocked();
+    let vault = unlocked.as_mut().ok_or(CommandError::Locked)?;
+    let mut contents = Contents::from_bytes(vault.data())?;
+    change(&mut contents.bookmarks)?;
+    vault.save_data(contents.to_bytes())?;
+    Ok(contents.bookmarks)
 }

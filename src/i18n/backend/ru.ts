@@ -251,4 +251,7 @@ export const backend: Record<BackendMessage, string> = {
   'the browser tab is closed': 'вкладка браузера закрыта',
   "could not start the tab's proxy": 'не удалось запустить прокси вкладки',
   'not a web address': 'не похоже на веб-адрес',
+  'there are already {} bookmarks, remove one first':
+    'закладок уже {}, сначала уберите одну',
+  "the page hasn't loaded yet": 'страница ещё не загрузилась',
 }

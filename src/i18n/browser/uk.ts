@@ -34,4 +34,10 @@ export const browser: typeof en = {
   signedIn: 'Вхід виконано',
   signedInAgo: (when: string) => `${when} тому`,
   endSession: 'Завершити сесію',
+  bookmarks: 'Закладки',
+  bookmarkThis: 'Додати сторінку до закладок',
+  unbookmark: 'Прибрати із закладок',
+  pinnedHere: 'Закріплена закладка, її не можна прибрати',
+  pinned: 'закріплена',
+  removeBookmark: 'Прибрати закладку',
 }
