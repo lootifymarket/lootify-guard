@@ -4,6 +4,7 @@ pub mod cm;
 pub mod confirmations;
 pub mod contents;
 pub mod events;
+pub mod forward;
 pub mod games;
 pub mod guard;
 pub mod idle;
