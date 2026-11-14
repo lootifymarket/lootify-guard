@@ -60,7 +60,8 @@ jobs:
           - name: macOS
             os: macos-latest
             rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
-            args: --target universal-apple-darwin
+            # The .app is kept only when asked for; otherwise it's removed once in the dmg.
+            args: --target universal-apple-darwin --bundles app,dmg
           - name: Windows
             os: windows-latest
             rust-targets: ''
