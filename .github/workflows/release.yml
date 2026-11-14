@@ -1,0 +1,127 @@
+name: Release
+
+# Every merge into main is a release of the version in src-tauri/Cargo.toml.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+# Two releases building at once would race for the same draft.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  draft:
+    name: Draft the release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Read the version
+        id: version
+        run: |
+          version=$(grep -m1 '^version = ' src-tauri/Cargo.toml | cut -d '"' -f 2)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      # A version that was already released means it wasn't raised before merging.
+      # A draft left by a failed run counts too, so it's never built over.
+      - name: Make sure the version is new
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "v${{ steps.version.outputs.version }}" > /dev/null 2>&1; then
+            echo "::error::v${{ steps.version.outputs.version }} already has a release or a draft. Raise the version with npm run release:version, or delete the old draft."
+            exit 1
+          fi
+
+      # A draft: nothing is public, and the tag is made only once it's published.
+      - name: Draft the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v${{ steps.version.outputs.version }}" \
+            --draft \
+            --target "${{ github.sha }}" \
+            --title "Lootify Guard ${{ steps.version.outputs.version }}" \
+            --generate-notes
+
+  build:
+    name: Build (${{ matrix.name }})
+    needs: draft
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS
+            os: macos-latest
+            rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
+            args: --target universal-apple-darwin
+          - name: Windows
+            os: windows-latest
+            rust-targets: ''
+            args: ''
+    runs-on: ${{ matrix.os }}
+    env:
+      VERSION: ${{ needs.draft.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-targets }}
+
+      - uses: Swatinem/rust-cache@v2
+
+      - run: npm ci
+
+      - run: npx tauri build ${{ matrix.args }}
+
+      - name: Package for macOS
+        if: runner.os == 'macOS'
+        run: |
+          bundle=target/universal-apple-darwin/release/bundle
+          mkdir out
+          cp "$bundle/dmg/Lootify Guard_${VERSION}_universal.dmg" "out/Lootify-Guard-$VERSION-macos.dmg"
+          # ditto keeps what a .app needs that plain zip loses.
+          ditto -c -k --keepParent "$bundle/macos/Lootify Guard.app" "out/Lootify-Guard-$VERSION-macos.zip"
+
+      - name: Package for Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory out | Out-Null
+          Copy-Item "target/release/bundle/nsis/Lootify Guard_${env:VERSION}_x64-setup.exe" "out/Lootify-Guard-${env:VERSION}-windows-setup.exe"
+          # The portable build is the bare program; Windows 10 and 11 come with the WebView2 it runs on.
+          Copy-Item target/release/lootify-guard.exe "out/Lootify Guard.exe"
+          Compress-Archive "out/Lootify Guard.exe" "out/Lootify-Guard-${env:VERSION}-windows-portable.zip"
+          Remove-Item "out/Lootify Guard.exe"
+
+      - name: Upload to the release
+        shell: bash
+        run: gh release upload "v$VERSION" out/* --clobber
+
+  checksums:
+    name: Add checksums
+    needs: [draft, build]
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.draft.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Add SHA256SUMS.txt
+        run: |
+          mkdir files && cd files
+          gh release download "v$VERSION" --repo "${{ github.repository }}"
+          sha256sum * > ../SHA256SUMS.txt
+          gh release upload "v$VERSION" ../SHA256SUMS.txt --repo "${{ github.repository }}" --clobber
