@@ -109,6 +109,8 @@ pub struct BiometricStatus {
 pub enum CommandError {
     WrongPassword,
     Locked,
+    /// The Touch ID prompt was dismissed.
+    #[cfg(target_os = "macos")]
     Cancelled,
     BiometricsOutdated,
     Failed(String),
@@ -126,7 +128,9 @@ impl From<VaultError> for CommandError {
 impl From<BiometricError> for CommandError {
     fn from(err: BiometricError) -> Self {
         match err {
+            #[cfg(target_os = "macos")]
             BiometricError::Cancelled => Self::Cancelled,
+            #[cfg(target_os = "macos")]
             BiometricError::NotEnrolled => Self::BiometricsOutdated,
             err => Self::Failed(err.to_string()),
         }
