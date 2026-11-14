@@ -35,6 +35,8 @@ pub struct Settings {
     /// Closing the window leaves the app running in the tray.
     pub close_to_tray: bool,
     pub language: Language,
+    /// The sidebar shows icons only.
+    pub sidebar_collapsed: bool,
 }
 
 impl Default for Settings {
@@ -45,6 +47,7 @@ impl Default for Settings {
             streamer_mode: false,
             close_to_tray: true,
             language: Language::En,
+            sidebar_collapsed: false,
         }
     }
 }
@@ -95,6 +98,7 @@ mod tests {
             streamer_mode: true,
             close_to_tray: false,
             language: Language::Uk,
+            sidebar_collapsed: true,
         };
         settings.save(&path).unwrap();
         assert_eq!(Settings::load(&path), settings);

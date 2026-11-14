@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { setStreamerMode, showStreamerMode } from './api/settings.ts'
+import {
+  setSidebarCollapsed,
+  setStreamerMode,
+  showStreamerMode,
+} from './api/settings.ts'
 import { lockVault, vaultStatus, type VaultStatus } from './api/vault.ts'
 import Toasts from './components/Toasts.tsx'
 import {
@@ -17,6 +21,7 @@ import Unlock from './screens/unlock/Unlock.tsx'
 type Props = {
   initialLanguage: Language
   initialStreamer: boolean
+  initialSidebarCollapsed: boolean
 }
 
 // With reduced motion asked for, there's nothing to watch, so it's skipped.
@@ -24,11 +29,16 @@ const SKIP_SPLASH = window.matchMedia(
   '(prefers-reduced-motion: reduce)',
 ).matches
 
-export default function App({ initialLanguage, initialStreamer }: Props) {
+export default function App({
+  initialLanguage,
+  initialStreamer,
+  initialSidebarCollapsed,
+}: Props) {
   const [status, setStatus] = useState<VaultStatus | null>(null)
   const [splashed, setSplashed] = useState(SKIP_SPLASH)
   const [language, setLanguage] = useState(initialLanguage)
   const [streamer, setStreamer] = useState(initialStreamer)
+  const [sidebarCollapsed, setSidebar] = useState(initialSidebarCollapsed)
   const words = useMemo(
     () => ({ language, t: DICTIONARIES[language], setLanguage }),
     [language],
@@ -75,6 +85,11 @@ export default function App({ initialLanguage, initialStreamer }: Props) {
     if (status === null) return null
     return (
       <Main
+        sidebarCollapsed={sidebarCollapsed}
+        onSidebarCollapse={(collapsed) => {
+          setSidebar(collapsed)
+          void setSidebarCollapsed(collapsed)
+        }}
         onLock={() => void lock()}
         onAutoLocked={() => setStatus('locked')}
       />

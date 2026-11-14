@@ -1,6 +1,7 @@
 .sidebar {
   position: sticky;
   top: 0;
+  z-index: 40;
   flex: 0 0 240px;
   height: 100vh;
   padding: 28px 16px 22px;
@@ -70,6 +71,8 @@
 
 .home:focus-visible,
 .item:focus-visible,
+.collapse:focus-visible,
+.iconButton:focus-visible,
 .streamer:focus-visible,
 .lock:focus-visible {
   outline: 2px solid var(--color-text);
@@ -118,9 +121,130 @@
   gap: 8px;
 }
 
+.versionRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
 .version {
   color: var(--color-text-faint);
   font-size: 11px;
+}
+
+.collapse {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  color: var(--color-text-faint);
+  cursor: pointer;
+}
+
+.collapse:hover {
+  background: var(--color-selected);
+  color: var(--color-text);
+}
+
+.collapsed {
+  flex-basis: 72px;
+  padding: 24px 0 18px;
+  align-items: center;
+  gap: 28px;
+}
+
+.iconItems,
+.iconFooter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.iconFooter {
+  margin-top: auto;
+  gap: 8px;
+}
+
+.iconButton {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.iconButton:hover {
+  background: var(--color-selected);
+}
+
+.iconItem {
+  color: var(--color-text-faint);
+}
+
+.iconItem[aria-current='page'] {
+  background: var(--color-selected);
+  color: var(--color-accent);
+}
+
+.iconStreamer {
+  background: rgb(229 37 42 / 0.1);
+  color: var(--color-danger);
+}
+
+.iconRule {
+  width: 28px;
+  height: 1px;
+  margin: 4px 0;
+  background: var(--color-divider);
+}
+
+/* The name of an icon-only button, shown beside it on hover. */
+.tip {
+  position: relative;
+}
+
+.tip::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  z-index: 60;
+  padding: 6px 9px;
+  background: var(--color-line-strong);
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  box-shadow: 0 8px 20px rgb(0 0 0 / 0.5);
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-4px, -50%);
+  transition:
+    opacity 0.12s ease,
+    transform 0.12s ease;
+}
+
+.tip:hover::after,
+.tip:focus-visible::after {
+  opacity: 1;
+  transform: translate(0, -50%);
 }
 
 .vault {

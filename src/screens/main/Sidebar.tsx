@@ -51,15 +51,29 @@ const SECTIONS: { id: Section; icon: string }[] = [
 ]
 
 const LOCK = 'M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4'
+const COLLAPSE = 'M3 4h18v16H3zM9 4v16M16 10l-2 2 2 2'
+const EXPAND = 'M3 4h18v16H3zM9 4v16M14 10l2 2-2 2'
+const STREAMER_OFF =
+  'M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4M6.6 6.6A17 17 0 0 0 2 12s3.6 7 10 7a9.6 9.6 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2'
 
 type Props = {
+  /** Icons only, with names on hover. */
+  collapsed: boolean
+  onCollapse: (collapsed: boolean) => void
   section: Section
   locksAt: number | null
   onSelect: (section: Section) => void
   onLock: () => void
 }
 
-export default function Sidebar({ section, locksAt, onSelect, onLock }: Props) {
+export default function Sidebar({
+  collapsed,
+  onCollapse,
+  section,
+  locksAt,
+  onSelect,
+  onLock,
+}: Props) {
   const t = useT().sidebar
   const streamer = useStreamerMode()
   const [version, setVersion] = useState('')
@@ -67,6 +81,64 @@ export default function Sidebar({ section, locksAt, onSelect, onLock }: Props) {
   useEffect(() => {
     void appVersion().then(setVersion)
   }, [])
+
+  if (collapsed) {
+    return (
+      <nav
+        aria-label={t.menu}
+        className={`${styles.sidebar} ${styles.collapsed}`}
+      >
+        <button
+          type="button"
+          className={`${styles.iconButton} ${styles.tip}`}
+          aria-label="Lootify Guard"
+          data-tip="Lootify Guard"
+          onClick={() => onSelect('accounts')}
+        >
+          <LogoMark size={28} />
+        </button>
+        <div className={styles.iconItems}>
+          {SECTIONS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={`${styles.iconButton} ${styles.iconItem} ${styles.tip}`}
+              aria-label={t[item.id]}
+              data-tip={t[item.id]}
+              aria-current={item.id === section ? 'page' : undefined}
+              onClick={() => onSelect(item.id)}
+            >
+              <Icon path={item.icon} size={19} stroke={1.7} />
+            </button>
+          ))}
+        </div>
+        <div className={styles.iconFooter}>
+          {streamer.on && (
+            <button
+              type="button"
+              className={`${styles.iconButton} ${styles.iconStreamer} ${styles.tip}`}
+              aria-label={t.streamerOff}
+              data-tip={t.streamerOff}
+              onClick={() => void streamer.set(false)}
+            >
+              <Icon path={STREAMER_OFF} size={18} stroke={1.8} />
+            </button>
+          )}
+          <span className={styles.iconRule} />
+          <LockButton locksAt={locksAt} onLock={onLock} />
+          <button
+            type="button"
+            className={`${styles.iconButton} ${styles.tip}`}
+            aria-label={t.expand}
+            data-tip={t.expand}
+            onClick={() => onCollapse(false)}
+          >
+            <Icon path={EXPAND} size={17} stroke={1.8} />
+          </button>
+        </div>
+      </nav>
+    )
+  }
 
   return (
     <nav aria-label={t.menu} className={styles.sidebar}>
@@ -120,9 +192,20 @@ export default function Sidebar({ section, locksAt, onSelect, onLock }: Props) {
             <Icon path={LOCK} size={15} stroke={1.8} />
           </button>
         </div>
-        {version && (
-          <span className={styles.version}>{t.version(version)}</span>
-        )}
+        <span className={styles.versionRow}>
+          <span className={styles.version}>
+            {version && t.version(version)}
+          </span>
+          <button
+            type="button"
+            className={styles.collapse}
+            aria-label={t.collapse}
+            title={t.collapse}
+            onClick={() => onCollapse(true)}
+          >
+            <Icon path={COLLAPSE} size={16} stroke={1.8} />
+          </button>
+        </span>
       </div>
     </nav>
   )
@@ -130,6 +213,40 @@ export default function Sidebar({ section, locksAt, onSelect, onLock }: Props) {
 
 function LocksIn({ deadline }: { deadline: number }) {
   const t = useT().sidebar
-  const minutes = Math.max(1, Math.ceil(useSecondsLeft(deadline) / 60))
-  return <span className={styles.locksIn}>{t.locksIn(minutes)}</span>
+  return (
+    <span className={styles.locksIn}>
+      {t.locksIn(useMinutesLeft(deadline))}
+    </span>
+  )
+}
+
+/** The lock of the collapsed sidebar, which says when the vault locks on hover. */
+function LockButton({
+  locksAt,
+  onLock,
+}: {
+  locksAt: number | null
+  onLock: () => void
+}) {
+  const t = useT().sidebar
+  const minutes = useMinutesLeft(locksAt ?? 0)
+  return (
+    <button
+      type="button"
+      className={`${styles.iconButton} ${styles.tip}`}
+      aria-label={t.lock}
+      data-tip={
+        locksAt === null
+          ? t.vaultUnlocked
+          : `${t.vaultUnlocked} · ${t.locksIn(minutes)}`
+      }
+      onClick={onLock}
+    >
+      <Icon path={LOCK} size={17} stroke={1.8} />
+    </button>
+  )
+}
+
+function useMinutesLeft(deadline: number) {
+  return Math.max(1, Math.ceil(useSecondsLeft(deadline) / 60))
 }

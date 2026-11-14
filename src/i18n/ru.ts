@@ -177,6 +177,8 @@ export const ru: Dictionary = {
     lock: 'Заблокировать',
     streamerOn: 'Режим стримера включён',
     streamerOff: 'Выключить режим стримера',
+    collapse: 'Свернуть меню',
+    expand: 'Развернуть меню',
     version: (version) => `v${version} · открытый код`,
   },
 
