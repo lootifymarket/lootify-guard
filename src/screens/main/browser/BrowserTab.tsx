@@ -529,8 +529,9 @@ export default function BrowserTab({
           )}
         </div>
 
-        {panel && (
-          <aside className={`${styles.panel} rise`} aria-label={t.guardPanel}>
+        {/* Always there, so it can slide in and out; the page narrows with it. */}
+        <div className={styles.panelSlot} data-open={panel} inert={!panel}>
+          <aside className={styles.panel} aria-label={t.guardPanel}>
             <div className={styles.panelCode}>
               <span className={styles.label}>
                 {words.guard.title} · {name}
@@ -623,7 +624,7 @@ export default function BrowserTab({
               </button>
             </div>
           </aside>
-        )}
+        </div>
       </div>
     </div>
   )
