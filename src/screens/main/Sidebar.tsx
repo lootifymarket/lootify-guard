@@ -82,37 +82,87 @@ export default function Sidebar({
     void appVersion().then(setVersion)
   }, [])
 
-  if (collapsed) {
-    return (
-      <nav
-        aria-label={t.menu}
-        className={`${styles.sidebar} ${styles.collapsed}`}
+  return (
+    <nav
+      aria-label={t.menu}
+      className={styles.sidebar}
+      data-collapsed={collapsed}
+    >
+      <button
+        type="button"
+        className={`${styles.home} ${styles.tip}`}
+        data-tip="Lootify Guard"
+        onClick={() => onSelect('accounts')}
       >
-        <button
-          type="button"
-          className={`${styles.iconButton} ${styles.tip}`}
-          aria-label="Lootify Guard"
-          data-tip="Lootify Guard"
-          onClick={() => onSelect('accounts')}
-        >
-          <LogoMark size={28} />
-        </button>
-        <div className={styles.iconItems}>
-          {SECTIONS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={`${styles.iconButton} ${styles.iconItem} ${styles.tip}`}
-              aria-label={t[item.id]}
-              data-tip={t[item.id]}
-              aria-current={item.id === section ? 'page' : undefined}
-              onClick={() => onSelect(item.id)}
-            >
-              <Icon path={item.icon} size={19} stroke={1.7} />
-            </button>
-          ))}
+        <LogoMark size={26} />
+        <span className={styles.label}>
+          <span className={styles.name}>LOOTIFY</span>
+          <span className={styles.product}>Guard</span>
+        </span>
+      </button>
+      <div className={styles.items}>
+        {SECTIONS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className={`${styles.item} ${styles.tip}`}
+            data-tip={t[item.id]}
+            aria-current={item.id === section ? 'page' : undefined}
+            onClick={() => onSelect(item.id)}
+          >
+            <Icon path={item.icon} size={17} stroke={1.7} />
+            <span className={styles.label}>{t[item.id]}</span>
+          </button>
+        ))}
+      </div>
+      {/* The two footers differ too much to morph, so one fades into the other
+          in the same place, at the height of the taller. */}
+      <div className={styles.footer}>
+        <div className={styles.wide} inert={collapsed}>
+          <div className={styles.wideInner}>
+            {streamer.on && (
+              <button
+                type="button"
+                className={styles.streamer}
+                title={t.streamerOff}
+                onClick={() => void streamer.set(false)}
+              >
+                <span className={styles.streamerDot} />
+                {t.streamerOn}
+              </button>
+            )}
+            <span className={styles.rule} />
+            <div className={styles.vaultRow}>
+              <span className={styles.vault}>
+                <span className={styles.vaultState}>{t.vaultUnlocked}</span>
+                {locksAt !== null && <LocksIn deadline={locksAt} />}
+              </span>
+              <button
+                type="button"
+                className={styles.lock}
+                aria-label={t.lock}
+                onClick={onLock}
+              >
+                <Icon path={LOCK} size={15} stroke={1.8} />
+              </button>
+            </div>
+            <span className={styles.versionRow}>
+              <span className={styles.version}>
+                {version && t.version(version)}
+              </span>
+              <button
+                type="button"
+                className={styles.collapse}
+                aria-label={t.collapse}
+                title={t.collapse}
+                onClick={() => onCollapse(true)}
+              >
+                <Icon path={COLLAPSE} size={16} stroke={1.8} />
+              </button>
+            </span>
+          </div>
         </div>
-        <div className={styles.iconFooter}>
+        <div className={styles.narrow} inert={!collapsed}>
           {streamer.on && (
             <button
               type="button"
@@ -136,76 +186,6 @@ export default function Sidebar({
             <Icon path={EXPAND} size={17} stroke={1.8} />
           </button>
         </div>
-      </nav>
-    )
-  }
-
-  return (
-    <nav aria-label={t.menu} className={styles.sidebar}>
-      <button
-        type="button"
-        className={styles.home}
-        onClick={() => onSelect('accounts')}
-      >
-        <LogoMark size={26} />
-        <span className={styles.name}>LOOTIFY</span>
-        <span className={styles.product}>Guard</span>
-      </button>
-      <div className={styles.items}>
-        {SECTIONS.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className={styles.item}
-            aria-current={item.id === section ? 'page' : undefined}
-            onClick={() => onSelect(item.id)}
-          >
-            <Icon path={item.icon} size={17} stroke={1.7} />
-            {t[item.id]}
-          </button>
-        ))}
-      </div>
-      <div className={styles.footer}>
-        {streamer.on && (
-          <button
-            type="button"
-            className={styles.streamer}
-            title={t.streamerOff}
-            onClick={() => void streamer.set(false)}
-          >
-            <span className={styles.streamerDot} />
-            {t.streamerOn}
-          </button>
-        )}
-        <span className={styles.rule} />
-        <div className={styles.vaultRow}>
-          <span className={styles.vault}>
-            <span className={styles.vaultState}>{t.vaultUnlocked}</span>
-            {locksAt !== null && <LocksIn deadline={locksAt} />}
-          </span>
-          <button
-            type="button"
-            className={styles.lock}
-            aria-label={t.lock}
-            onClick={onLock}
-          >
-            <Icon path={LOCK} size={15} stroke={1.8} />
-          </button>
-        </div>
-        <span className={styles.versionRow}>
-          <span className={styles.version}>
-            {version && t.version(version)}
-          </span>
-          <button
-            type="button"
-            className={styles.collapse}
-            aria-label={t.collapse}
-            title={t.collapse}
-            onClick={() => onCollapse(true)}
-          >
-            <Icon path={COLLAPSE} size={16} stroke={1.8} />
-          </button>
-        </span>
       </div>
     </nav>
   )
