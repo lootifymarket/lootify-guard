@@ -11,7 +11,7 @@ tauri-build = { version = "2.7", features = [] }
 [dependencies]
 lootify-guard-core = { path = "../crates/core" }
 serde = { version = "1", features = ["derive"] }
-tauri = { version = "2.12", features = ["tray-icon"] }
+tauri = { version = "2.12", features = ["macos-proxy", "tray-icon", "unstable"] }
 tauri-plugin-autostart = "2.7"
 tauri-plugin-dialog = "2.8"
 thiserror = "2"

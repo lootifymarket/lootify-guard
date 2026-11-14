@@ -17,6 +17,7 @@ use zeroize::Zeroizing;
 
 use crate::accounts::confirm_owner;
 use crate::biometrics::{self, BiometricError};
+use crate::browser::Browsers;
 
 const UNLOCK_REASON: &str = "unlock your vault";
 const IDLE_CHECK_EVERY: Duration = Duration::from_secs(10);
@@ -60,6 +61,14 @@ impl VaultState {
         self.idle.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
+    /// Counts as user activity while the vault is open.
+    pub(crate) fn touch(&self) {
+        let unlocked = self.unlocked();
+        if unlocked.is_some() {
+            self.idle().touch(SystemTime::now());
+        }
+    }
+
     fn open(&self, vault: Vault) {
         // Restart the timer first, or the time since the last session would lock it at once.
         self.idle().touch(SystemTime::now());
@@ -73,7 +82,9 @@ pub fn watch_idle(app: AppHandle) {
     thread::spawn(move || {
         loop {
             thread::sleep(IDLE_CHECK_EVERY);
-            drop(app.state::<VaultState>().unlocked());
+            if app.state::<VaultState>().unlocked().is_none() {
+                app.state::<Browsers>().close_all();
+            }
         }
     });
 }
@@ -274,13 +285,18 @@ pub fn disable_biometrics() -> Result<(), CommandError> {
 }
 
 #[tauri::command]
-pub fn lock_vault(state: State<'_, VaultState>) {
+pub fn lock_vault(state: State<'_, VaultState>, browsers: State<'_, Browsers>) {
     *state.unlocked() = None;
+    browsers.close_all();
 }
 
 #[tauri::command]
-pub fn erase_vault(state: State<'_, VaultState>) -> Result<(), CommandError> {
+pub fn erase_vault(
+    state: State<'_, VaultState>,
+    browsers: State<'_, Browsers>,
+) -> Result<(), CommandError> {
     *state.unlocked() = None;
+    browsers.close_all();
     biometrics::forget()?;
     match fs::remove_file(&state.path) {
         Err(err) if err.kind() != io::ErrorKind::NotFound => {
