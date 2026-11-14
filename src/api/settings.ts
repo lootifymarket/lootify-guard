@@ -14,6 +14,8 @@ export type Settings = {
   /** Closing the window leaves the app running in the tray. */
   closeToTray: boolean
   language: Language
+  /** The sidebar shows icons only. */
+  sidebarCollapsed: boolean
 }
 
 export const getSettings = () => invoke<Settings>('get_settings')
@@ -32,6 +34,9 @@ export const saveLanguage = (language: Language) =>
 
 export const setCloseToTray = (on: boolean) =>
   invoke<void>('set_close_to_tray', { on })
+
+export const setSidebarCollapsed = (collapsed: boolean) =>
+  invoke<void>('set_sidebar_collapsed', { collapsed })
 
 /** Whether the system starts the app at login, as the system has it. */
 export const launchAtStartup = () => invoke<boolean>('launch_at_startup')

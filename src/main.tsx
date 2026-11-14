@@ -18,6 +18,7 @@ void getSettings().then((settings) => {
       <App
         initialLanguage={settings.language}
         initialStreamer={settings.streamerMode}
+        initialSidebarCollapsed={settings.sidebarCollapsed}
       />
     </StrictMode>,
   )

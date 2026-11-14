@@ -19,12 +19,19 @@ import { useAutoLock } from './useAutoLock.ts'
 import styles from './Main.module.css'
 
 type Props = {
+  sidebarCollapsed: boolean
+  onSidebarCollapse: (collapsed: boolean) => void
   onLock: () => void
   /** The backend has already locked the vault; only the screen is left to change. */
   onAutoLocked: () => void
 }
 
-export default function Main({ onLock, onAutoLocked }: Props) {
+export default function Main({
+  sidebarCollapsed,
+  onSidebarCollapse,
+  onLock,
+  onAutoLocked,
+}: Props) {
   const [section, setSection] = useState<Section>('accounts')
   const [openName, setOpenName] = useState<string | null>(null)
   const { list, error, reload } = useAccounts()
@@ -221,6 +228,8 @@ export default function Main({ onLock, onAutoLocked }: Props) {
   return (
     <div className={styles.app}>
       <Sidebar
+        collapsed={sidebarCollapsed}
+        onCollapse={onSidebarCollapse}
         section={section}
         locksAt={locksAt}
         onSelect={select}

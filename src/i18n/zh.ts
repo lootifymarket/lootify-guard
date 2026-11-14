@@ -174,6 +174,8 @@ export const zh: Dictionary = {
     lock: '锁定',
     streamerOn: '主播模式已开启',
     streamerOff: '关闭主播模式',
+    collapse: '收起侧边栏',
+    expand: '展开侧边栏',
     version: (version) => `v${version} · 开源`,
   },
 

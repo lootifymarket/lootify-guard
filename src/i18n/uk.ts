@@ -177,6 +177,8 @@ export const uk: Dictionary = {
     lock: 'Заблокувати',
     streamerOn: 'Режим стрімера ввімкнено',
     streamerOff: 'Вимкнути режим стрімера',
+    collapse: 'Згорнути меню',
+    expand: 'Розгорнути меню',
     version: (version) => `v${version} · відкритий код`,
   },
 

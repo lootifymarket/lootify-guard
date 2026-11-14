@@ -100,6 +100,17 @@ pub fn set_close_to_tray(settings: State<'_, SettingsState>, on: bool) -> Result
     })
 }
 
+#[tauri::command]
+pub fn set_sidebar_collapsed(
+    settings: State<'_, SettingsState>,
+    collapsed: bool,
+) -> Result<(), CommandError> {
+    settings.save(Settings {
+        sidebar_collapsed: collapsed,
+        ..settings.get()
+    })
+}
+
 /// Whether the system starts the app at login. The system holds this, not the
 /// settings file, so it stays right if the user turns it off there.
 #[tauri::command]

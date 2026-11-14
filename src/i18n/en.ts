@@ -178,6 +178,8 @@ export const en = {
     lock: 'Lock',
     streamerOn: 'Streamer mode on',
     streamerOff: 'Turn off streamer mode',
+    collapse: 'Collapse sidebar',
+    expand: 'Expand sidebar',
     version: (version: string) => `v${version} · open source`,
   },
 

@@ -128,6 +128,7 @@ fn main() {
             settings::set_streamer_mode,
             settings::set_language,
             settings::set_close_to_tray,
+            settings::set_sidebar_collapsed,
             settings::launch_at_startup,
             settings::set_launch_at_startup,
             settings::export_backup,
