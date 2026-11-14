@@ -22,13 +22,16 @@ pub enum Method {
 
 #[derive(Debug, thiserror::Error)]
 pub enum BiometricError {
+    #[cfg(target_os = "macos")]
     #[error("cancelled")]
     Cancelled,
+    #[cfg(target_os = "macos")]
     #[error("no vault key is stored for biometric unlock")]
     NotEnrolled,
     #[cfg(not(target_os = "macos"))]
     #[error("biometric unlock isn't available on this computer")]
     Unavailable,
+    #[cfg(target_os = "macos")]
     #[error("{0}")]
     Failed(String),
 }
