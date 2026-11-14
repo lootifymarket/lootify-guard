@@ -8,6 +8,7 @@ import { trades } from './trades/ru.ts'
 import { inventory } from './inventory/ru.ts'
 import { tasks } from './tasks/ru.ts'
 import { proxies } from './proxies/ru.ts'
+import { browser } from './browser/ru.ts'
 
 export const ru: Dictionary = {
   accounts,
@@ -19,6 +20,7 @@ export const ru: Dictionary = {
   inventory,
   tasks,
   proxies,
+  browser,
 
   common: {
     back: 'Назад',

@@ -222,4 +222,7 @@ export const backend: Record<BackendMessage, string> = {
   'No card drops left': '没有剩余的卡牌掉落',
   'Steam took too long to answer, still trying': 'Steam 响应超时，仍在重试',
   stopped: '已停止',
+  'the browser tab is closed': '浏览器标签页已关闭',
+  "could not start the tab's proxy": '无法启动标签页的代理',
+  'not a web address': '这不是网址',
 }

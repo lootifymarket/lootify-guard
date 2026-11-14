@@ -1,8 +1,7 @@
 //! What an account's browser tab needs from the vault: the cookies that sign it
-//! in to Steam, the pages it links to and the way back and forth through them.
+//! in to Steam, where it starts and the way back and forth through its pages.
 
 use reqwest::Url;
-use serde::Deserialize;
 
 use crate::contents::Session;
 use crate::steam::session_id;
@@ -51,40 +50,35 @@ pub fn session_cookies(session: &Session, steam_id: u64) -> Vec<SessionCookie> {
         .collect()
 }
 
-/// The Steam pages the tab links to.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum Page {
-    Profile,
-    Inventory,
-    TradeOffers,
-    Market,
-    Store,
-    Wallet,
-    Account,
-}
-
-impl Page {
-    pub fn url(self, steam_id: u64) -> Url {
-        let url = match self {
-            Self::Profile => format!("https://steamcommunity.com/profiles/{steam_id}/"),
-            Self::Inventory => format!("https://steamcommunity.com/profiles/{steam_id}/inventory/"),
-            Self::TradeOffers => {
-                format!("https://steamcommunity.com/profiles/{steam_id}/tradeoffers/")
-            }
-            Self::Market => "https://steamcommunity.com/market/".to_owned(),
-            Self::Store => "https://store.steampowered.com/".to_owned(),
-            Self::Wallet => "https://store.steampowered.com/account/history/".to_owned(),
-            Self::Account => "https://store.steampowered.com/account/".to_owned(),
-        };
-        url.parse().expect("a valid URL")
-    }
+/// The account's profile, where a tab starts.
+pub fn profile_url(steam_id: u64) -> Url {
+    format!("https://steamcommunity.com/profiles/{steam_id}/")
+        .parse()
+        .expect("a valid URL")
 }
 
 /// Whether the tab may load `url`. Only web pages: nothing on this computer and
 /// no links that hand off to other apps, such as `steam://`.
 pub fn may_open(url: &Url) -> bool {
     matches!(url.scheme(), "https" | "http" | "about" | "blob" | "data")
+}
+
+/// The page someone typed into the address bar. A bare `steamcommunity.com/market`
+/// gets `https://` in front; anything that isn't a web address is turned away.
+pub fn typed_url(text: &str) -> Option<Url> {
+    let text = text.trim();
+    if text.is_empty() || text.contains(char::is_whitespace) {
+        return None;
+    }
+    let url = match text.parse::<Url>() {
+        Ok(url) if url.has_host() => url,
+        // A host with a port, like `example.com:8080`, parses as a scheme.
+        _ if !text.contains("://") && text.contains('.') => {
+            format!("https://{text}").parse().ok()?
+        }
+        _ => return None,
+    };
+    matches!(url.scheme(), "https" | "http").then_some(url)
 }
 
 /// The pages the tab went through, as far as it can be told from the pages that
@@ -193,6 +187,29 @@ mod tests {
         assert!(may_open(&"about:blank".parse().unwrap()));
         assert!(!may_open(&"steam://rungameid/730".parse().unwrap()));
         assert!(!may_open(&"file:///etc/passwd".parse().unwrap()));
+    }
+
+    #[test]
+    fn typed_addresses_become_web_pages() {
+        let page = |text: &str| typed_url(text).map(|url| url.to_string());
+        assert_eq!(
+            page("steamcommunity.com/market"),
+            Some("https://steamcommunity.com/market".to_owned())
+        );
+        assert_eq!(
+            page("  https://store.steampowered.com/account/ "),
+            Some("https://store.steampowered.com/account/".to_owned())
+        );
+        assert_eq!(
+            page("localhost.test:8080/x"),
+            Some("https://localhost.test:8080/x".to_owned())
+        );
+        assert_eq!(page("steam://rungameid/730"), None);
+        assert_eq!(page("file:///etc/passwd"), None);
+        assert_eq!(page("javascript:alert(1)"), None);
+        assert_eq!(page("cs2 skins"), None);
+        assert_eq!(page("market"), None);
+        assert_eq!(page(""), None);
     }
 
     #[test]

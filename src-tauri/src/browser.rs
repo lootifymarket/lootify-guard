@@ -3,11 +3,12 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use lootify_guard_core::browser::{History, Page, may_open, session_cookies};
+use lootify_guard_core::browser::{History, may_open, profile_url, session_cookies, typed_url};
 use lootify_guard_core::forward::Forwarder;
 use lootify_guard_core::steam::{self, SteamError};
 use serde::{Deserialize, Serialize};
 use tauri::async_runtime::spawn_blocking;
+use tauri::ipc::Response;
 use tauri::webview::{
     Cookie, NewWindowResponse, PageLoadEvent, PermissionResponse, WebviewBuilder,
 };
@@ -31,7 +32,6 @@ pub struct Browsers {
 
 struct Tab {
     webview: Webview,
-    steam_id: u64,
     page: Arc<Mutex<PageState>>,
     /// Unix seconds.
     opened_at: u64,
@@ -90,13 +90,47 @@ pub struct Bounds {
     height: f64,
 }
 
-impl From<Bounds> for Rect {
-    fn from(bounds: Bounds) -> Self {
+impl Bounds {
+    /// The same place, measured from the window's top edge as tabs are placed.
+    fn in_window(self, window: &Window) -> Rect {
         Rect {
-            position: LogicalPosition::new(bounds.x, bounds.y).into(),
-            size: LogicalSize::new(bounds.width, bounds.height).into(),
+            position: LogicalPosition::new(self.x, self.y + title_bar_height(window)).into(),
+            size: LogicalSize::new(self.width, self.height).into(),
         }
     }
+}
+
+/// How far the title bar reaches over the window's content. Tauri runs the
+/// content under it on macOS, and the app's page starts below it.
+#[cfg(target_os = "macos")]
+fn title_bar_height(window: &Window) -> f64 {
+    use objc2::msg_send;
+    use objc2::runtime::AnyObject;
+    use objc2_foundation::NSRect;
+
+    // Must not be called on the main thread, which it waits for.
+    let (tx, rx) = std::sync::mpsc::channel();
+    let measured = window.clone();
+    let asked = window.run_on_main_thread(move || {
+        let Ok(ns_window) = measured.ns_window() else {
+            return;
+        };
+        // SAFETY: an NSWindow that lives as long as `measured`, read on the main thread.
+        let (frame, layout): (NSRect, NSRect) = unsafe {
+            let ns_window = &*ns_window.cast::<AnyObject>();
+            (
+                msg_send![ns_window, frame],
+                msg_send![ns_window, contentLayoutRect],
+            )
+        };
+        let _ = tx.send((frame.size.height - layout.size.height).max(0.0));
+    });
+    asked.ok().and_then(|()| rx.recv().ok()).unwrap_or(0.0)
+}
+
+#[cfg(not(target_os = "macos"))]
+fn title_bar_height(_: &Window) -> f64 {
+    0.0
 }
 
 /// Shows the account's tab at `bounds`, signing it in first if it isn't open yet.
@@ -110,7 +144,7 @@ pub async fn open_browser(
     bounds: Bounds,
 ) -> Result<(), CommandError> {
     if browsers.tabs().contains_key(&account_name) {
-        return show(&browsers, &account_name, bounds);
+        return show(&browsers, &account_name, bounds.in_window(&window));
     }
     let (account, proxy) = account_and_proxy(&state, &account_name)?;
     let steam_id = account.steam_id;
@@ -139,11 +173,8 @@ pub async fn open_browser(
         forwarder.as_ref(),
         page.clone(),
     )?;
-    let webview = window.add_child(
-        builder,
-        LogicalPosition::new(bounds.x, bounds.y),
-        LogicalSize::new(bounds.width, bounds.height),
-    )?;
+    let rect = bounds.in_window(&window);
+    let webview = window.add_child(builder, rect.position, rect.size)?;
     for cookie in session_cookies(&session, steam_id) {
         webview.set_cookie(
             Cookie::build((cookie.name, cookie.value))
@@ -154,7 +185,7 @@ pub async fn open_browser(
                 .build(),
         )?;
     }
-    webview.navigate(Page::Profile.url(steam_id))?;
+    webview.navigate(profile_url(steam_id))?;
 
     let mut tabs = browsers.tabs();
     // Opened twice at once: the first one stays.
@@ -165,7 +196,6 @@ pub async fn open_browser(
             account_name.clone(),
             Tab {
                 webview,
-                steam_id,
                 page,
                 opened_at: unix_now(),
                 _forwarder: forwarder,
@@ -173,7 +203,7 @@ pub async fn open_browser(
         );
     }
     drop(tabs);
-    show(&browsers, &account_name, bounds)
+    show(&browsers, &account_name, rect)
 }
 
 fn tab_builder(
@@ -238,10 +268,10 @@ fn tab_builder(
     Ok(builder)
 }
 
-fn show(browsers: &Browsers, account_name: &str, bounds: Bounds) -> Result<(), CommandError> {
+fn show(browsers: &Browsers, account_name: &str, rect: Rect) -> Result<(), CommandError> {
     for (name, tab) in browsers.tabs().iter() {
         if name == account_name {
-            tab.webview.set_bounds(bounds.into())?;
+            tab.webview.set_bounds(rect)?;
             tab.webview.show()?;
         } else {
             tab.webview.hide()?;
@@ -252,12 +282,13 @@ fn show(browsers: &Browsers, account_name: &str, bounds: Bounds) -> Result<(), C
 
 /// Moves the shown tab, as when the window is resized.
 #[tauri::command]
-pub fn place_browser(
+pub async fn place_browser(
+    window: Window,
     browsers: State<'_, Browsers>,
     account_name: String,
     bounds: Bounds,
 ) -> Result<(), CommandError> {
-    show(&browsers, &account_name, bounds)
+    show(&browsers, &account_name, bounds.in_window(&window))
 }
 
 /// Hides the tab, for the app's own screens or anything drawn over the page.
@@ -277,15 +308,86 @@ pub fn close_browser(browsers: State<'_, Browsers>, account_name: String) {
     browsers.close(&account_name);
 }
 
+/// Opens the address typed into the tab's address bar.
 #[tauri::command]
-pub fn browser_open_page(
+pub fn browser_navigate(
     browsers: State<'_, Browsers>,
     account_name: String,
-    page: Page,
+    address: String,
 ) -> Result<(), CommandError> {
-    browsers.with_tab(&account_name, |tab| {
-        Ok(tab.webview.navigate(page.url(tab.steam_id))?)
-    })
+    let url =
+        typed_url(&address).ok_or_else(|| CommandError::Failed("not a web address".to_owned()))?;
+    browsers.with_tab(&account_name, |tab| Ok(tab.webview.navigate(url)?))
+}
+
+/// The page as it is on screen, as a JPEG, to show in its place while the app
+/// draws over it. Empty where it can't be taken; the tab is just hidden then.
+#[tauri::command]
+pub async fn browser_snapshot(
+    browsers: State<'_, Browsers>,
+    account_name: String,
+) -> Result<Response, CommandError> {
+    let webview = browsers.with_tab(&account_name, |tab| Ok(tab.webview.clone()))?;
+    Ok(Response::new(snapshot(&webview).unwrap_or_default()))
+}
+
+// WebKit hands the picture over on the main thread; past this, it's not coming.
+#[cfg(target_os = "macos")]
+const SNAPSHOT_WAIT: std::time::Duration = std::time::Duration::from_secs(2);
+
+#[cfg(target_os = "macos")]
+fn snapshot(webview: &Webview) -> Option<Vec<u8>> {
+    use block2::RcBlock;
+    use objc2::msg_send;
+    use objc2::runtime::AnyObject;
+
+    let (tx, rx) = std::sync::mpsc::channel();
+    webview
+        .with_webview(move |platform| {
+            let done = RcBlock::new(move |image: *mut AnyObject, _error: *mut AnyObject| {
+                // SAFETY: an NSImage or nil from WebKit, on the main thread.
+                let _ = tx.send(unsafe { image.as_ref() }.and_then(|image| unsafe { jpeg(image) }));
+            });
+            // SAFETY: the tab's WKWebView, on the main thread.
+            unsafe {
+                let webview = &*platform.inner().cast::<AnyObject>();
+                let _: () = msg_send![
+                    webview,
+                    takeSnapshotWithConfiguration: std::ptr::null_mut::<AnyObject>(),
+                    completionHandler: &*done
+                ];
+            }
+        })
+        .ok()?;
+    rx.recv_timeout(SNAPSHOT_WAIT).ok().flatten()
+}
+
+/// # Safety
+/// `image` is an NSImage, used on the main thread.
+#[cfg(target_os = "macos")]
+unsafe fn jpeg(image: &objc2::runtime::AnyObject) -> Option<Vec<u8>> {
+    use objc2::runtime::AnyObject;
+    use objc2::{class, msg_send};
+
+    // NSBitmapImageFileTypeJPEG.
+    const JPEG: usize = 3;
+    unsafe {
+        let tiff: *mut AnyObject = msg_send![image, TIFFRepresentation];
+        let rep: *mut AnyObject =
+            msg_send![class!(NSBitmapImageRep), imageRepWithData: tiff.as_ref()?];
+        let properties: *mut AnyObject = msg_send![class!(NSDictionary), dictionary];
+        let data: *mut AnyObject =
+            msg_send![rep.as_ref()?, representationUsingType: JPEG, properties: properties];
+        let data = data.as_ref()?;
+        let length: usize = msg_send![data, length];
+        let bytes: *const std::ffi::c_void = msg_send![data, bytes];
+        Some(std::slice::from_raw_parts(bytes.cast::<u8>(), length).to_vec())
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn snapshot(_: &Webview) -> Option<Vec<u8>> {
+    None
 }
 
 #[tauri::command]

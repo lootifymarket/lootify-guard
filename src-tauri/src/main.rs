@@ -10,6 +10,8 @@ mod confirmations;
 mod farming;
 mod groups;
 mod inventory;
+#[cfg(target_os = "macos")]
+mod menu;
 mod playing;
 mod profile;
 mod proxies;
@@ -55,6 +57,8 @@ fn main() {
             app.manage(farming::Farms::default());
             app.manage(browser::Browsers::default());
             tray::install(app.handle())?;
+            #[cfg(target_os = "macos")]
+            menu::install(app.handle())?;
             if std::env::args().any(|arg| arg == tray::HIDDEN_ARG) {
                 tray::hide_window(app.handle());
             }
@@ -161,7 +165,8 @@ fn main() {
             browser::place_browser,
             browser::hide_browser,
             browser::close_browser,
-            browser::browser_open_page,
+            browser::browser_navigate,
+            browser::browser_snapshot,
             browser::browser_back,
             browser::browser_forward,
             browser::browser_reload,

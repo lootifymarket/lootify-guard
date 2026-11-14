@@ -248,4 +248,7 @@ export const backend: Record<BackendMessage, string> = {
   'Steam took too long to answer, still trying':
     'Steam слишком долго не отвечает, продолжаем пытаться',
   stopped: 'остановлено',
+  'the browser tab is closed': 'вкладка браузера закрыта',
+  "could not start the tab's proxy": 'не удалось запустить прокси вкладки',
+  'not a web address': 'не похоже на веб-адрес',
 }

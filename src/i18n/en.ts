@@ -7,6 +7,7 @@ import { trades } from './trades/en.ts'
 import { inventory } from './inventory/en.ts'
 import { tasks } from './tasks/en.ts'
 import { proxies } from './proxies/en.ts'
+import { browser } from './browser/en.ts'
 
 /** Every word the app shows, in English. Other languages fill the same shape. */
 export const en = {
@@ -19,6 +20,7 @@ export const en = {
   inventory,
   tasks,
   proxies,
+  browser,
 
   common: {
     back: 'Back',

@@ -43,6 +43,7 @@ import Avatar from '../../../components/Avatar.tsx'
 import Button from '../../../components/Button.tsx'
 import Dropdown, { type DropdownOption } from '../../../components/Dropdown.tsx'
 import Flag from '../../../components/Flag.tsx'
+import Icon from '../../../components/Icon.tsx'
 import Skeleton from '../../../components/Skeleton.tsx'
 import Toggle from '../../../components/Toggle.tsx'
 import { useT, type Dictionary } from '../../../i18n/index.ts'
@@ -65,6 +66,7 @@ import styles from './AccountPage.module.css'
 import Private from '../../../components/Private.tsx'
 import { MASK } from '../../../lib/streamer.ts'
 import SteamIdLine from '../SteamIdLine.tsx'
+import { BROWSER_ICON } from '../browser/icons.ts'
 
 type Props = {
   account: Account
@@ -73,6 +75,7 @@ type Props = {
   groups: Group[]
   codesExpireAt: number
   onBack: () => void
+  onBrowse: () => void
   onChanged: () => void
   onRemoved: () => void
 }
@@ -91,10 +94,12 @@ export default function AccountPage({
   groups,
   codesExpireAt,
   onBack,
+  onBrowse,
   onChanged,
   onRemoved,
 }: Props) {
-  const t = useT().account
+  const words = useT()
+  const t = words.account
   const [tab, setTab] = useState<Tab>('profile')
   const [dialog, setDialog] = useState<OpenDialog>(null)
   const [revocationCode, setRevocationCode] = useState<string | null>(null)
@@ -297,28 +302,38 @@ export default function AccountPage({
               </span>
             </div>
           </div>
-          <div className={styles.guard} aria-label={t.guardTitle}>
-            <div className={styles.guardRow}>
-              <span className={styles.code}>
-                <Private mask={MASK.code}>{account.code}</Private>
-              </span>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => copy(name, account.code)}
-              >
-                {label(name, t.copy)}
+          <div className={styles.headSide}>
+            {account.signedIn && (
+              <Button variant="secondary" size="sm" onClick={onBrowse}>
+                <Icon path={BROWSER_ICON} size={15} stroke={1.9} />
+                {words.browser.openInBrowser}
               </Button>
+            )}
+            <div className={styles.guard} aria-label={t.guardTitle}>
+              <div className={styles.guardRow}>
+                <span className={styles.code}>
+                  <Private mask={MASK.code}>{account.code}</Private>
+                </span>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => copy(name, account.code)}
+                >
+                  {label(name, t.copy)}
+                </Button>
+              </div>
+              <span className={layout.bar}>
+                <span
+                  className={layout.barFill}
+                  style={{
+                    width: `${(secondsLeft / CODE_PERIOD_SECS) * 100}%`,
+                  }}
+                />
+              </span>
+              <span className={styles.refresh}>
+                {t.guardTitle} · {t.refreshesIn(secondsLeft)}
+              </span>
             </div>
-            <span className={layout.bar}>
-              <span
-                className={layout.barFill}
-                style={{ width: `${(secondsLeft / CODE_PERIOD_SECS) * 100}%` }}
-              />
-            </span>
-            <span className={styles.refresh}>
-              {t.guardTitle} · {t.refreshesIn(secondsLeft)}
-            </span>
           </div>
         </div>
       </div>
