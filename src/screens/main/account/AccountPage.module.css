@@ -111,6 +111,13 @@
   gap: 20px;
 }
 
+.headSide {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 20px;
+}
+
 .subtitle {
   color: var(--color-text-muted);
   font-size: 13px;

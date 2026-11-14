@@ -4,6 +4,7 @@ use std::fmt;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroizing;
 
+use crate::browser::Bookmark;
 use crate::games::PlayingList;
 use crate::proxy::{Proxy, ProxyAddress};
 
@@ -25,6 +26,9 @@ pub struct Contents {
     /// Never reused, like proxy ids, so a stale id can't land on a new group.
     #[serde(default)]
     last_group_id: u32,
+    /// In the vault rather than the settings: a saved profile page names the account.
+    #[serde(default)]
+    pub bookmarks: Vec<Bookmark>,
 }
 
 /// A set of accounts the user handles together, like "Farm" or "Storage".

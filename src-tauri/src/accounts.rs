@@ -17,6 +17,7 @@ use tauri_plugin_dialog::DialogExt;
 use zeroize::Zeroizing;
 
 use crate::biometrics;
+use crate::browser::Browsers;
 use crate::groups::{self, GroupView};
 use crate::playing::Players;
 use crate::vault::{CommandError, VaultState};
@@ -246,6 +247,7 @@ pub async fn export_mafile(
 #[tauri::command]
 pub fn remove_account(
     state: State<'_, VaultState>,
+    browsers: State<'_, Browsers>,
     account_name: String,
 ) -> Result<(), CommandError> {
     let mut unlocked = state.unlocked();
@@ -255,6 +257,7 @@ pub fn remove_account(
         return Err(no_such_account());
     }
     vault.save_data(contents.to_bytes())?;
+    browsers.close(&account_name);
     Ok(())
 }
 

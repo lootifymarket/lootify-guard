@@ -202,6 +202,12 @@ export const BACKEND_MESSAGES = [
   'No card drops left',
   'Steam took too long to answer, still trying',
   'stopped',
+  // Browser tabs
+  'the browser tab is closed',
+  "could not start the tab's proxy",
+  'not a web address',
+  'there are already {} bookmarks, remove one first',
+  "the page hasn't loaded yet",
 ] as const
 
 export type BackendMessage = (typeof BACKEND_MESSAGES)[number]

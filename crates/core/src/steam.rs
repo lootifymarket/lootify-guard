@@ -242,6 +242,17 @@ pub fn fetch_profile(
     })
 }
 
+/// A session Steam accepts right now, renewed when the access token has run out.
+pub fn check_session(
+    account: &Account,
+    proxy: Option<&ProxyAddress>,
+) -> Result<Session, SteamError> {
+    with_session(account, proxy, |client, session, steam_id| {
+        link_details(client, session, steam_id).map(drop)
+    })
+    .map(|(session, ())| session)
+}
+
 #[derive(Deserialize)]
 struct LinkDetails {
     response: LinkDetailsResponse,
@@ -307,7 +318,7 @@ pub(crate) fn client(proxy: Option<&ProxyAddress>) -> Result<Client, SteamError>
     builder(proxy)?.build().map_err(|_| SteamError::Network)
 }
 
-fn builder(proxy: Option<&ProxyAddress>) -> Result<ClientBuilder, SteamError> {
+pub(crate) fn builder(proxy: Option<&ProxyAddress>) -> Result<ClientBuilder, SteamError> {
     let mut builder = Client::builder()
         .connect_timeout(CONNECT_TIMEOUT)
         .timeout(REQUEST_TIMEOUT);

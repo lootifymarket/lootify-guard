@@ -25,6 +25,7 @@ import layout from './layout.module.css'
 import styles from './Accounts.module.css'
 import Private from '../../components/Private.tsx'
 import SteamIdLine from './SteamIdLine.tsx'
+import { BROWSER_ICON } from './browser/icons.ts'
 
 /** Every account, the playing ones, those needing a look, or a group's. */
 type Filter = 'all' | 'playing' | 'issues' | 'none' | number
@@ -47,6 +48,7 @@ type Props = {
   onOpen: (accountName: string) => void
   onAdd: () => void
   onGuard: () => void
+  onBrowse: (accountName: string) => void
 }
 
 /** Something wrong with the account: no session, or what the last check found. */
@@ -61,6 +63,7 @@ export default function Accounts({
   onOpen,
   onAdd,
   onGuard,
+  onBrowse,
 }: Props) {
   const t = useT().accounts
   const streamer = useStreamerMode()
@@ -361,6 +364,7 @@ export default function Accounts({
           }
           codesExpireAt={list.codesExpireAt}
           onOpen={() => onOpen(selected.accountName)}
+          onBrowse={() => onBrowse(selected.accountName)}
         />
       </div>
     </>
@@ -498,12 +502,14 @@ function Details({
   proxy,
   codesExpireAt,
   onOpen,
+  onBrowse,
 }: {
   account: Account
   group: string | null
   proxy: string | null
   codesExpireAt: number
   onOpen: () => void
+  onBrowse: () => void
 }) {
   const words = useT()
   const t = words.accounts
@@ -582,9 +588,17 @@ function Details({
           <dd className={styles.ellipsis}>{group ?? t.noGroup}</dd>
         </div>
       </dl>
-      <Button variant="secondary" onClick={onOpen}>
-        {t.manage}
-      </Button>
+      <div className={styles.detailsActions}>
+        {account.signedIn && (
+          <Button variant="secondary" onClick={onBrowse}>
+            <Icon path={BROWSER_ICON} size={15} stroke={1.9} />
+            {words.browser.openInBrowser}
+          </Button>
+        )}
+        <Button variant="secondary" onClick={onOpen}>
+          {t.manage}
+        </Button>
+      </div>
     </aside>
   )
 }

@@ -11,7 +11,7 @@ tauri-build = { version = "2.7", features = [] }
 [dependencies]
 lootify-guard-core = { path = "../crates/core" }
 serde = { version = "1", features = ["derive"] }
-tauri = { version = "2.12", features = ["tray-icon"] }
+tauri = { version = "2.12", features = ["macos-proxy", "tray-icon", "unstable"] }
 tauri-plugin-autostart = "2.7"
 tauri-plugin-dialog = "2.8"
 thiserror = "2"
@@ -20,6 +20,6 @@ zeroize = "1.9"
 [target.'cfg(target_os = "macos")'.dependencies]
 block2 = "0.6"
 objc2 = "0.6"
-objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSError", "NSString"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSError", "NSGeometry", "NSString"] }
 objc2-local-authentication = { version = "0.3", default-features = false, features = ["std", "LAContext", "LAError", "block2"] }
 security-framework = "3"

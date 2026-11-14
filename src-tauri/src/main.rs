@@ -5,10 +5,13 @@ mod accounts;
 mod add_account;
 mod auto_confirm;
 mod biometrics;
+mod browser;
 mod confirmations;
 mod farming;
 mod groups;
 mod inventory;
+#[cfg(target_os = "macos")]
+mod menu;
 mod playing;
 mod profile;
 mod proxies;
@@ -52,7 +55,10 @@ fn main() {
             app.manage(tasks::Tasks::default());
             app.manage(playing::Players::default());
             app.manage(farming::Farms::default());
+            app.manage(browser::Browsers::default());
             tray::install(app.handle())?;
+            #[cfg(target_os = "macos")]
+            menu::install(app.handle())?;
             if std::env::args().any(|arg| arg == tray::HIDDEN_ARG) {
                 tray::hide_window(app.handle());
             }
@@ -155,6 +161,19 @@ fn main() {
             proxies::test_proxy,
             proxies::remove_proxy,
             proxies::check_proxy,
+            browser::open_browser,
+            browser::place_browser,
+            browser::hide_browser,
+            browser::close_browser,
+            browser::browser_navigate,
+            browser::browser_snapshot,
+            browser::browser_back,
+            browser::browser_forward,
+            browser::browser_reload,
+            browser::browser_state,
+            browser::list_bookmarks,
+            browser::bookmark_page,
+            browser::remove_bookmark,
         ])
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event
