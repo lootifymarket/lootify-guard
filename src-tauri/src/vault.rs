@@ -109,6 +109,8 @@ pub struct BiometricStatus {
 pub enum CommandError {
     WrongPassword,
     Locked,
+    /// The Touch ID prompt was dismissed.
+    #[cfg(target_os = "macos")]
     Cancelled,
     BiometricsOutdated,
     Failed(String),
