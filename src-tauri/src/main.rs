@@ -29,6 +29,13 @@ use tauri_plugin_autostart::MacosLauncher;
 
 fn main() {
     tauri::Builder::default()
+        // Runs first, so a second launch only brings this one forward. Windows
+        // would otherwise start a new copy, with a new tray icon, on every launch.
+        .plugin(tauri_plugin_single_instance::init(|app, args, _| {
+            if !args.iter().any(|arg| arg == tray::HIDDEN_ARG) {
+                tray::show_window(app);
+            }
+        }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
