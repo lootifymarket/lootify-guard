@@ -15,6 +15,7 @@ serde = { version = "1", features = ["derive"] }
 tauri = { version = "2.12", features = ["macos-proxy", "tray-icon", "unstable"] }
 tauri-plugin-autostart = "2.7"
 tauri-plugin-dialog = "2.8"
+tauri-plugin-single-instance = "2.5"
 thiserror = "2"
 zeroize = "1.9"
 
