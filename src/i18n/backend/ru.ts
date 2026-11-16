@@ -254,4 +254,6 @@ export const backend: Record<BackendMessage, string> = {
   'there are already {} bookmarks, remove one first':
     'закладок уже {}, сначала уберите одну',
   "the page hasn't loaded yet": 'страница ещё не загрузилась',
+  "couldn't install the update": 'не удалось установить обновление',
+  "the update hasn't finished downloading": 'обновление ещё не скачалось',
 }

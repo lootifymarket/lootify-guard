@@ -34,7 +34,7 @@ impl SettingsState {
         self.current.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
-    fn save(&self, settings: Settings) -> Result<(), CommandError> {
+    pub(crate) fn save(&self, settings: Settings) -> Result<(), CommandError> {
         settings
             .save(&self.path)
             .map_err(|err| CommandError::Failed(err.to_string()))?;
