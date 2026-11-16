@@ -21,6 +21,7 @@ mod sign_ins;
 mod tasks;
 mod trades;
 mod tray;
+mod updates;
 mod vault;
 
 use tauri::webview::{PermissionKind, PermissionResponse};
@@ -29,7 +30,15 @@ use tauri_plugin_autostart::MacosLauncher;
 
 fn main() {
     tauri::Builder::default()
+        // Runs first, so a second launch only brings this one forward. Windows
+        // would otherwise start a new copy, with a new tray icon, on every launch.
+        .plugin(tauri_plugin_single_instance::init(|app, args, _| {
+            if !args.iter().any(|arg| arg == tray::HIDDEN_ARG) {
+                tray::show_window(app);
+            }
+        }))
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
             Some(vec![tray::HIDDEN_ARG]),
@@ -56,6 +65,7 @@ fn main() {
             app.manage(playing::Players::default());
             app.manage(farming::Farms::default());
             app.manage(browser::Browsers::default());
+            app.manage(updates::Updates::default());
             tray::install(app.handle())?;
             #[cfg(target_os = "macos")]
             menu::install(app.handle())?;
@@ -64,6 +74,7 @@ fn main() {
             }
             vault::watch_idle(app.handle().clone());
             auto_confirm::watch(app.handle().clone());
+            updates::watch(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -129,6 +140,12 @@ fn main() {
             settings::set_language,
             settings::set_close_to_tray,
             settings::set_sidebar_collapsed,
+            updates::update_status,
+            updates::check_for_updates,
+            updates::download_update,
+            updates::install_update,
+            updates::set_auto_update,
+            updates::dismiss_installed_update,
             settings::launch_at_startup,
             settings::set_launch_at_startup,
             settings::export_backup,
@@ -192,13 +209,12 @@ fn main() {
         .run(on_run_event);
 }
 
-/// Clicking the Dock icon brings back a window that was closed to the tray.
-#[cfg(target_os = "macos")]
 fn on_run_event(app: &AppHandle, event: RunEvent) {
-    if let RunEvent::Reopen { .. } = event {
-        tray::show_window(app);
+    match event {
+        RunEvent::Exit => updates::install_on_quit(app),
+        // Clicking the Dock icon brings back a window that was closed to the tray.
+        #[cfg(target_os = "macos")]
+        RunEvent::Reopen { .. } => tray::show_window(app),
+        _ => {}
     }
 }
-
-#[cfg(not(target_os = "macos"))]
-fn on_run_event(_: &AppHandle, _: RunEvent) {}

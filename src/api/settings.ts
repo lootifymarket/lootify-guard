@@ -16,6 +16,10 @@ export type Settings = {
   language: Language
   /** The sidebar shows icons only. */
   sidebarCollapsed: boolean
+  /** New versions download by themselves and install on the next restart. */
+  autoUpdate: boolean
+  /** The update installed on the way out, to say so once the new version opens. */
+  installedUpdate: { version: string; notes: string | null } | null
 }
 
 export const getSettings = () => invoke<Settings>('get_settings')
