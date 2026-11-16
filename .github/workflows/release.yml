@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: write
+  # The release notes come from the PR that was merged into main.
+  pull-requests: read
 
 # Two releases building at once would race for the same draft.
 concurrency:
