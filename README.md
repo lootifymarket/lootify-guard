@@ -39,6 +39,8 @@ The builds aren't signed yet, so the system warns before the first launch:
 
 `SHA256SUMS.txt` in each release lists the files' checksums.
 
+After that the app updates itself. It checks for new versions, downloads them and checks their signature. Turn this off in Settings → Updates to install them yourself.
+
 ## Building from source
 
 You need Rust (stable), Node.js 22+ and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for your OS.
@@ -49,6 +51,8 @@ npm run tauri dev     # run it
 npm run tauri build   # build an installer
 ```
 
+`tauri build` also signs the update packages, so it needs a signing key. Make your own with `npx tauri signer generate`, then put the key and its password in `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. Your builds then won't take updates from this repo, since those are signed with Lootify's key.
+
 The Rust code is in `crates/core` (Steam, the vault, everything that doesn't need a window) and `src-tauri` (the app around it). The interface is React in `src`.
 
 ## Releasing
@@ -56,7 +60,9 @@ The Rust code is in `crates/core` (Steam, the vault, everything that doesn't nee
 1. Raise the version on `dev`: `npm run release:version 0.2.0`, and merge it.
 2. Open a PR from `dev` into `main`. What it says becomes the release notes.
 3. Merge it. GitHub Actions builds both platforms into a draft release.
-4. Check the draft and publish it. Publishing makes the `v0.2.0` tag.
+4. Check the draft and publish it. Publishing makes the `v0.2.0` tag, and installed apps pick the new version up from `latest.json`.
+
+The workflow signs updates with the `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` secrets. The matching public key is in `src-tauri/tauri.conf.json`. Losing the private key means installed apps can't be updated anymore.
 
 ## License
 
