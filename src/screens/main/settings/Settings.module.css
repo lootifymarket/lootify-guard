@@ -103,3 +103,7 @@
   flex-direction: column;
   gap: 14px;
 }
+
+.version {
+  font-family: var(--font-mono);
+}

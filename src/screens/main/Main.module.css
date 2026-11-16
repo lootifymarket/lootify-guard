@@ -25,3 +25,51 @@
   color: var(--color-danger);
   font-size: 13px;
 }
+
+/* Said once after a restart into a new version, until dismissed. */
+.updated {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 120;
+  padding: 8px 8px 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--color-toast);
+  border-radius: 10px;
+  color: var(--color-on-toast);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.updatedNotes {
+  height: 28px;
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid rgb(10 10 10 / 0.2);
+  border-radius: 7px;
+  color: var(--color-on-toast);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.updatedClose {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  color: var(--color-on-toast);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.updatedNotes:focus-visible,
+.updatedClose:focus-visible {
+  outline: 2px solid var(--color-on-toast);
+  outline-offset: 2px;
+}

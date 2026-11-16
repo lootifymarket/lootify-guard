@@ -37,6 +37,18 @@ pub struct Settings {
     pub language: Language,
     /// The sidebar shows icons only.
     pub sidebar_collapsed: bool,
+    /// New versions download by themselves and install on the next restart.
+    pub auto_update: bool,
+    /// The update installed on the way out, to say so once the new version opens.
+    pub installed_update: Option<InstalledUpdate>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InstalledUpdate {
+    pub version: String,
+    /// What the release says is new, as written for it.
+    pub notes: Option<String>,
 }
 
 impl Default for Settings {
@@ -48,6 +60,8 @@ impl Default for Settings {
             close_to_tray: true,
             language: Language::En,
             sidebar_collapsed: false,
+            auto_update: true,
+            installed_update: None,
         }
     }
 }
@@ -99,6 +113,11 @@ mod tests {
             close_to_tray: false,
             language: Language::Uk,
             sidebar_collapsed: true,
+            auto_update: false,
+            installed_update: Some(InstalledUpdate {
+                version: "0.2.0".to_owned(),
+                notes: Some("- Faster".to_owned()),
+            }),
         };
         settings.save(&path).unwrap();
         assert_eq!(Settings::load(&path), settings);

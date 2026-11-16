@@ -228,4 +228,6 @@ export const backend: Record<BackendMessage, string> = {
   'there are already {} bookmarks, remove one first':
     '已有 {} 个书签，请先删除一个',
   "the page hasn't loaded yet": '页面尚未加载完成',
+  "couldn't install the update": '无法安装更新',
+  "the update hasn't finished downloading": '更新尚未下载完成',
 }

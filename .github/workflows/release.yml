@@ -103,7 +103,11 @@ jobs:
 
       - run: npm ci
 
+      # The key signs the update packages; the app installs only what it signed.
       - run: npx tauri build ${{ matrix.args }}
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
       - name: Package for macOS
         if: runner.os == 'macOS'
@@ -113,6 +117,9 @@ jobs:
           cp "$bundle/dmg/Lootify Guard_${VERSION}_universal.dmg" "out/Lootify-Guard-$VERSION-macos.dmg"
           # ditto keeps what a .app needs that plain zip loses.
           ditto -c -k --keepParent "$bundle/macos/Lootify Guard.app" "out/Lootify-Guard-$VERSION-macos.zip"
+          # What the app downloads to update itself, with its signature.
+          cp "$bundle/macos/Lootify Guard.app.tar.gz" "out/Lootify-Guard-$VERSION-macos.app.tar.gz"
+          cp "$bundle/macos/Lootify Guard.app.tar.gz.sig" "out/Lootify-Guard-$VERSION-macos.app.tar.gz.sig"
 
       - name: Package for Windows
         if: runner.os == 'Windows'
@@ -120,6 +127,8 @@ jobs:
         run: |
           New-Item -ItemType Directory out | Out-Null
           Copy-Item "target/release/bundle/nsis/Lootify Guard_${env:VERSION}_x64-setup.exe" "out/Lootify-Guard-${env:VERSION}-windows-setup.exe"
+          # The app updates itself with the same installer, checked against this signature.
+          Copy-Item "target/release/bundle/nsis/Lootify Guard_${env:VERSION}_x64-setup.exe.sig" "out/Lootify-Guard-${env:VERSION}-windows-setup.exe.sig"
           # The portable build is the bare program; Windows 10 and 11 come with the WebView2 it runs on.
           Copy-Item target/release/lootify-guard.exe "out/Lootify Guard.exe"
           Compress-Archive "out/Lootify Guard.exe" "out/Lootify-Guard-${env:VERSION}-windows-portable.zip"
@@ -129,17 +138,46 @@ jobs:
         shell: bash
         run: gh release upload "v$VERSION" out/* --clobber
 
-  checksums:
-    name: Add checksums
+  finish:
+    name: Add checksums and the update manifest
     needs: [draft, build]
     runs-on: ubuntu-latest
     env:
       VERSION: ${{ needs.draft.outputs.version }}
       GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
     steps:
       - name: Add SHA256SUMS.txt
         run: |
           mkdir files && cd files
-          gh release download "v$VERSION" --repo "${{ github.repository }}"
-          sha256sum * > ../SHA256SUMS.txt
-          gh release upload "v$VERSION" ../SHA256SUMS.txt --repo "${{ github.repository }}" --clobber
+          gh release download "v$VERSION" --repo "$REPO"
+          sha256sum $(ls | grep -v '\.sig$') > ../SHA256SUMS.txt
+          gh release upload "v$VERSION" ../SHA256SUMS.txt --repo "$REPO" --clobber
+
+      # The app reads releases/latest/download/latest.json to find a new version.
+      # The links work once the draft is published.
+      - name: Add latest.json
+        run: |
+          base="https://github.com/$REPO/releases/download/v$VERSION"
+          mac="Lootify-Guard-$VERSION-macos.app.tar.gz"
+          win="Lootify-Guard-$VERSION-windows-setup.exe"
+          gh api "repos/$REPO/commits/${{ github.sha }}/pulls" --jq '.[0].body // ""' > notes.md
+          jq -n \
+            --arg version "$VERSION" \
+            --rawfile notes notes.md \
+            --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg mac_url "$base/$mac" \
+            --rawfile mac_sig "files/$mac.sig" \
+            --arg win_url "$base/$win" \
+            --rawfile win_sig "files/$win.sig" \
+            '{
+              version: $version,
+              notes: $notes,
+              pub_date: $date,
+              platforms: {
+                "darwin-aarch64": { url: $mac_url, signature: $mac_sig },
+                "darwin-x86_64": { url: $mac_url, signature: $mac_sig },
+                "windows-x86_64": { url: $win_url, signature: $win_sig }
+              }
+            }' > latest.json
+          gh release upload "v$VERSION" latest.json --repo "$REPO" --clobber

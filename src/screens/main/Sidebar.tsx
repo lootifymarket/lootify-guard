@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import Icon from '../../components/Icon.tsx'
 import LogoMark from '../../components/LogoMark.tsx'
 import { appVersion } from '../../api/settings.ts'
-import { useT } from '../../i18n/index.ts'
+import type { UpdateStatus } from '../../api/updates.ts'
+import { useT, type Dictionary } from '../../i18n/index.ts'
 import { useStreamerMode } from '../../lib/streamer.ts'
 import { useSecondsLeft } from './useAccounts.ts'
 import styles from './Sidebar.module.css'
@@ -53,6 +54,8 @@ const SECTIONS: { id: Section; icon: string }[] = [
 const LOCK = 'M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4'
 const COLLAPSE = 'M3 4h18v16H3zM9 4v16M16 10l-2 2 2 2'
 const EXPAND = 'M3 4h18v16H3zM9 4v16M14 10l2 2-2 2'
+const DOWNLOAD = 'M12 3v12M7 10l5 5 5-5M5 21h14'
+const RESTART = 'M23 4v6h-6M20.5 15a9 9 0 1 1-2.1-9.4L23 10'
 const STREAMER_OFF =
   'M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4M6.6 6.6A17 17 0 0 0 2 12s3.6 7 10 7a9.6 9.6 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2'
 
@@ -60,6 +63,8 @@ type Props = {
   /** Icons only, with names on hover. */
   collapsed: boolean
   onCollapse: (collapsed: boolean) => void
+  update: UpdateStatus
+  onUpdate: () => void
   section: Section
   locksAt: number | null
   onSelect: (section: Section) => void
@@ -69,14 +74,18 @@ type Props = {
 export default function Sidebar({
   collapsed,
   onCollapse,
+  update,
+  onUpdate,
   section,
   locksAt,
   onSelect,
   onLock,
 }: Props) {
-  const t = useT().sidebar
+  const words = useT()
+  const t = words.sidebar
   const streamer = useStreamerMode()
   const [version, setVersion] = useState('')
+  const pill = updatePill(update, words.updates)
 
   useEffect(() => {
     void appVersion().then(setVersion)
@@ -120,6 +129,31 @@ export default function Sidebar({
       <div className={styles.footer}>
         <div className={styles.wide} inert={collapsed}>
           <div className={styles.wideInner}>
+            {pill && (
+              <button
+                type="button"
+                className={styles.update}
+                data-ready={pill.ready}
+                title={pill.tip}
+                onClick={onUpdate}
+              >
+                <span className={styles.updateRow}>
+                  <Icon path={pill.icon} size={16} stroke={1.9} />
+                  <span className={styles.updateWords}>
+                    <span className={styles.updateTitle}>{pill.title}</span>
+                    <span className={styles.updateSub}>{pill.sub}</span>
+                  </span>
+                </span>
+                {pill.percent !== null && (
+                  <span className={styles.updateBar}>
+                    <span
+                      className={styles.updateFill}
+                      style={{ width: `${pill.percent}%` }}
+                    />
+                  </span>
+                )}
+              </button>
+            )}
             {streamer.on && (
               <button
                 type="button"
@@ -163,6 +197,19 @@ export default function Sidebar({
           </div>
         </div>
         <div className={styles.narrow} inert={!collapsed}>
+          {pill && (
+            <button
+              type="button"
+              className={`${styles.iconButton} ${styles.iconUpdate} ${styles.tip}`}
+              data-ready={pill.ready}
+              aria-label={pill.tip}
+              data-tip={pill.tip}
+              onClick={onUpdate}
+            >
+              <Icon path={pill.icon} size={18} stroke={1.9} />
+              <span className={styles.updateDot} />
+            </button>
+          )}
           {streamer.on && (
             <button
               type="button"
@@ -189,6 +236,45 @@ export default function Sidebar({
       </div>
     </nav>
   )
+}
+
+/** What the sidebar says about the next version, when there's one on its way. */
+function updatePill(update: UpdateStatus, t: Dictionary['updates']) {
+  switch (update.state) {
+    case 'available':
+      return {
+        title: t.available,
+        sub: t.availableSub(update.release.version),
+        tip: `${t.available} · ${update.release.version}`,
+        icon: DOWNLOAD,
+        ready: false,
+        percent: null,
+      }
+    case 'downloading': {
+      const percent = update.total
+        ? Math.round((update.downloaded / update.total) * 100)
+        : 0
+      return {
+        title: t.downloading(update.release.version),
+        sub: `${percent}%`,
+        tip: `${t.downloading(update.release.version)} · ${percent}%`,
+        icon: DOWNLOAD,
+        ready: false,
+        percent,
+      }
+    }
+    case 'ready':
+      return {
+        title: t.ready,
+        sub: t.readySub(update.release.version),
+        tip: `${t.ready} · ${update.release.version}`,
+        icon: RESTART,
+        ready: true,
+        percent: null,
+      }
+    default:
+      return null
+  }
 }
 
 function LocksIn({ deadline }: { deadline: number }) {

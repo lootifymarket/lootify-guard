@@ -208,6 +208,9 @@ export const BACKEND_MESSAGES = [
   'not a web address',
   'there are already {} bookmarks, remove one first',
   "the page hasn't loaded yet",
+  // Updates
+  "couldn't install the update",
+  "the update hasn't finished downloading",
 ] as const
 
 export type BackendMessage = (typeof BACKEND_MESSAGES)[number]

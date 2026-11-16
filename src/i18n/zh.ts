@@ -9,6 +9,7 @@ import { inventory } from './inventory/zh.ts'
 import { tasks } from './tasks/zh.ts'
 import { proxies } from './proxies/zh.ts'
 import { browser } from './browser/zh.ts'
+import { updates } from './updates/zh.ts'
 
 export const zh: Dictionary = {
   accounts,
@@ -21,6 +22,7 @@ export const zh: Dictionary = {
   tasks,
   proxies,
   browser,
+  updates,
 
   common: {
     back: '返回',
