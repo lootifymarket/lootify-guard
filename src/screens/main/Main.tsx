@@ -2,6 +2,12 @@ import { useEffect, useEffectEvent, useState } from 'react'
 import type { Account } from '../../api/accounts.ts'
 import { closeBrowser } from '../../api/browser.ts'
 import { listProxies, type Proxy } from '../../api/proxies.ts'
+import {
+  getSettings,
+  type Settings as SettingsValues,
+} from '../../api/settings.ts'
+import { dismissInstalledUpdate } from '../../api/updates.ts'
+import { useT } from '../../i18n/index.ts'
 import AccountPage from './account/AccountPage.tsx'
 import AddAccount from './add/AddAccount.tsx'
 import Accounts from './Accounts.tsx'
@@ -14,8 +20,10 @@ import SteamGuard from './SteamGuard.tsx'
 import Settings from './settings/Settings.tsx'
 import Tasks from './tasks/Tasks.tsx'
 import Trades from './trades/Trades.tsx'
+import UpdateDialog from './UpdateDialog.tsx'
 import { useAccounts } from './useAccounts.ts'
 import { useAutoLock } from './useAutoLock.ts'
+import { useUpdates } from './useUpdates.ts'
 import styles from './Main.module.css'
 
 type Props = {
@@ -41,6 +49,13 @@ export default function Main({
   const [activeTab, setActiveTab] = useState<string | null>(null)
   const [tabMenu, setTabMenu] = useState(false)
   const [proxies, setProxies] = useState<Proxy[]>([])
+  const updates = useUpdates()
+  const [updateOpen, setUpdateOpen] = useState(false)
+  // The version this restart installed, said once and then forgotten.
+  const [installed, setInstalled] =
+    useState<SettingsValues['installedUpdate']>(null)
+  const [installedNoted, setInstalledNoted] = useState(false)
+  const t = useT().updates
   const openAccount = list?.accounts.find(
     (account) => account.accountName === openName,
   )
@@ -67,6 +82,24 @@ export default function Main({
       active = false
     }
   }, [tabs, tabMenu])
+
+  useEffect(() => {
+    let active = true
+    getSettings().then(
+      (settings) => {
+        if (active) setInstalled(settings.installedUpdate)
+      },
+      () => {},
+    )
+    return () => {
+      active = false
+    }
+  }, [])
+
+  function forgetInstalled() {
+    setInstalled(null)
+    void dismissInstalledUpdate()
+  }
 
   /** Acts on a browser-like shortcut by its name: `new`, `close`, or a tab number from 1. */
   const onShortcut = useEffectEvent((name: string) => {
@@ -178,6 +211,9 @@ export default function Main({
     if (section === 'settings') {
       return (
         <Settings
+          update={updates.status}
+          onUpdate={() => setUpdateOpen(true)}
+          onUpdateChanged={updates.refresh}
           onAutoLockChanged={() => setAutoLockVersion((version) => version + 1)}
         />
       )
@@ -230,6 +266,8 @@ export default function Main({
       <Sidebar
         collapsed={sidebarCollapsed}
         onCollapse={onSidebarCollapse}
+        update={updates.status}
+        onUpdate={() => setUpdateOpen(true)}
         section={section}
         locksAt={locksAt}
         onSelect={select}
@@ -253,7 +291,7 @@ export default function Main({
             account={browsing}
             proxy={proxyOf(browsing)}
             codesExpireAt={list.codesExpireAt}
-            covered={tabMenu}
+            covered={tabMenu || updateOpen}
             onClose={() => closeTab(browsing.accountName)}
           />
         ) : (
@@ -267,6 +305,40 @@ export default function Main({
           </main>
         )}
       </div>
+      <UpdateDialog
+        open={updateOpen}
+        status={updates.status}
+        installed={installedNoted ? installed : null}
+        openTabs={shownTabs.length}
+        onClose={() => {
+          setUpdateOpen(false)
+          if (installedNoted) forgetInstalled()
+        }}
+        onChanged={updates.refresh}
+      />
+      {installed && !installedNoted && (
+        <div className={`${styles.updated} rise`} role="status">
+          {t.updated(installed.version)}
+          <button
+            type="button"
+            className={styles.updatedNotes}
+            onClick={() => {
+              setInstalledNoted(true)
+              setUpdateOpen(true)
+            }}
+          >
+            {t.whatsNew}
+          </button>
+          <button
+            type="button"
+            className={styles.updatedClose}
+            aria-label={t.close}
+            onClick={forgetInstalled}
+          >
+            ×
+          </button>
+        </div>
+      )}
     </div>
   )
 }

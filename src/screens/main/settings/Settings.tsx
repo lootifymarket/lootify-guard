@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   AUTO_LOCK_CHOICES,
+  appVersion,
   exportBackup,
   getSettings,
   launchAtStartup,
@@ -10,6 +11,11 @@ import {
   setLaunchAtStartup,
   type Settings as SettingsValues,
 } from '../../../api/settings.ts'
+import {
+  checkForUpdates,
+  setAutoUpdate,
+  type UpdateStatus,
+} from '../../../api/updates.ts'
 import {
   BIOMETRIC_NAMES,
   biometricStatus,
@@ -38,11 +44,21 @@ import styles from './Settings.module.css'
 const NEVER = 'never'
 
 type Props = {
+  update: UpdateStatus
+  /** Opens the update window. */
+  onUpdate: () => void
+  /** The update's status moved on; read it again. */
+  onUpdateChanged: () => void
   /** The vault locks at a new time, which the sidebar shows. */
   onAutoLockChanged: () => void
 }
 
-export default function Settings({ onAutoLockChanged }: Props) {
+export default function Settings({
+  update,
+  onUpdate,
+  onUpdateChanged,
+  onAutoLockChanged,
+}: Props) {
   const { language, t: words, setLanguage } = useLanguage()
   const t = words.settings
   const streamer = useStreamerMode()
@@ -50,6 +66,7 @@ export default function Settings({ onAutoLockChanged }: Props) {
   const [settings, setSettings] = useState<SettingsValues | null>(null)
   const [biometric, setBiometric] = useState<BiometricStatus | null>(null)
   const [atStartup, setAtStartup] = useState(false)
+  const [version, setVersion] = useState('')
   const [changing, setChanging] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -58,6 +75,7 @@ export default function Settings({ onAutoLockChanged }: Props) {
     void getSettings().then(setSettings)
     void biometricStatus().then(setBiometric)
     void launchAtStartup().then(setAtStartup)
+    void appVersion().then(setVersion)
   }, [])
 
   async function act(action: () => Promise<void>) {
@@ -259,6 +277,63 @@ export default function Settings({ onAutoLockChanged }: Props) {
           </div>
         </section>
 
+        <section className={styles.section} aria-labelledby="updates-title">
+          <h2 id="updates-title" className={styles.sectionTitle}>
+            {words.updates.settings.title}
+          </h2>
+          <div className={styles.row}>
+            <span className={styles.words}>
+              <span>{words.updates.settings.auto}</span>
+              <span className={styles.hint}>
+                {words.updates.settings.autoHint}
+              </span>
+            </span>
+            <Toggle
+              on={settings?.autoUpdate ?? true}
+              label={words.updates.settings.auto}
+              onChange={(on) =>
+                void act(async () => {
+                  await setAutoUpdate(on)
+                  setSettings(
+                    (current) => current && { ...current, autoUpdate: on },
+                  )
+                  onUpdateChanged()
+                })
+              }
+            />
+          </div>
+          <div className={styles.row}>
+            <span className={styles.words}>
+              <span>
+                {words.updates.settings.version}{' '}
+                <span className={styles.version}>{version}</span>
+              </span>
+              <UpdateNote update={update} />
+            </span>
+            {update.state === 'available' || update.state === 'ready' ? (
+              <Button size="sm" onClick={onUpdate}>
+                {update.state === 'ready'
+                  ? words.updates.settings.restart
+                  : words.updates.settings.update}
+              </Button>
+            ) : (
+              <Button
+                variant="secondary"
+                size="sm"
+                busy={update.state === 'checking'}
+                disabled={
+                  update.state === 'checking' || update.state === 'downloading'
+                }
+                onClick={() =>
+                  void checkForUpdates().then(onUpdateChanged, onUpdateChanged)
+                }
+              >
+                {words.updates.settings.check}
+              </Button>
+            )}
+          </div>
+        </section>
+
         {error && (
           <p className={styles.error} role="alert">
             {error}
@@ -284,4 +359,46 @@ function backupNote(t: Dictionary['settings'], savedAt: number | null) {
   return Date.now() / 1000 - savedAt < 60
     ? t.backupJustNow
     : t.backupAgo(ago(savedAt))
+}
+
+/** Where the next version stands, in a line. */
+function UpdateNote({ update }: { update: UpdateStatus }) {
+  const { t: words } = useLanguage()
+  const t = words.updates.settings
+  let note: string
+  switch (update.state) {
+    case 'notChecked':
+      note = t.notChecked
+      break
+    case 'checking':
+      note = t.checking
+      break
+    case 'upToDate': {
+      const when = ago(update.checkedAt)
+      note = when === words.time.justNow ? t.upToDateNow : t.upToDate(when)
+      break
+    }
+    case 'available':
+      note = t.availableNote(update.release.version)
+      break
+    case 'downloading':
+      note = t.downloadingNote(
+        update.release.version,
+        update.total ? Math.round((update.downloaded / update.total) * 100) : 0,
+      )
+      break
+    case 'ready':
+      note = t.readyNote(update.release.version)
+      break
+    case 'failed':
+      note = t.failedNote
+  }
+  return (
+    <span
+      className={styles.hint}
+      data-tone={update.state === 'failed' ? 'danger' : undefined}
+    >
+      {note}
+    </span>
+  )
 }
