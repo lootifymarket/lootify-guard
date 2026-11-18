@@ -120,6 +120,29 @@ impl<'a> Fields<'a> {
         }
     }
 
+    /// Every value of a repeated varint field, whether sent one by one or packed.
+    pub(crate) fn varints(&self, field: u32) -> Vec<u64> {
+        let mut values = Vec::new();
+        for (number, value) in &self.0 {
+            if *number != field {
+                continue;
+            }
+            match *value {
+                Value::Varint(value) => values.push(value),
+                Value::Bytes(mut packed) => {
+                    while let Ok(value) = take_varint(&mut packed) {
+                        values.push(value);
+                        if packed.is_empty() {
+                            break;
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+        values
+    }
+
     /// An `int32`, which is sent sign-extended to 64 bits when negative.
     pub(crate) fn int32(&self, field: u32) -> Option<i32> {
         self.varint(field).map(|value| value as i64 as i32)

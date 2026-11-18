@@ -4,8 +4,9 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use lootify_guard_core::cm::{self, Connection, Event, MAX_GAMES};
+use lootify_guard_core::cm::{self, Connection, Event, FreeLicenses, MAX_GAMES};
 use lootify_guard_core::contents::{Account, Contents};
+use lootify_guard_core::free_games::{self, FreeGame};
 use lootify_guard_core::games::{self, OwnedGame, PlayingList};
 use lootify_guard_core::steam::SteamError;
 use serde::Serialize;
@@ -45,6 +46,17 @@ pub struct PlayerView {
     list: PlayingList,
     #[serde(flatten)]
     state: PlayState,
+    /// How the last request to add free games went, when there was one.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    free_games: Option<FreeGamesAsked>,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FreeGamesAsked {
+    asked: Vec<u32>,
+    /// `None` when Steam didn't answer in time.
+    answer: Option<FreeLicenses>,
 }
 
 #[derive(Clone, Serialize)]
@@ -88,6 +100,7 @@ impl Players {
             account_name: account_name.to_owned(),
             list: list.clone(),
             state: PlayState::Connecting,
+            free_games: None,
         }));
         let (app, name, shared) = (app.clone(), account_name.to_owned(), view.clone());
         thread::spawn(move || keep_playing(&app, &name, list, &inbox, &shared));
@@ -198,6 +211,21 @@ fn play(
         Err(ended) => return ended,
     };
     let send = |connection: &mut Connection, list: &PlayingList| {
+        // A free game the account doesn't have yet is added first, as the
+        // client does, or Steam wouldn't count it as played.
+        let free: Vec<u32> = list
+            .games
+            .iter()
+            .copied()
+            .filter(|&game| free_games::is_free(game))
+            .collect();
+        if !free.is_empty() {
+            let answer = connection.request_free_licenses(&free)?;
+            lock(view).free_games = Some(FreeGamesAsked {
+                asked: free,
+                answer,
+            });
+        }
         connection.show_as(list.presence)?;
         connection.play(&list.games, list.status.as_deref())
     };
@@ -259,6 +287,12 @@ fn connect(app: &AppHandle, account_name: &str) -> Result<Connection, Ended> {
         SteamError::SessionExpired => Ended::Failed(err.to_string()),
         err => Ended::Dropped(err.to_string()),
     })
+}
+
+/// The free games the account can play without owning them yet.
+#[tauri::command]
+pub fn free_games() -> &'static [FreeGame] {
+    free_games::free_games()
 }
 
 /// Saves the mobile session and the client sign-in the connection came back with.

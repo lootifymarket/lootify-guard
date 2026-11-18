@@ -232,6 +232,10 @@ export const account: typeof en = {
   },
 
   playing: {
+    freeNoAnswer: 'Steam 没有回应添加免费游戏的请求。',
+    freeRefused: (code) => `Steam 没有添加免费游戏（错误 ${code}）。`,
+    freeAdded: (games) => `Steam 已添加：${games}。`,
+    freeNotAdded: (games) => `未添加，账户已拥有或 Steam 未发放：${games}。`,
     applied: '游戏已更新',
     label: '游戏',
     signInFirst: '请在“安全”选项卡中登录 Steam 以运行游戏。',
@@ -277,6 +281,7 @@ export const account: typeof en = {
   },
 
   picker: {
+    tryAgain: '重试',
     title: '添加游戏',
     picked: (count, room) => `已选 · ${count}/${room}`,
     find: '查找游戏',
@@ -286,5 +291,9 @@ export const account: typeof en = {
     app: (id) => `应用 ${id}`,
     hours: (hours) => `${hours} 小时`,
     done: '完成',
+    inLibrary: '库中',
+    freeToAdd: '免费游戏',
+    freeHint: '开始游玩时自动添加到账户',
+    free: '免费',
   },
 }

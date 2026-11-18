@@ -246,6 +246,11 @@ export const account: typeof en = {
   },
 
   playing: {
+    freeNoAnswer: 'Steam не відповів на запит додати безкоштовні ігри.',
+    freeRefused: (code) => `Steam не додав безкоштовні ігри (помилка ${code}).`,
+    freeAdded: (games) => `Steam додав: ${games}.`,
+    freeNotAdded: (games) =>
+      `Не додано — вже є на акаунті або Steam їх не видав: ${games}.`,
     applied: 'Ігри оновлено',
     label: 'Ігри',
     signInFirst: 'Увійдіть у Steam на вкладці «Безпека», щоб запускати ігри.',
@@ -295,6 +300,7 @@ export const account: typeof en = {
   },
 
   picker: {
+    tryAgain: 'Спробувати ще раз',
     title: 'Додати ігри',
     picked: (count, room) => `Вибрано · ${count} з ${room}`,
     find: 'Знайти гру',
@@ -304,5 +310,9 @@ export const account: typeof en = {
     app: (id) => `Застосунок ${id}`,
     hours: (hours) => `${hours} год`,
     done: 'Готово',
+    inLibrary: 'У бібліотеці',
+    freeToAdd: 'Безкоштовні',
+    freeHint: 'додадуться на акаунт, коли він почне грати',
+    free: 'Безкоштовно',
   },
 }

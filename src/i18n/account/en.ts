@@ -239,6 +239,12 @@ export const account = {
   },
 
   playing: {
+    freeNoAnswer: 'Steam didn’t answer the request to add the free games.',
+    freeRefused: (code: number) =>
+      `Steam didn’t add the free games (error ${code}).`,
+    freeAdded: (games: string) => `Steam added ${games}.`,
+    freeNotAdded: (games: string) =>
+      `Not added, the account has them already or Steam didn’t give them: ${games}.`,
     applied: 'Games updated',
     label: 'Playing',
     signInFirst: 'Sign in to Steam on the Security tab to play games.',
@@ -289,6 +295,7 @@ export const account = {
   },
 
   picker: {
+    tryAgain: 'Try again',
     title: 'Add games',
     picked: (count: number, room: number) => `Picked · ${count} of ${room}`,
     find: 'Find game',
@@ -298,5 +305,9 @@ export const account = {
     app: (id: number) => `App ${id}`,
     hours: (hours: number) => `${hours} h`,
     done: 'Done',
+    inLibrary: 'In the library',
+    freeToAdd: 'Free to play',
+    freeHint: 'added to the account when it starts playing',
+    free: 'Free',
   },
 }

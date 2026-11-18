@@ -48,7 +48,23 @@ export type PlayState =
   | { state: 'reconnecting'; reason: string; at: number }
   | { state: 'stopped'; reason: string }
 
-export type Player = { accountName: string } & PlayingList & PlayState
+/** How the last request to add free games went. */
+export type FreeGamesAsked = {
+  asked: number[]
+  /** `null` when Steam didn't answer in time. */
+  answer: {
+    /** Steam's EResult: 1 is OK. */
+    result: number
+    /** Added now; ones the account had already aren't among them. */
+    granted: number[]
+  } | null
+}
+
+export type Player = {
+  accountName: string
+  freeGames?: FreeGamesAsked
+} & PlayingList &
+  PlayState
 
 /** Every account with a game connection, playing or trying to. */
 export const playingNow = () =>
@@ -74,6 +90,17 @@ export const stopPlaying = (accountName: string) =>
 /** Most played first. */
 export const ownedGames = (accountName: string) =>
   invoke<OwnedGame[]>('owned_games', { accountName })
+
+/** A free game any account can play; Steam adds it when it's first played. */
+export type FreeGame = {
+  appId: number
+  name: string
+}
+
+let free: Promise<FreeGame[]> | null = null
+
+/** The free games the app knows. They never change, so they're asked for once. */
+export const freeGames = () => (free ??= invoke<FreeGame[]>('free_games'))
 
 export type CardGame = {
   appId: number

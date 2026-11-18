@@ -161,6 +161,7 @@ fn main() {
             playing::playing_now,
             playing::playing_list,
             playing::owned_games,
+            playing::free_games,
             tasks::start_task,
             tasks::task_queue,
             tasks::cancel_task,

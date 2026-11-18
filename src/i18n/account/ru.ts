@@ -249,6 +249,11 @@ export const account: typeof en = {
   },
 
   playing: {
+    freeNoAnswer: 'Steam не ответил на запрос добавить бесплатные игры.',
+    freeRefused: (code) => `Steam не добавил бесплатные игры (ошибка ${code}).`,
+    freeAdded: (games) => `Steam добавил: ${games}.`,
+    freeNotAdded: (games) =>
+      `Не добавлены — уже есть на аккаунте или Steam их не выдал: ${games}.`,
     applied: 'Игры обновлены',
     label: 'Игры',
     signInFirst:
@@ -300,6 +305,7 @@ export const account: typeof en = {
   },
 
   picker: {
+    tryAgain: 'Попробовать снова',
     title: 'Добавить игры',
     picked: (count, room) => `Выбрано · ${count} из ${room}`,
     find: 'Найти игру',
@@ -309,5 +315,9 @@ export const account: typeof en = {
     app: (id) => `Приложение ${id}`,
     hours: (hours) => `${hours} ч`,
     done: 'Готово',
+    inLibrary: 'В библиотеке',
+    freeToAdd: 'Бесплатные',
+    freeHint: 'добавятся на аккаунт, когда он начнёт играть',
+    free: 'Бесплатно',
   },
 }
