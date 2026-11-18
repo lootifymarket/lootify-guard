@@ -165,6 +165,9 @@
   border: 1px solid var(--color-border);
   border-radius: 12px;
   box-shadow: 0 18px 40px rgb(0 0 0 / 0.6);
+  /* Many accounts and proxies scroll rather than run off the window. */
+  max-height: min(520px, calc(100vh - 120px));
+  overflow-y: auto;
 }
 
 .menuTitle {
@@ -197,6 +200,22 @@
 
 .menuItem:hover {
   background: var(--color-option-hover);
+}
+
+.menuSection {
+  margin-top: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.menuPrivate {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .menuProxy {
