@@ -34,6 +34,7 @@ import { useToast } from '../../../lib/toast.ts'
 import { useCodeSecondsLeft } from '../useAccounts.ts'
 import lootifyMarketIcon from '../../../assets/lootify-market.png'
 import steamIcon from '../../../assets/steam.png'
+import { PRIVATE_ICON, SAVED_ICON } from './icons.ts'
 import styles from './BrowserTab.module.css'
 
 const BACK_ICON = 'M15 18l-6-6 6-6'
@@ -92,9 +93,10 @@ function BookmarkIcon({ bookmark }: { bookmark: Bookmark }) {
 }
 
 type Props = {
-  /** The tab's name: the account's, or `private:n`. */
+  /** The tab's name: the account's, `profile:<id>` or `private:<n>`. */
   tab: string
-  /** `null` for a private tab, signed in to nothing. */
+  kind: 'account' | 'profile' | 'private'
+  /** `null` for a tab signed in to no account. */
   account: Account | null
   proxy: Proxy | null
   codesExpireAt: number
@@ -104,12 +106,14 @@ type Props = {
 }
 
 /**
- * Steam in the app, signed in as the account, or a private tab signed in to
- * nothing. The page itself is a webview the backend lays over the page area, so
- * this only keeps it in place.
+ * Steam in the app, signed in as the account, or a tab signed in to no account:
+ * a profile, which keeps its sign-ins, or a private tab, which keeps nothing. The
+ * page itself is a webview the backend lays over the page area, so this only
+ * keeps it in place.
  */
 export default function BrowserTab({
   tab,
+  kind,
   account,
   proxy,
   codesExpireAt,
@@ -119,7 +123,7 @@ export default function BrowserTab({
   const words = useT()
   const t = words.browser
   const name = tab
-  const signedIn = account !== null
+  const signedIn = kind === 'account' && account !== null
   const area = useRef<HTMLDivElement>(null)
   const [opened, setOpened] = useState(false)
   // Read by callbacks that outlive the render they were made in.
@@ -149,7 +153,7 @@ export default function BrowserTab({
     if (!element) return
     let active = true
     let shown = false
-    // A private tab is made before it's shown; an account's is signed in here.
+    // A profile's or a private tab is made before it's shown; an account's is signed in here.
     const opening = signedIn
       ? openBrowser(name, boundsOf(element))
       : placeBrowser(name, boundsOf(element))
@@ -438,6 +442,21 @@ export default function BrowserTab({
             <Private>{proxyName}</Private>
           </span>
         </span>
+        {kind !== 'account' && (
+          <span
+            className={styles.badge}
+            title={kind === 'profile' ? t.savedChipHint : t.privateChipHint}
+          >
+            <Icon
+              path={kind === 'profile' ? SAVED_ICON : PRIVATE_ICON}
+              size={13}
+              stroke={2}
+            />
+            <span className={styles.badgeText}>
+              {kind === 'profile' ? t.savedChip : t.privateChip}
+            </span>
+          </span>
+        )}
         {signedIn && (
           <button
             type="button"

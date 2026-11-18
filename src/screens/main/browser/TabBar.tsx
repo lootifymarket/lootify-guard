@@ -1,20 +1,24 @@
 import type { Account } from '../../../api/accounts.ts'
+import type { BrowserProfile } from '../../../api/browserProfiles.ts'
 import { proxyTitle, type Proxy } from '../../../api/proxies.ts'
 import Icon from '../../../components/Icon.tsx'
 import { useT } from '../../../i18n/index.ts'
+import { PRIVATE_ICON } from './icons.ts'
+import NewTabMenu from './NewTabMenu.tsx'
 import styles from './TabBar.module.css'
 
 const DASHBOARD_ICON = 'M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z'
-const PRIVATE_ICON =
-  'M3 11h18M6 11l1.5-5h9l1.5 5M4.5 16.5a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0M14.5 16.5a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0M9.5 16.5h5'
 
 /** An open tab as the bar shows it. */
 export type TabInfo = {
   id: string
+  kind: 'account' | 'profile' | 'private'
   title: string
-  /** `null` for a private tab, which is signed in to nothing. */
+  /** `null` unless the tab is an account's. */
   account: Account | null
   proxy: Proxy | null
+  /** A profile's colour. */
+  tint?: string
 }
 
 type Props = {
@@ -22,14 +26,19 @@ type Props = {
   accounts: Account[]
   proxyOf: (account: Account) => Proxy | null
   proxies: Proxy[]
+  profiles: BrowserProfile[]
+  /** Tab names opened lately, newest first. */
+  recent: string[]
   tabs: TabInfo[]
   /** `null` for the dashboard. */
   active: string | null
   onSelect: (tab: string | null) => void
   onOpen: (accountName: string) => void
+  onOpenProfile: (id: number) => void
+  onNewProfile: () => void
   onOpenPrivate: (proxyId: number | null) => void
   onClose: (tab: string) => void
-  /** Whether the account menu is open; it covers the page of a browser tab. */
+  /** Whether the new tab menu is open; it covers the page of a browser tab. */
   menu: boolean
   onMenu: (open: boolean) => void
 }
@@ -38,10 +47,14 @@ export default function TabBar({
   accounts,
   proxyOf,
   proxies,
+  profiles,
+  recent,
   tabs,
   active,
   onSelect,
   onOpen,
+  onOpenProfile,
+  onNewProfile,
   onOpenPrivate,
   onClose,
   menu,
@@ -49,7 +62,6 @@ export default function TabBar({
 }: Props) {
   const words = useT()
   const t = words.browser
-  const signedIn = accounts.filter((account) => account.signedIn)
 
   return (
     <div className={styles.bar} role="tablist" aria-label={t.tabs}>
@@ -65,7 +77,7 @@ export default function TabBar({
         <span>{t.dashboard}</span>
       </button>
       {tabs.map((tab, index) => {
-        const { id, title, account, proxy } = tab
+        const { id, kind, title, account, proxy, tint } = tab
         return (
           <div
             key={id}
@@ -81,11 +93,19 @@ export default function TabBar({
               title={`${title} · ${proxy ? proxyTitle(proxy) : t.noProxy}${index < 8 ? ` (⌘${index + 2})` : ''}`}
               onClick={() => onSelect(id)}
             >
-              {account === null ? (
+              {kind === 'private' ? (
                 <span className={styles.initials} aria-hidden="true">
                   <Icon path={PRIVATE_ICON} size={12} stroke={2} />
                 </span>
-              ) : account.avatar ? (
+              ) : kind === 'profile' ? (
+                <span
+                  className={styles.profileMark}
+                  style={{ background: tint }}
+                  aria-hidden="true"
+                >
+                  {title.slice(0, 1).toUpperCase()}
+                </span>
+              ) : account?.avatar ? (
                 <img className={styles.avatar} src={account.avatar} alt="" />
               ) : (
                 <span className={styles.initials} aria-hidden="true">
@@ -128,55 +148,18 @@ export default function TabBar({
               aria-label={words.common.cancel}
               onClick={() => onMenu(false)}
             />
-            <div className={`${styles.menu} rise`} role="menu">
-              <span className={styles.menuTitle}>{t.pickTitle}</span>
-              {signedIn.length === 0 && (
-                <span className={styles.menuEmpty}>{t.noAccounts}</span>
-              )}
-              {signedIn.map((account) => {
-                const proxy = proxyOf(account)
-                return (
-                  <button
-                    key={account.accountName}
-                    type="button"
-                    role="menuitem"
-                    className={styles.menuItem}
-                    onClick={() => {
-                      onMenu(false)
-                      onOpen(account.accountName)
-                    }}
-                  >
-                    <span>{account.accountName}</span>
-                    <span className={styles.menuProxy}>
-                      {proxy ? proxyTitle(proxy) : t.noProxy}
-                    </span>
-                  </button>
-                )
-              })}
-              <span className={`${styles.menuTitle} ${styles.menuSection}`}>
-                {t.privateTitle}
-              </span>
-              {[null, ...proxies].map((proxy) => (
-                <button
-                  key={proxy?.id ?? 'direct'}
-                  type="button"
-                  role="menuitem"
-                  className={styles.menuItem}
-                  onClick={() => {
-                    onMenu(false)
-                    onOpenPrivate(proxy?.id ?? null)
-                  }}
-                >
-                  <span className={styles.menuPrivate}>
-                    <Icon path={PRIVATE_ICON} size={14} stroke={2} />
-                    {proxy ? proxyTitle(proxy) : t.noProxy}
-                  </span>
-                  {proxy?.country && (
-                    <span className={styles.menuProxy}>{proxy.country}</span>
-                  )}
-                </button>
-              ))}
-            </div>
+            <NewTabMenu
+              accounts={accounts.filter((account) => account.signedIn)}
+              proxyOf={proxyOf}
+              proxies={proxies}
+              profiles={profiles}
+              recent={recent}
+              onOpen={onOpen}
+              onOpenProfile={onOpenProfile}
+              onNewProfile={onNewProfile}
+              onOpenPrivate={onOpenPrivate}
+              onClose={() => onMenu(false)}
+            />
           </>
         )}
       </div>

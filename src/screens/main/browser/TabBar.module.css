@@ -157,23 +157,103 @@
   z-index: 50;
   top: calc(100% + 6px);
   left: 0;
-  width: 280px;
-  padding: 6px;
+  width: 320px;
+  /* A long list scrolls inside; the search and the private tab stay put. */
+  max-height: min(620px, calc(100vh - 120px));
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   background: var(--color-selected);
   border: 1px solid var(--color-border);
   border-radius: 12px;
   box-shadow: 0 18px 40px rgb(0 0 0 / 0.6);
-  /* Many accounts and proxies scroll rather than run off the window. */
-  max-height: min(520px, calc(100vh - 120px));
+}
+
+.menuSearch {
+  flex: 0 0 auto;
+  height: 38px;
+  margin: 8px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text-faint);
+}
+
+.menuSearch:focus-within {
+  border-color: var(--color-text-muted);
+}
+
+.menuInput {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  font-size: 13px;
+}
+
+.menuInput::placeholder {
+  color: var(--color-text-faint);
+}
+
+.menuList {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
+  padding: 0 6px 6px;
+  display: flex;
+  flex-direction: column;
+}
+
+.menuFoot {
+  flex: 0 0 auto;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--color-border);
 }
 
 .menuTitle {
   padding: 8px 10px 6px;
   color: var(--color-text-faint);
   font-size: 11.5px;
+}
+
+.menuFold {
+  flex: 0 0 34px;
+  margin-top: 4px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: var(--color-text-faint);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.menuFold:hover {
+  background: var(--color-option-hover);
+}
+
+/* A folded-open long list scrolls on its own, so the sections below stay near. */
+.menuNested {
+  max-height: 228px;
+  overflow-y: auto;
+  margin-left: 10px;
+  padding-left: 4px;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--color-border);
 }
 
 .menuEmpty {
@@ -183,7 +263,8 @@
 }
 
 .menuItem {
-  height: 40px;
+  flex: 0 0 38px;
+  height: 38px;
   padding: 0 10px;
   display: flex;
   align-items: center;
@@ -198,24 +279,72 @@
   cursor: pointer;
 }
 
-.menuItem:hover {
+.menuItem:hover,
+.menuItem[data-first] {
   background: var(--color-option-hover);
 }
 
-.menuSection {
-  margin-top: 6px;
-  padding-top: 12px;
-  border-top: 1px solid var(--color-border);
+.menuSmall {
+  flex-basis: 34px;
+  height: 34px;
+  padding-left: 32px;
+  font-size: 12.5px;
 }
 
-.menuPrivate {
+.menuQuiet {
+  color: var(--color-text-secondary);
+}
+
+.menuLabel {
   min-width: 0;
   display: flex;
   align-items: center;
   gap: 8px;
-  overflow: hidden;
+}
+
+.menuName {
+  min-width: 0;
   white-space: nowrap;
+  overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.menuAvatar,
+.menuInitials,
+.profileMark {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 7.5px;
+  font-weight: 700;
+}
+
+.menuAvatar {
+  object-fit: cover;
+}
+
+.menuInitials {
+  background: var(--color-line-strong);
+  color: var(--color-text-secondary);
+}
+
+.profileMark {
+  border-radius: 4px;
+  color: var(--color-text);
+  font-size: 8.5px;
+}
+
+/* In the bar, a profile's mark is the size of an account's avatar. */
+.pick .profileMark {
+  width: 18px;
+  height: 18px;
+  flex-basis: 18px;
+  border-radius: 5px;
+  font-size: 9px;
 }
 
 .menuProxy {
@@ -242,7 +371,8 @@
 .pick:focus-visible,
 .close:focus-visible,
 .plus:focus-visible,
-.menuItem:focus-visible {
+.menuItem:focus-visible,
+.menuFold:focus-visible {
   outline: 2px solid var(--color-text);
   outline-offset: -2px;
 }
