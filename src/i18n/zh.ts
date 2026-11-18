@@ -7,6 +7,7 @@ import { groups } from './groups/zh.ts'
 import { trades } from './trades/zh.ts'
 import { inventory } from './inventory/zh.ts'
 import { tasks } from './tasks/zh.ts'
+import { profiles } from './profiles/zh.ts'
 import { proxies } from './proxies/zh.ts'
 import { browser } from './browser/zh.ts'
 import { updates } from './updates/zh.ts'
@@ -21,6 +22,7 @@ export const zh: Dictionary = {
   inventory,
   tasks,
   proxies,
+  profiles,
   browser,
   updates,
 
@@ -169,6 +171,7 @@ export const zh: Dictionary = {
     inventory: '库存',
     tasks: '任务',
     proxies: '代理',
+    profiles: '浏览器配置',
     add: '添加账户',
     settings: '设置',
     vaultUnlocked: '保险库已解锁',

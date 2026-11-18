@@ -7,6 +7,7 @@ import { groups } from './groups/uk.ts'
 import { trades } from './trades/uk.ts'
 import { inventory } from './inventory/uk.ts'
 import { tasks } from './tasks/uk.ts'
+import { profiles } from './profiles/uk.ts'
 import { proxies } from './proxies/uk.ts'
 import { browser } from './browser/uk.ts'
 import { updates } from './updates/uk.ts'
@@ -21,6 +22,7 @@ export const uk: Dictionary = {
   inventory,
   tasks,
   proxies,
+  profiles,
   browser,
   updates,
 
@@ -172,6 +174,7 @@ export const uk: Dictionary = {
     inventory: 'Інвентар',
     tasks: 'Завдання',
     proxies: 'Проксі',
+    profiles: 'Профілі браузера',
     add: 'Додати акаунт',
     settings: 'Налаштування',
     vaultUnlocked: 'Сховище відкрите',

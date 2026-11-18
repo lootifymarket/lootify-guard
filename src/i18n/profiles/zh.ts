@@ -1,0 +1,46 @@
+import type { profiles as en } from './en.ts'
+
+export const profiles: typeof en = {
+  title: '浏览器配置',
+  summary: (count, signedIn) => `${count} 个配置 · ${signedIn} 个保存了登录`,
+  intro: '会记住登录的浏览器标签页',
+  newProfile: '新建配置',
+  list: '配置',
+  columns: {
+    profile: '配置',
+    proxy: '代理',
+    signIns: '已保存的登录',
+    lastOpened: '上次打开',
+  },
+  noProxy: '不使用代理',
+  deletedProxy: '已删除的代理',
+  sites: (n) => `${n} 个网站`,
+  nothingSaved: '暂无',
+  never: '从未',
+  ago: (when) => `${when}前`,
+  open: '打开',
+  openName: (name) => `打开 ${name}`,
+  edit: (name) => `编辑 ${name}`,
+  emptyTitle: '还没有配置',
+  emptyText:
+    '配置是一个不登录 Steam 账户、但会记住登录的浏览器标签页：共享邮箱、论坛、代理商店。它始终经过同一个代理。每个 Steam 账户都已有自己的标签页。',
+  note: '登录以 Cookie 形式保存在加密保险库中，打开配置时恢复。磁盘上不会留下未加密的内容，保险库锁定时所有配置都会关闭。',
+  dialog: {
+    newTitle: '新建配置',
+    editTitle: '配置',
+    name: '名称',
+    namePlaceholder: '共享邮箱',
+    proxy: '代理',
+    proxyMoved:
+      '网站之前在旧地址看到过这个配置。换到新地址后，它们可能会要求你确认登录。',
+    proxyNextTime: '已打开的标签页在关闭前仍使用旧代理。',
+    signIns: '已保存的登录',
+    clear: '清除',
+    delete: '删除配置',
+    create: '创建并打开',
+    save: '保存',
+  },
+  saved: '配置已保存',
+  deleted: '配置已删除',
+  cleared: '已清除登录',
+}

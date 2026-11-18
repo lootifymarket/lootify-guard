@@ -15,6 +15,7 @@ export type Section =
   | 'inventory'
   | 'tasks'
   | 'proxies'
+  | 'profiles'
   | 'add'
   | 'settings'
 
@@ -44,6 +45,7 @@ const SECTIONS: { id: Section; icon: string }[] = [
     id: 'proxies',
     icon: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM2 12h20M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10 15 15 0 0 1-4-10 15 15 0 0 1 4-10z',
   },
+  { id: 'profiles', icon: 'M3 4h18v16H3zM3 9h18M6.5 6.5h.01M9.5 6.5h.01' },
   { id: 'add', icon: 'M12 5v14M5 12h14' },
   {
     id: 'settings',
