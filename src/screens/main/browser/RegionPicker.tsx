@@ -42,8 +42,9 @@ export default function RegionPicker({
       options={[
         {
           value: MATCH,
-          label: t.matchProxy,
-          hint: matched ? regionName(matched) : t.matchProxyUnknown,
+          label: matched
+            ? `${t.matchProxy} · ${regionName(matched)}`
+            : t.matchProxyUnknown,
         },
         { value: COMPUTER, label: t.thisComputer },
         ...regions.map((region) => ({

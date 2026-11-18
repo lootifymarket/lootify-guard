@@ -23,7 +23,7 @@ export const browser = {
   privateChipHint: 'Cookies are gone once this tab closes',
   region: 'Time zone and language',
   matchProxy: 'Match the proxy',
-  matchProxyUnknown: 'The proxy’s country isn’t known yet',
+  matchProxyUnknown: 'Match the proxy · its country isn’t known yet',
   thisComputer: 'This computer’s',
   regionHint:
     'What pages in this tab see, so they agree with the proxy’s country. Takes effect the next time the tab opens.',
