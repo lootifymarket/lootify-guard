@@ -6,6 +6,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use lootify_guard_core::cm::{self, Connection, Event, MAX_GAMES};
 use lootify_guard_core::contents::{Account, Contents};
+use lootify_guard_core::free_games::{self, FreeGame};
 use lootify_guard_core::games::{self, OwnedGame, PlayingList};
 use lootify_guard_core::steam::SteamError;
 use serde::Serialize;
@@ -198,6 +199,15 @@ fn play(
         Err(ended) => return ended,
     };
     let send = |connection: &mut Connection, list: &PlayingList| {
+        // A free game the account doesn't have yet is added first, as the
+        // client does, or Steam wouldn't count it as played.
+        let free: Vec<u32> = list
+            .games
+            .iter()
+            .copied()
+            .filter(|&game| free_games::is_free(game))
+            .collect();
+        connection.request_free_licenses(&free)?;
         connection.show_as(list.presence)?;
         connection.play(&list.games, list.status.as_deref())
     };
@@ -259,6 +269,29 @@ fn connect(app: &AppHandle, account_name: &str) -> Result<Connection, Ended> {
         SteamError::SessionExpired => Ended::Failed(err.to_string()),
         err => Ended::Dropped(err.to_string()),
     })
+}
+
+/// Adds the free games to the account over a connection of its own, closed right
+/// after. Anything the account plays is stopped first, so the two don't overlap.
+pub(crate) fn add_free_games(
+    app: &AppHandle,
+    account_name: &str,
+    apps: &[u32],
+) -> Result<(), String> {
+    app.state::<Players>().stop(account_name);
+    let mut connection = connect(app, account_name).map_err(|ended| match ended {
+        Ended::Failed(reason) | Ended::Dropped(reason) => reason,
+        Ended::Stopped => "stopped".to_owned(),
+    })?;
+    let result = connection.request_free_licenses(apps);
+    connection.close();
+    result.map_err(|err| err.to_string())
+}
+
+/// The free games the account can play without owning them yet.
+#[tauri::command]
+pub fn free_games() -> &'static [FreeGame] {
+    free_games::free_games()
 }
 
 /// Saves the mobile session and the client sign-in the connection came back with.

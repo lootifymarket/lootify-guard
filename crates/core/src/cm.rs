@@ -37,6 +37,8 @@ const MACHINE_NAME: &str = "Lootify Guard";
 // Steam signs out an older connection that logs on with the same id, so a
 // reconnect replaces the app's own connection instead of piling up beside it.
 const LOGON_ID: u32 = 0x4C47_4744;
+// Steam answers a free license request within a second or two.
+const FREE_LICENSE_WAIT: Duration = Duration::from_secs(10);
 // The game id the client uses for a non-Steam game, which shows its name as is.
 const CUSTOM_STATUS_ID: u64 = 15_190_414_816_125_648_896;
 
@@ -57,6 +59,8 @@ mod emsg {
     pub const LOGGED_OFF: u32 = 757;
     pub const GAMES_PLAYED: u32 = 5410;
     pub const LOGON: u32 = 5514;
+    pub const REQUEST_FREE_LICENSE: u32 = 5572;
+    pub const REQUEST_FREE_LICENSE_RESPONSE: u32 = 5573;
     pub const PLAYING_SESSION_STATE: u32 = 9600;
 }
 
@@ -275,6 +279,28 @@ impl Connection {
         self.send(emsg::GAMES_PLAYED, &games_played(games, status))
     }
 
+    /// Asks Steam to add free games the account doesn't have yet, as the client
+    /// does when Play is pressed on one, and waits a little for the answer. Games
+    /// it owns already, or that aren't free, stay as they are.
+    pub fn request_free_licenses(&mut self, apps: &[u32]) -> Result<(), SteamError> {
+        if apps.is_empty() {
+            return Ok(());
+        }
+        self.send(emsg::REQUEST_FREE_LICENSE, &free_license_request(apps))?;
+        let deadline = Instant::now() + FREE_LICENSE_WAIT;
+        while Instant::now() < deadline {
+            for message in self.receive()? {
+                match message.emsg {
+                    emsg::REQUEST_FREE_LICENSE_RESPONSE => return Ok(()),
+                    emsg::LOGGED_OFF => return Err(SteamError::Network),
+                    _ => {}
+                }
+            }
+        }
+        // No answer: the games are played anyway, and Steam may still add them.
+        Ok(())
+    }
+
     pub fn show_as(&mut self, presence: Presence) -> Result<(), SteamError> {
         let body = Writer::default()
             .varint(1, presence.persona_state())
@@ -392,6 +418,15 @@ fn logon(steam_id: u64, token: &str) -> Vec<u8> {
         .varint(102, 1)
         // The field is called access_token, but takes the refresh token.
         .string(108, token)
+        .finish()
+}
+
+/// CMsgClientRequestFreeLicense: the apps, each as field 2.
+fn free_license_request(apps: &[u32]) -> Vec<u8> {
+    apps.iter()
+        .fold(Writer::default(), |message, &app| {
+            message.varint(2, u64::from(app))
+        })
         .finish()
 }
 
@@ -605,5 +640,14 @@ mod tests {
         assert!(matches!(logon_error(84), SteamError::RateLimited));
         assert!(matches!(logon_error(48), SteamError::Busy));
         assert!(matches!(logon_error(65), SteamError::Steam(_)));
+    }
+
+    #[test]
+    fn a_free_license_request_lists_each_app() {
+        // 570 as a varint is BA 04; field 2 of wire type 0 is the key 0x10.
+        assert_eq!(
+            free_license_request(&[570, 440]),
+            [0x10, 0xBA, 0x04, 0x10, 0xB8, 0x03]
+        );
     }
 }

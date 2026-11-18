@@ -5,13 +5,14 @@ use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use lootify_guard_core::cards::{self, CardGame};
+use lootify_guard_core::free_games;
 use lootify_guard_core::games::PlayingList;
 use lootify_guard_core::steam::SteamError;
 use serde::Serialize;
 use tauri::{AppHandle, Manager, State};
 
 use crate::accounts::{account_and_proxy, store_session};
-use crate::playing::Players;
+use crate::playing::{Players, add_free_games};
 use crate::vault::{CommandError, VaultState};
 
 // Steam updates the badges page with some delay, so checking more often gains nothing.
@@ -131,6 +132,10 @@ fn set(view: &Mutex<FarmView>, state: FarmState) {
 
 fn farm(app: &AppHandle, account_name: &str, cancelled: &AtomicBool, view: &Mutex<FarmView>) {
     let players = app.state::<Players>();
+    // Free games that drop cards on their own go on the account first, so its
+    // badges show them. One that can't be added is just not farmed.
+    let card_games: Vec<u32> = free_games::card_games().collect();
+    let _ = add_free_games(app, account_name, &card_games);
     let mut last: Option<(Vec<CardGame>, Vec<u32>)> = None;
     loop {
         if cancelled.load(Ordering::Relaxed) {
