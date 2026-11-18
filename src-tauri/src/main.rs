@@ -6,6 +6,7 @@ mod add_account;
 mod auto_confirm;
 mod biometrics;
 mod browser;
+mod browser_profiles;
 mod confirmations;
 mod farming;
 mod groups;
@@ -185,6 +186,11 @@ fn main() {
             proxies::check_proxy,
             browser::open_browser,
             browser::open_private_browser,
+            browser::open_profile_browser,
+            browser_profiles::list_browser_profiles,
+            browser_profiles::add_browser_profile,
+            browser_profiles::update_browser_profile,
+            browser_profiles::remove_browser_profile,
             browser::place_browser,
             browser::hide_browser,
             browser::close_browser,

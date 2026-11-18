@@ -8,6 +8,7 @@ use lootify_guard_core::browser::{
     Bookmark, History, SavedCookie, add_bookmark, cookies_to_keep, is_steam_cookie, may_open,
     profile_url, same_cookies, session_cookies, site_icon, typed_url,
 };
+use lootify_guard_core::browser_profiles::ProfileError;
 use lootify_guard_core::contents::Contents;
 use lootify_guard_core::forward::Forwarder;
 use lootify_guard_core::proxy::ProxyAddress;
@@ -21,7 +22,7 @@ use tauri::webview::{
     Cookie, NewWindowResponse, PageLoadEvent, PermissionResponse, WebviewBuilder,
 };
 use tauri::{
-    AppHandle, LogicalPosition, LogicalSize, Manager, Rect, State, Webview, WebviewUrl, Window,
+    AppHandle, LogicalPosition, LogicalSize, Manager, Rect, State, Url, Webview, WebviewUrl, Window,
 };
 
 use crate::accounts::{account_and_proxy, no_such_account, settle, store_session};
@@ -33,14 +34,16 @@ const NO_WEBRTC: &str = "for (const name of ['RTCPeerConnection', 'webkitRTCPeer
 
 // Steam logins are letters, digits and underscores, so no account's tab is named so.
 const PRIVATE_PREFIX: &str = "private:";
-// Where a private tab starts: the first of the sites on the bar.
-const PRIVATE_START: &str = "https://store.steampowered.com/";
+const PROFILE_PREFIX: &str = "profile:";
+// Where a tab signed in to nothing starts: the first of the sites on the bar.
+const UNSIGNED_START: &str = "https://store.steampowered.com/";
 // How often open tabs' sign-ins go to the vault. An idle lock drops the vault
 // before anything can save, so this is the most a lock can lose.
 const SAVE_COOKIES_EVERY: Duration = Duration::from_secs(30);
 
-/// The browser tabs that are open: one per account at most, named after it, and
-/// private ones signed in to nothing, named `private:1`, `private:2` and on.
+/// The browser tabs that are open: one per account at most, named after it; one
+/// per browser profile, named `profile:<id>`; and private ones signed in to
+/// nothing, named `private:1`, `private:2` and on.
 #[derive(Default)]
 pub struct Browsers {
     tabs: Mutex<HashMap<String, Tab>>,
@@ -49,8 +52,7 @@ pub struct Browsers {
 
 struct Tab {
     webview: Webview,
-    /// The account the tab is signed in as; `None` for a private tab, which keeps nothing.
-    account: Option<String>,
+    owner: Owner,
     page: Arc<Mutex<PageState>>,
     /// What the tab's traffic goes through, so what it fetches besides goes the same way.
     proxy: Option<ProxyAddress>,
@@ -58,6 +60,15 @@ struct Tab {
     opened_at: u64,
     // Stops tunnelling once the tab is gone.
     _forwarder: Option<Forwarder>,
+}
+
+/// Whose sign-ins the tab keeps.
+#[derive(Clone)]
+enum Owner {
+    Account(String),
+    Profile(u32),
+    /// A private tab, which keeps nothing.
+    Nobody,
 }
 
 #[derive(Default)]
@@ -225,7 +236,7 @@ pub async fn open_browser(
             account_name.clone(),
             Tab {
                 webview,
-                account: Some(account_name.clone()),
+                owner: Owner::Account(account_name.clone()),
                 page,
                 proxy,
                 opened_at: unix_now(),
@@ -258,7 +269,6 @@ pub async fn open_private_browser(
         }
         None => None,
     };
-    let forwarder = start_forwarder(proxy.as_ref())?;
     // The lowest free number, so tab names, and on Windows their folders, get reused.
     let name = {
         let tabs = browsers.tabs();
@@ -267,6 +277,69 @@ pub async fn open_private_browser(
             .find(|name| !tabs.contains_key(name))
             .expect("fewer tabs than numbers")
     };
+    let start = UNSIGNED_START.parse().expect("a valid URL");
+    open_unsigned(&window, &browsers, &name, Owner::Nobody, proxy, &[], start)?;
+    Ok(name)
+}
+
+/// Opens the browser profile's tab, with its sign-ins back, where it was last. It
+/// starts hidden; `place_browser` shows it. Returns the tab's name.
+#[tauri::command]
+pub async fn open_profile_browser(
+    window: Window,
+    state: State<'_, VaultState>,
+    browsers: State<'_, Browsers>,
+    profile_id: u32,
+) -> Result<String, CommandError> {
+    let name = format!("{PROFILE_PREFIX}{profile_id}");
+    if browsers.tabs().contains_key(&name) {
+        return Ok(name);
+    }
+    let (proxy, saved, start) = {
+        let mut unlocked = state.unlocked();
+        let vault = unlocked.as_mut().ok_or(CommandError::Locked)?;
+        let mut contents = Contents::from_bytes(vault.data())?;
+        let profile = contents.profile(profile_id).ok_or(ProfileError::Missing)?;
+        let proxy = contents
+            .proxy_of_profile(profile)
+            .map_err(|_| ProfileError::MissingProxy)?
+            .map(|proxy| proxy.address.clone());
+        let saved = cookies_to_keep(profile.saved_cookies.clone(), unix_now_signed(), false);
+        let start = profile
+            .last_url
+            .as_deref()
+            .and_then(|url| url.parse::<Url>().ok())
+            .filter(|url| matches!(url.scheme(), "https" | "http"))
+            .unwrap_or_else(|| UNSIGNED_START.parse().expect("a valid URL"));
+        if let Some(profile) = contents.profile_mut(profile_id) {
+            profile.last_opened = Some(unix_now());
+        }
+        vault.save_data(contents.to_bytes())?;
+        (proxy, saved, start)
+    };
+    open_unsigned(
+        &window,
+        &browsers,
+        &name,
+        Owner::Profile(profile_id),
+        proxy,
+        &saved,
+        start,
+    )?;
+    Ok(name)
+}
+
+/// Adds a hidden tab signed in to no Steam account, with `saved` cookies put back.
+fn open_unsigned(
+    window: &Window,
+    browsers: &Browsers,
+    name: &str,
+    owner: Owner,
+    proxy: Option<ProxyAddress>,
+    saved: &[SavedCookie],
+    start: Url,
+) -> Result<(), CommandError> {
+    let forwarder = start_forwarder(proxy.as_ref())?;
     let page = Arc::new(Mutex::new(PageState::default()));
     let builder = tab_builder(
         window.app_handle(),
@@ -281,19 +354,28 @@ pub async fn open_private_browser(
         LogicalSize::new(0.0, 0.0),
     )?;
     webview.hide()?;
-    webview.navigate(PRIVATE_START.parse().expect("a valid URL"))?;
-    browsers.tabs().insert(
-        name.clone(),
+    for cookie in saved {
+        webview.set_cookie(restored(cookie))?;
+    }
+    webview.navigate(start)?;
+    let mut tabs = browsers.tabs();
+    // Opened twice at once: the first one stays.
+    if tabs.contains_key(name) {
+        let _ = webview.close();
+        return Ok(());
+    }
+    tabs.insert(
+        name.to_owned(),
         Tab {
             webview,
-            account: None,
+            owner,
             page,
             proxy,
             opened_at: unix_now(),
             _forwarder: forwarder,
         },
     );
-    Ok(name)
+    Ok(())
 }
 
 fn start_forwarder(proxy: Option<&ProxyAddress>) -> Result<Option<Forwarder>, CommandError> {
@@ -409,19 +491,15 @@ pub async fn close_browser(
     browsers: State<'_, Browsers>,
     tab: String,
 ) -> Result<(), CommandError> {
-    let open = browsers
-        .tabs()
-        .get(&tab)
-        .and_then(|open| Some((open.account.clone()?, open.webview.clone())));
-    if let Some((account_name, webview)) = open {
-        save_tab(&state, &account_name, &webview);
+    let open = browsers.tabs().get(&tab).map(Kept::of);
+    if let Some(kept) = open {
+        save_tab(&state, &kept);
     }
     browsers.close(&tab);
     Ok(())
 }
 
-/// Keeps every open account tab's sign-ins in the vault, every half minute
-/// while it's unlocked.
+/// Keeps every open tab's sign-ins in the vault, every half minute while it's unlocked.
 pub fn watch_cookies(app: AppHandle) {
     thread::spawn(move || {
         loop {
@@ -431,28 +509,49 @@ pub fn watch_cookies(app: AppHandle) {
     });
 }
 
-/// Puts each open account tab's cookies in the vault, where they changed. Never
-/// on the main thread: WebView2 hands cookies over through it.
+/// Puts each open tab's cookies in the vault, where they changed. Never on the
+/// main thread: WebView2 hands cookies over through it.
 pub(crate) fn save_cookies(state: &VaultState, browsers: &Browsers) {
-    let open: Vec<(String, Webview)> = browsers
-        .tabs()
-        .values()
-        .filter_map(|tab| Some((tab.account.clone()?, tab.webview.clone())))
-        .collect();
-    for (account_name, webview) in open {
-        save_tab(state, &account_name, &webview);
+    let open: Vec<Kept> = browsers.tabs().values().map(Kept::of).collect();
+    for kept in open {
+        save_tab(state, &kept);
     }
 }
 
-fn save_tab(state: &VaultState, account_name: &str, webview: &Webview) {
-    let Ok(cookies) = webview.cookies() else {
+/// What saving a tab needs, taken out so the tabs aren't locked meanwhile.
+struct Kept {
+    owner: Owner,
+    webview: Webview,
+    page: Arc<Mutex<PageState>>,
+}
+
+impl Kept {
+    fn of(tab: &Tab) -> Self {
+        Self {
+            owner: tab.owner.clone(),
+            webview: tab.webview.clone(),
+            page: tab.page.clone(),
+        }
+    }
+}
+
+fn save_tab(state: &VaultState, kept: &Kept) {
+    if matches!(kept.owner, Owner::Nobody) {
+        return;
+    }
+    let Ok(cookies) = kept.webview.cookies() else {
         return;
     };
     let cookies = cookies_to_keep(
         cookies.into_iter().filter_map(saved).collect(),
         unix_now_signed(),
-        true,
+        matches!(kept.owner, Owner::Account(_)),
     );
+    let url = page_state(&kept.page)
+        .history
+        .current()
+        .filter(|url| matches!(url.scheme(), "https" | "http"))
+        .map(ToString::to_string);
     let mut unlocked = state.unlocked();
     let Some(vault) = unlocked.as_mut() else {
         return;
@@ -460,31 +559,49 @@ fn save_tab(state: &VaultState, account_name: &str, webview: &Webview) {
     let Ok(mut contents) = Contents::from_bytes(vault.data()) else {
         return;
     };
-    let Some(account) = contents.account_mut(account_name) else {
-        return;
+    let changed = match &kept.owner {
+        Owner::Account(account_name) => contents
+            .account_mut(account_name)
+            .is_some_and(|account| keep(&mut account.saved_cookies, cookies)),
+        Owner::Profile(id) => contents.profile_mut(*id).is_some_and(|profile| {
+            let moved = url.is_some() && profile.last_url != url;
+            if moved {
+                profile.last_url = url;
+            }
+            keep(&mut profile.saved_cookies, cookies) || moved
+        }),
+        Owner::Nobody => false,
     };
-    if same_cookies(&account.saved_cookies, &cookies) {
-        return;
+    if changed {
+        let _ = vault.save_data(contents.to_bytes());
     }
-    account.saved_cookies = cookies;
-    let _ = vault.save_data(contents.to_bytes());
 }
 
-/// Forgets the account tab's sign-ins to other sites, in the vault and in the
-/// tab if it's open. Steam's stay, as the tab needs them.
+/// Replaces the kept cookies when they changed, and says whether they did.
+fn keep(kept: &mut Vec<SavedCookie>, cookies: Vec<SavedCookie>) -> bool {
+    if same_cookies(kept, &cookies) {
+        return false;
+    }
+    *kept = cookies;
+    true
+}
+
+/// Forgets the sign-ins the tab named `tab` keeps, in the vault and in the tab if
+/// it's open. An account's tab keeps Steam's, as it needs them.
 #[tauri::command]
 pub async fn clear_saved_cookies(
     state: State<'_, VaultState>,
     browsers: State<'_, Browsers>,
-    account_name: String,
+    tab: String,
 ) -> Result<(), CommandError> {
-    let webview = browsers
-        .tabs()
-        .get(&account_name)
-        .map(|tab| tab.webview.clone());
+    let profile = tab
+        .strip_prefix(PROFILE_PREFIX)
+        .map(|id| id.parse::<u32>().map_err(|_| ProfileError::Missing))
+        .transpose()?;
+    let webview = browsers.tabs().get(&tab).map(|open| open.webview.clone());
     if let Some(webview) = webview {
         for cookie in webview.cookies()? {
-            if !cookie.domain().is_some_and(is_steam_cookie) {
+            if profile.is_some() || !cookie.domain().is_some_and(is_steam_cookie) {
                 webview.delete_cookie(cookie)?;
             }
         }
@@ -492,11 +609,21 @@ pub async fn clear_saved_cookies(
     let mut unlocked = state.unlocked();
     let vault = unlocked.as_mut().ok_or(CommandError::Locked)?;
     let mut contents = Contents::from_bytes(vault.data())?;
-    contents
-        .account_mut(&account_name)
-        .ok_or_else(no_such_account)?
-        .saved_cookies
-        .clear();
+    let kept = match profile {
+        Some(id) => {
+            &mut contents
+                .profile_mut(id)
+                .ok_or(ProfileError::Missing)?
+                .saved_cookies
+        }
+        None => {
+            &mut contents
+                .account_mut(&tab)
+                .ok_or_else(no_such_account)?
+                .saved_cookies
+        }
+    };
+    kept.clear();
     vault.save_data(contents.to_bytes())?;
     Ok(())
 }

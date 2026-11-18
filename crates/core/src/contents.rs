@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use zeroize::Zeroizing;
 
 use crate::browser::{Bookmark, SavedCookie};
+use crate::browser_profiles::BrowserProfile;
 use crate::games::PlayingList;
 use crate::proxy::{Proxy, ProxyAddress};
 
@@ -29,6 +30,11 @@ pub struct Contents {
     /// In the vault rather than the settings: a saved profile page names the account.
     #[serde(default)]
     pub bookmarks: Vec<Bookmark>,
+    #[serde(default)]
+    pub profiles: Vec<BrowserProfile>,
+    /// Never reused, so a tab of a deleted profile can't turn into a new one.
+    #[serde(default)]
+    pub(crate) last_profile_id: u32,
 }
 
 /// A set of accounts the user handles together, like "Farm" or "Storage".

@@ -148,6 +148,9 @@ export const backend: Record<BackendMessage, string> = {
     '未知的代理类型，请使用 http:// 或 socks5://',
   'give the group a name': '请为分组命名',
   "there's already a group with that name": '已有同名分组',
+  'give the profile a name': '请为配置命名',
+  "there's already a profile with that name": '已有同名配置',
+  'the profile is no longer in the vault': '该配置已不在保险库中',
   'the group is no longer in the vault': '该分组已不在保险库中',
 
   // Free games
