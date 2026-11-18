@@ -95,6 +95,7 @@ fn main() {
             accounts::import_mafiles,
             accounts::reveal_revocation_code,
             accounts::export_mafile,
+            accounts::export_account,
             accounts::remove_account,
             accounts::sign_in,
             accounts::refresh_profile,

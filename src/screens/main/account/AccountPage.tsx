@@ -2,6 +2,7 @@ import { useEffect, useEffectEvent, useState } from 'react'
 import {
   CODE_PERIOD_SECS,
   describe,
+  exportAccount,
   exportMaFile,
   refreshProfile,
   revealRevocationCode,
@@ -86,7 +87,14 @@ type Tab = 'profile' | 'playing' | 'security'
 const TABS: Tab[] = ['profile', 'playing', 'security']
 
 type OpenDialog =
-  'signIn' | 'reveal' | 'export' | 'remove' | 'rules' | 'signOut' | null
+  | 'signIn'
+  | 'reveal'
+  | 'export'
+  | 'exportDetails'
+  | 'remove'
+  | 'rules'
+  | 'signOut'
+  | null
 
 export default function AccountPage({
   account,
@@ -268,6 +276,12 @@ export default function AccountPage({
 
   async function exportFile(password: string | null) {
     const saved = await exportMaFile(name, password)
+    setDialog(null)
+    if (saved) toast(t.security.saved(saved))
+  }
+
+  async function exportDetails(password: string | null) {
+    const saved = await exportAccount(name, password)
     setDialog(null)
     if (saved) toast(t.security.saved(saved))
   }
@@ -658,6 +672,13 @@ export default function AccountPage({
             </button>
             <button
               type="button"
+              className={styles.action}
+              onClick={() => setDialog('exportDetails')}
+            >
+              {t.security.exportDetails}
+            </button>
+            <button
+              type="button"
               className={`${styles.action} ${styles.danger}`}
               onClick={() => setDialog('remove')}
             >
@@ -731,6 +752,16 @@ export default function AccountPage({
         action={t.exportFile.action}
         biometric={biometric}
         onConfirm={exportFile}
+        onBiometricsOutdated={() => setBiometric(null)}
+        onClose={() => setDialog(null)}
+      />
+      <ConfirmOwner
+        open={dialog === 'exportDetails'}
+        title={t.exportDetails.title}
+        text={t.exportDetails.text}
+        action={t.exportDetails.action}
+        biometric={biometric}
+        onConfirm={exportDetails}
         onBiometricsOutdated={() => setBiometric(null)}
         onClose={() => setDialog(null)}
       />
