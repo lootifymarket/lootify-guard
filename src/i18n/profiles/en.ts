@@ -3,8 +3,9 @@ export const profiles = {
   summary: (accounts: number, profiles: number) =>
     `${accounts} Steam ${accounts === 1 ? 'account' : 'accounts'} · ${profiles} without Steam`,
   find: 'Find a profile or account',
-  withoutSteam: (n: number) => `Without Steam · ${n}`,
-  steamAccounts: (n: number) => `Steam accounts · ${n}`,
+  withoutSteam: 'Without Steam',
+  steamAccounts: 'Steam accounts',
+  noAccounts: 'No accounts yet.',
   showAllAccounts: (n: number) => `Show all ${n} accounts`,
   noMatches: 'Nothing with that name.',
   signInFirst: 'Sign in to Steam to open the account’s tab',
@@ -31,7 +32,7 @@ export const profiles = {
   openName: (name: string) => `Open ${name}`,
   edit: (name: string) => `Edit ${name}`,
   emptyText:
-    'A profile is a browser tab with no Steam account that remembers its sign-ins: a shared mailbox, a forum, a proxy shop. It always goes through the same proxy. Each Steam account’s own tab is below.',
+    'A profile is a browser tab with no Steam account that remembers its sign-ins: a shared mailbox, a forum, a proxy shop. It always goes through the same proxy. Steam accounts’ own tabs are under Steam accounts.',
   note: 'Sign-ins are kept as cookies in the encrypted vault and put back when the profile opens. Nothing is left on disk unencrypted, and a locked vault closes every profile.',
   dialog: {
     newTitle: 'New profile',

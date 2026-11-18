@@ -30,8 +30,8 @@
   min-width: 860px;
   display: grid;
   grid-template-columns:
-    minmax(200px, 2fr) minmax(150px, 1.4fr)
-    140px 110px 84px;
+    minmax(180px, 2fr) minmax(140px, 1.3fr) minmax(170px, 1.4fr)
+    120px 100px 84px;
   gap: 16px;
   align-items: center;
   padding: 12px 4px;
@@ -205,17 +205,56 @@
   cursor: pointer;
 }
 
-.search {
-  width: 100%;
-  max-width: 360px;
+.tabsRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  border-bottom: 1px solid var(--color-divider);
 }
 
-.sectionTitle {
-  margin: 0 0 4px;
-  padding: 0 4px;
-  color: var(--color-text-muted);
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px;
+}
+
+.tab {
+  height: 40px;
+  margin-bottom: -1px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  color: var(--color-text-faint);
   font-size: 13px;
   font-weight: 500;
+  cursor: pointer;
+}
+
+.tab[aria-selected='true'] {
+  border-bottom-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.tabCount {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+.search {
+  width: 260px;
+  height: 34px;
+  margin-bottom: 6px;
 }
 
 .accountMark {

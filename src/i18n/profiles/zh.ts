@@ -5,8 +5,9 @@ export const profiles: typeof en = {
   summary: (accounts, profiles) =>
     `${accounts} 个 Steam 账户 · ${profiles} 个不含 Steam`,
   find: '查找配置或账户',
-  withoutSteam: (n) => `不含 Steam · ${n}`,
-  steamAccounts: (n) => `Steam 账户 · ${n}`,
+  withoutSteam: '不含 Steam',
+  steamAccounts: 'Steam 账户',
+  noAccounts: '还没有账户。',
   showAllAccounts: (n) => `显示全部 ${n} 个账户`,
   noMatches: '没有这个名称。',
   signInFirst: '登录 Steam 后才能打开该账户的标签页',
@@ -32,7 +33,7 @@ export const profiles: typeof en = {
   openName: (name) => `打开 ${name}`,
   edit: (name) => `编辑 ${name}`,
   emptyText:
-    '配置是一个不登录 Steam 账户、但会记住登录的浏览器标签页：共享邮箱、论坛、代理商店。它始终经过同一个代理。Steam 账户自己的标签页在下方。',
+    '配置是一个不登录 Steam 账户、但会记住登录的浏览器标签页：共享邮箱、论坛、代理商店。它始终经过同一个代理。Steam 账户自己的标签页在“Steam 账户”中。',
   note: '登录以 Cookie 形式保存在加密保险库中，打开配置时恢复。磁盘上不会留下未加密的内容，保险库锁定时所有配置都会关闭。',
   dialog: {
     newTitle: '新建配置',

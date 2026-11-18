@@ -62,6 +62,7 @@ export default function Profiles({
   // `null` while closed; `'new'` for a new one.
   const [editing, setEditing] = useState<number | 'new' | null>(null)
   const [editingAccount, setEditingAccount] = useState<string | null>(null)
+  const [view, setView] = useState<'accounts' | 'profiles'>('accounts')
   const [query, setQuery] = useState('')
   const [allAccounts, setAllAccounts] = useState(false)
   const reload = () => setRevision((r) => r + 1)
@@ -129,90 +130,108 @@ export default function Profiles({
         </Button>
       </div>
 
-      <input
-        className={`${layout.search} ${styles.search}`}
-        type="search"
-        aria-label={t.find}
-        placeholder={t.find}
-        spellCheck={false}
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-      />
+      <div className={styles.tabsRow}>
+        <div className={styles.tabs} role="tablist" aria-label={t.title}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={view === 'accounts'}
+            className={styles.tab}
+            onClick={() => setView('accounts')}
+          >
+            {t.steamAccounts}
+            <span className={styles.tabCount}>{accounts.length}</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={view === 'profiles'}
+            className={styles.tab}
+            onClick={() => setView('profiles')}
+          >
+            {t.withoutSteam}
+            <span className={styles.tabCount}>{profiles?.length ?? 0}</span>
+          </button>
+        </div>
+        <input
+          className={`${layout.search} ${styles.search}`}
+          type="search"
+          aria-label={t.find}
+          placeholder={t.find}
+          spellCheck={false}
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+      </div>
 
       {error && <p className={styles.error}>{error}</p>}
 
-      <section className={styles.table} aria-labelledby="without-steam">
-        <h2 id="without-steam" className={styles.sectionTitle}>
-          {t.withoutSteam(profiles?.length ?? 0)}
-        </h2>
-        {profiles?.length === 0 ? (
-          <div className={`${styles.empty} rise`}>
-            <p className={styles.muted}>{t.emptyText}</p>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setEditing('new')}
-            >
-              {t.newProfile}
-            </Button>
-          </div>
-        ) : (
-          <>
-            <Head />
-            {shownProfiles === undefined
-              ? Array.from({ length: SKELETON_ROWS }, (_, i) => (
-                  <div key={i} className={styles.row}>
-                    <Skeleton width={160} height={12} />
-                    <Skeleton width={120} height={12} />
-                    <Skeleton width={130} height={12} />
-                    <Skeleton width={60} height={12} />
-                    <Skeleton width={60} height={12} />
-                    <span />
-                  </div>
-                ))
-              : shownProfiles.map((profile) => (
-                  <Row
-                    key={profile.id}
-                    name={profile.name}
-                    mark={
-                      <span
-                        className={styles.mark}
-                        style={{ background: profileTint(profile.id) }}
-                        aria-hidden="true"
-                      >
-                        {profile.name.slice(0, 1).toUpperCase()}
-                      </span>
-                    }
-                    proxyId={profile.proxyId}
-                    proxies={proxies}
-                    region={regionText(
-                      regions,
-                      profile.region,
-                      proxyOf(profile.proxyId)?.country ?? null,
-                      words.browser.thisComputer,
-                    )}
-                    savedSites={profile.savedSites}
-                    lastOpened={lastOpened(
-                      t,
-                      words.time.justNow,
-                      profile.lastOpened,
-                    )}
-                    onEdit={() => setEditing(profile.id)}
-                    onOpen={() => onOpen(profile.id)}
-                  />
-                ))}
-            {shownProfiles?.length === 0 && (
-              <p className={layout.note}>{t.noMatches}</p>
-            )}
-          </>
-        )}
-      </section>
-
-      {accounts.length > 0 && (
-        <section className={styles.table} aria-labelledby="steam-accounts">
-          <h2 id="steam-accounts" className={styles.sectionTitle}>
-            {t.steamAccounts(accounts.length)}
-          </h2>
+      {view === 'profiles' ? (
+        <section className={styles.table} aria-label={t.withoutSteam}>
+          {profiles?.length === 0 ? (
+            <div className={`${styles.empty} rise`}>
+              <p className={styles.muted}>{t.emptyText}</p>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setEditing('new')}
+              >
+                {t.newProfile}
+              </Button>
+            </div>
+          ) : (
+            <>
+              <Head />
+              {shownProfiles === undefined
+                ? Array.from({ length: SKELETON_ROWS }, (_, i) => (
+                    <div key={i} className={styles.row}>
+                      <Skeleton width={160} height={12} />
+                      <Skeleton width={120} height={12} />
+                      <Skeleton width={130} height={12} />
+                      <Skeleton width={60} height={12} />
+                      <Skeleton width={60} height={12} />
+                      <span />
+                    </div>
+                  ))
+                : shownProfiles.map((profile) => (
+                    <Row
+                      key={profile.id}
+                      name={profile.name}
+                      mark={
+                        <span
+                          className={styles.mark}
+                          style={{ background: profileTint(profile.id) }}
+                          aria-hidden="true"
+                        >
+                          {profile.name.slice(0, 1).toUpperCase()}
+                        </span>
+                      }
+                      proxyId={profile.proxyId}
+                      proxies={proxies}
+                      region={regionText(
+                        regions,
+                        profile.region,
+                        proxyOf(profile.proxyId)?.country ?? null,
+                        words.browser.thisComputer,
+                      )}
+                      savedSites={profile.savedSites}
+                      lastOpened={lastOpened(
+                        t,
+                        words.time.justNow,
+                        profile.lastOpened,
+                      )}
+                      onEdit={() => setEditing(profile.id)}
+                      onOpen={() => onOpen(profile.id)}
+                    />
+                  ))}
+              {shownProfiles?.length === 0 && (
+                <p className={layout.note}>{t.noMatches}</p>
+              )}
+            </>
+          )}
+        </section>
+      ) : (
+        <section className={styles.table} aria-label={t.steamAccounts}>
           <Head />
           {shownAccounts.map((account) => (
             <Row
@@ -255,8 +274,8 @@ export default function Profiles({
               {t.showAllAccounts(foundAccounts.length)}
             </button>
           )}
-          {needle !== '' && foundAccounts.length === 0 && (
-            <p className={layout.note}>{t.noMatches}</p>
+          {foundAccounts.length === 0 && (
+            <p className={layout.note}>{needle ? t.noMatches : t.noAccounts}</p>
           )}
         </section>
       )}
@@ -270,6 +289,7 @@ export default function Profiles({
           onClose={() => setEditing(null)}
           onCreated={(id) => {
             setEditing(null)
+            setView('profiles')
             reload()
             onOpen(id)
           }}
