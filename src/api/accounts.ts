@@ -84,9 +84,12 @@ export const revealRevocationCode = (
   password: string | null,
 ) => invoke<string>('reveal_revocation_code', { accountName, password })
 
-/** Resolves to the saved file's name, or `null` when saving was cancelled. */
-export const exportMaFile = (accountName: string, password: string | null) =>
-  invoke<string | null>('export_mafile', { accountName, password })
+/**
+ * Saves a folder with the account's `.maFile` and `account_details.json`.
+ * Resolves to the folder's name, or `null` when saving was cancelled.
+ */
+export const exportAccount = (accountName: string, password: string | null) =>
+  invoke<string | null>('export_account', { accountName, password })
 
 export const removeAccount = (accountName: string) =>
   invoke<void>('remove_account', { accountName })

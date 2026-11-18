@@ -52,7 +52,7 @@ export const account = {
     signedOutDevices: (n: number) =>
       `Signed out ${n} ${n === 1 ? 'device' : 'devices'}.`,
     signOutEverywhere: 'Sign out everywhere',
-    exportMaFile: 'Export .maFile',
+    exportAccount: 'Export account',
     remove: 'Remove from Lootify Guard',
     saved: (file: string) => `Saved ${file}`,
     unknown: 'Unknown',
@@ -84,9 +84,9 @@ export const account = {
   },
 
   exportFile: {
-    title: 'Export .maFile',
-    text: 'The file holds this account’s Steam Guard secrets unencrypted. Anyone who gets it can sign in with its codes and confirm trades. Keep it where only you can reach it.',
-    action: 'Save file…',
+    title: 'Export account',
+    text: 'Saves a folder with the .maFile and account_details.json, which has the login, password and revocation code. Nothing in it is encrypted: anyone who gets it can sign in, confirm trades and remove Steam Guard. Keep it where only you can reach it.',
+    action: 'Save folder…',
   },
 
   confirmOwner: {

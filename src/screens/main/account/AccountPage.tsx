@@ -2,7 +2,7 @@ import { useEffect, useEffectEvent, useState } from 'react'
 import {
   CODE_PERIOD_SECS,
   describe,
-  exportMaFile,
+  exportAccount,
   refreshProfile,
   revealRevocationCode,
   setAccountProxy,
@@ -267,7 +267,7 @@ export default function AccountPage({
   }
 
   async function exportFile(password: string | null) {
-    const saved = await exportMaFile(name, password)
+    const saved = await exportAccount(name, password)
     setDialog(null)
     if (saved) toast(t.security.saved(saved))
   }
@@ -654,7 +654,7 @@ export default function AccountPage({
               className={styles.action}
               onClick={() => setDialog('export')}
             >
-              {t.security.exportMaFile}
+              {t.security.exportAccount}
             </button>
             <button
               type="button"

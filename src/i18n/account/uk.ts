@@ -57,7 +57,7 @@ export const account: typeof en = {
     noOtherDevice: 'Інших пристроїв в акаунті не було.',
     signedOutDevices: (n) => `Вихід виконано на ${n} ${devices(n)}.`,
     signOutEverywhere: 'Вийти всюди',
-    exportMaFile: 'Експорт .maFile',
+    exportAccount: 'Експорт акаунта',
     remove: 'Видалити з Lootify Guard',
     saved: (file) => `Збережено: ${file}`,
     unknown: 'Невідомо',
@@ -87,9 +87,9 @@ export const account: typeof en = {
   },
 
   exportFile: {
-    title: 'Експорт .maFile',
-    text: 'У файлі секрети Steam Guard цього акаунта у відкритому вигляді. Будь-хто, хто його отримає, зможе входити за його кодами й підтверджувати трейди. Зберігайте його там, куди маєте доступ лише ви.',
-    action: 'Зберегти файл…',
+    title: 'Експорт акаунта',
+    text: 'Збережеться тека з .maFile і account_details.json, де логін, пароль і код відновлення. Нічого в ній не зашифровано: будь-хто, хто її отримає, зможе входити, підтверджувати трейди й зняти Steam Guard. Зберігайте її там, куди маєте доступ лише ви.',
+    action: 'Зберегти теку…',
   },
 
   confirmOwner: {
