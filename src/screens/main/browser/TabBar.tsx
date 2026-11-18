@@ -5,16 +5,30 @@ import { useT } from '../../../i18n/index.ts'
 import styles from './TabBar.module.css'
 
 const DASHBOARD_ICON = 'M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z'
+const PRIVATE_ICON =
+  'M3 11h18M6 11l1.5-5h9l1.5 5M4.5 16.5a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0M14.5 16.5a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0M9.5 16.5h5'
+
+/** An open tab as the bar shows it. */
+export type TabInfo = {
+  id: string
+  title: string
+  /** `null` for a private tab, which is signed in to nothing. */
+  account: Account | null
+  proxy: Proxy | null
+}
 
 type Props = {
+  /** For the menu: the accounts that can have a tab, and the proxies a private one can use. */
   accounts: Account[]
   proxyOf: (account: Account) => Proxy | null
-  tabs: string[]
+  proxies: Proxy[]
+  tabs: TabInfo[]
   /** `null` for the dashboard. */
   active: string | null
-  onSelect: (accountName: string | null) => void
+  onSelect: (tab: string | null) => void
   onOpen: (accountName: string) => void
-  onClose: (accountName: string) => void
+  onOpenPrivate: (proxyId: number | null) => void
+  onClose: (tab: string) => void
   /** Whether the account menu is open; it covers the page of a browser tab. */
   menu: boolean
   onMenu: (open: boolean) => void
@@ -23,10 +37,12 @@ type Props = {
 export default function TabBar({
   accounts,
   proxyOf,
+  proxies,
   tabs,
   active,
   onSelect,
   onOpen,
+  onOpenPrivate,
   onClose,
   menu,
   onMenu,
@@ -48,32 +64,35 @@ export default function TabBar({
         <Icon path={DASHBOARD_ICON} size={14} stroke={2} />
         <span>{t.dashboard}</span>
       </button>
-      {tabs.map((name, index) => {
-        const account = accounts.find((each) => each.accountName === name)
-        const proxy = account ? proxyOf(account) : null
+      {tabs.map((tab, index) => {
+        const { id, title, account, proxy } = tab
         return (
           <div
-            key={name}
+            key={id}
             role="presentation"
             className={`${styles.tab} ${styles.accountTab}`}
-            data-selected={active === name}
+            data-selected={active === id}
           >
             <button
               type="button"
               role="tab"
-              aria-selected={active === name}
+              aria-selected={active === id}
               className={styles.pick}
-              title={`${name} · ${proxy ? proxyTitle(proxy) : t.noProxy}${index < 8 ? ` (⌘${index + 2})` : ''}`}
-              onClick={() => onSelect(name)}
+              title={`${title} · ${proxy ? proxyTitle(proxy) : t.noProxy}${index < 8 ? ` (⌘${index + 2})` : ''}`}
+              onClick={() => onSelect(id)}
             >
-              {account?.avatar ? (
+              {account === null ? (
+                <span className={styles.initials} aria-hidden="true">
+                  <Icon path={PRIVATE_ICON} size={12} stroke={2} />
+                </span>
+              ) : account.avatar ? (
                 <img className={styles.avatar} src={account.avatar} alt="" />
               ) : (
                 <span className={styles.initials} aria-hidden="true">
-                  {name.slice(0, 2).toUpperCase()}
+                  {title.slice(0, 2).toUpperCase()}
                 </span>
               )}
-              <span className={styles.name}>{name}</span>
+              <span className={styles.name}>{title}</span>
               {proxy?.country && (
                 <span className={styles.country}>{proxy.country}</span>
               )}
@@ -81,9 +100,9 @@ export default function TabBar({
             <button
               type="button"
               className={styles.close}
-              aria-label={t.close(name)}
-              title={active === name ? `${t.close(name)} (⌘W)` : t.close(name)}
-              onClick={() => onClose(name)}
+              aria-label={t.close(title)}
+              title={active === id ? `${t.close(title)} (⌘W)` : t.close(title)}
+              onClick={() => onClose(id)}
             >
               ×
             </button>
@@ -134,6 +153,29 @@ export default function TabBar({
                   </button>
                 )
               })}
+              <span className={`${styles.menuTitle} ${styles.menuSection}`}>
+                {t.privateTitle}
+              </span>
+              {[null, ...proxies].map((proxy) => (
+                <button
+                  key={proxy?.id ?? 'direct'}
+                  type="button"
+                  role="menuitem"
+                  className={styles.menuItem}
+                  onClick={() => {
+                    onMenu(false)
+                    onOpenPrivate(proxy?.id ?? null)
+                  }}
+                >
+                  <span className={styles.menuPrivate}>
+                    <Icon path={PRIVATE_ICON} size={14} stroke={2} />
+                    {proxy ? proxyTitle(proxy) : t.noProxy}
+                  </span>
+                  {proxy?.country && (
+                    <span className={styles.menuProxy}>{proxy.country}</span>
+                  )}
+                </button>
+              ))}
             </div>
           </>
         )}

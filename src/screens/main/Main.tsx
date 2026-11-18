@@ -1,6 +1,11 @@
 import { useEffect, useEffectEvent, useState } from 'react'
 import type { Account } from '../../api/accounts.ts'
-import { closeBrowser } from '../../api/browser.ts'
+import {
+  closeBrowser,
+  isPrivateTab,
+  openPrivateBrowser,
+} from '../../api/browser.ts'
+import { errorMessage } from '../../api/vault.ts'
 import { listProxies, type Proxy } from '../../api/proxies.ts'
 import {
   getSettings,
@@ -8,11 +13,12 @@ import {
 } from '../../api/settings.ts'
 import { dismissInstalledUpdate } from '../../api/updates.ts'
 import { useT } from '../../i18n/index.ts'
+import { useToast } from '../../lib/toast.ts'
 import AccountPage from './account/AccountPage.tsx'
 import AddAccount from './add/AddAccount.tsx'
 import Accounts from './Accounts.tsx'
 import BrowserTab from './browser/BrowserTab.tsx'
-import TabBar from './browser/TabBar.tsx'
+import TabBar, { type TabInfo } from './browser/TabBar.tsx'
 import Inventory from './inventory/Inventory.tsx'
 import Proxies from './proxies/Proxies.tsx'
 import Sidebar, { type Section } from './Sidebar.tsx'
@@ -48,6 +54,10 @@ export default function Main({
   const [tabs, setTabs] = useState<string[]>([])
   const [activeTab, setActiveTab] = useState<string | null>(null)
   const [tabMenu, setTabMenu] = useState(false)
+  // The proxy each private tab was opened with, by tab name.
+  const [privateProxies, setPrivateProxies] = useState<
+    Record<string, number | null>
+  >({})
   const [proxies, setProxies] = useState<Proxy[]>([])
   const updates = useUpdates()
   const [updateOpen, setUpdateOpen] = useState(false)
@@ -55,19 +65,22 @@ export default function Main({
   const [installed, setInstalled] =
     useState<SettingsValues['installedUpdate']>(null)
   const [installedNoted, setInstalledNoted] = useState(false)
-  const t = useT().updates
+  const words = useT()
+  const t = words.updates
+  const toast = useToast()
   const openAccount = list?.accounts.find(
     (account) => account.accountName === openName,
   )
-  const browsing = list?.accounts.find(
-    (account) => account.accountName === activeTab,
-  )
   // A removed account's tab went with it.
   const shownTabs = list
-    ? tabs.filter((name) =>
-        list.accounts.some((account) => account.accountName === name),
+    ? tabs.filter(
+        (name) =>
+          isPrivateTab(name) ||
+          list.accounts.some((account) => account.accountName === name),
       )
     : tabs
+  const browsing =
+    activeTab !== null && shownTabs.includes(activeTab) ? activeTab : null
 
   // Proxies can change on their own screen, so they're read again with the tabs.
   useEffect(() => {
@@ -106,7 +119,7 @@ export default function Main({
     if (name === 'new') {
       setTabMenu(true)
     } else if (name === 'close') {
-      if (browsing) closeTab(browsing.accountName)
+      if (browsing) closeTab(browsing)
     } else {
       // 1 is the dashboard, then the tabs in order.
       const index = Number(name) - 2
@@ -162,18 +175,49 @@ export default function Main({
     setActiveTab(accountName)
   }
 
-  function closeTab(accountName: string) {
-    void closeBrowser(accountName)
-    const index = tabs.indexOf(accountName)
-    const rest = tabs.filter((name) => name !== accountName)
+  function browsePrivate(proxyId: number | null) {
+    openPrivateBrowser(proxyId).then(
+      (tab) => {
+        setPrivateProxies((open) => ({ ...open, [tab]: proxyId }))
+        setTabs((open) => [...open, tab])
+        setActiveTab(tab)
+      },
+      (err: unknown) => toast(errorMessage(err)),
+    )
+  }
+
+  function closeTab(tab: string) {
+    void closeBrowser(tab)
+    const index = tabs.indexOf(tab)
+    const rest = tabs.filter((name) => name !== tab)
     setTabs(rest)
-    if (activeTab === accountName) {
+    if (activeTab === tab) {
       setActiveTab(rest[index] ?? rest[index - 1] ?? null)
     }
   }
 
   const proxyOf = (account: Account) =>
     proxies.find((proxy) => proxy.id === account.proxyId) ?? null
+
+  function tabInfo(tab: string): TabInfo {
+    if (isPrivateTab(tab)) {
+      const proxyId = privateProxies[tab] ?? null
+      return {
+        id: tab,
+        title: words.browser.privateName(Number(tab.split(':')[1])),
+        account: null,
+        proxy: proxies.find((proxy) => proxy.id === proxyId) ?? null,
+      }
+    }
+    const account =
+      list?.accounts.find((each) => each.accountName === tab) ?? null
+    return {
+      id: tab,
+      title: tab,
+      account,
+      proxy: account ? proxyOf(account) : null,
+    }
+  }
 
   function content() {
     if (!list) {
@@ -277,22 +321,25 @@ export default function Main({
         <TabBar
           accounts={list?.accounts ?? []}
           proxyOf={proxyOf}
-          tabs={shownTabs}
-          active={browsing ? browsing.accountName : null}
+          proxies={proxies}
+          tabs={shownTabs.map(tabInfo)}
+          active={browsing}
           onSelect={setActiveTab}
           onOpen={browse}
+          onOpenPrivate={browsePrivate}
           onClose={closeTab}
           menu={tabMenu}
           onMenu={setTabMenu}
         />
         {browsing && list ? (
           <BrowserTab
-            key={browsing.accountName}
-            account={browsing}
-            proxy={proxyOf(browsing)}
+            key={browsing}
+            tab={browsing}
+            account={tabInfo(browsing).account}
+            proxy={tabInfo(browsing).proxy}
             codesExpireAt={list.codesExpireAt}
             covered={tabMenu || updateOpen}
-            onClose={() => closeTab(browsing.accountName)}
+            onClose={() => closeTab(browsing)}
           />
         ) : (
           <main className={styles.content}>
