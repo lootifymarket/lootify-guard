@@ -5,6 +5,8 @@ export const account: typeof en = {
   importedFromMaFile: '从 .maFile 导入',
   guardTitle: 'Steam 令牌',
   copy: '复制',
+  refresh: '刷新',
+  refreshTitle: '重新从 Steam 加载资料、钱包和安全信息',
   refreshesIn: (seconds) => `${seconds} 秒后刷新`,
   sections: '分区',
   tabs: {
