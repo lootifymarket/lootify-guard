@@ -48,6 +48,8 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
   const [ownedError, setOwnedError] = useState('')
   const [free, setFree] = useState<FreeGame[]>([])
   const [picking, setPicking] = useState(false)
+  // Read again each time the picker opens: playing adds free games to the account.
+  const [ownedVersion, setOwnedVersion] = useState(0)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   // Read with each answer, so the elapsed time moves as the page polls.
@@ -84,7 +86,7 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
   )
   useEffect(() => {
     if (signedIn) void ownedGames(accountName).then(setOwned, ownedFailed)
-  }, [accountName, signedIn])
+  }, [accountName, signedIn, ownedVersion])
 
   if (!signedIn) {
     return <p className={styles.muted}>{t.signInFirst}</p>
@@ -227,7 +229,10 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
           <button
             type="button"
             className={styles.add}
-            onClick={() => setPicking(true)}
+            onClick={() => {
+              setPicking(true)
+              setOwnedVersion((version) => version + 1)
+            }}
           >
             {t.addGame}
           </button>
