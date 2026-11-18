@@ -1,5 +1,6 @@
 use lootify_guard_core::browser::cookie_sites;
 use lootify_guard_core::browser_profiles::ProfileError;
+use lootify_guard_core::browser_region::RegionChoice;
 use lootify_guard_core::contents::Contents;
 use serde::Serialize;
 use tauri::State;
@@ -17,6 +18,7 @@ pub struct ProfileView {
     saved_sites: usize,
     /// Unix seconds.
     last_opened: Option<u64>,
+    region: RegionChoice,
 }
 
 impl From<ProfileError> for CommandError {
@@ -41,6 +43,7 @@ pub fn list_browser_profiles(
             proxy_id: profile.proxy,
             saved_sites: cookie_sites(&profile.saved_cookies),
             last_opened: profile.last_opened,
+            region: profile.region.clone(),
         })
         .collect())
 }
@@ -51,23 +54,24 @@ pub fn add_browser_profile(
     state: State<'_, VaultState>,
     name: String,
     proxy_id: Option<u32>,
+    region: RegionChoice,
 ) -> Result<u32, CommandError> {
-    change(
-        &state,
-        |contents| Ok(contents.add_profile(&name, proxy_id)?),
-    )
+    change(&state, |contents| {
+        Ok(contents.add_profile(&name, proxy_id, region)?)
+    })
 }
 
-/// A new proxy takes effect the next time the profile's tab opens.
+/// A new proxy or region takes effect the next time the profile's tab opens.
 #[tauri::command]
 pub fn update_browser_profile(
     state: State<'_, VaultState>,
     id: u32,
     name: String,
     proxy_id: Option<u32>,
+    region: RegionChoice,
 ) -> Result<(), CommandError> {
     change(&state, |contents| {
-        Ok(contents.update_profile(id, &name, proxy_id)?)
+        Ok(contents.update_profile(id, &name, proxy_id, region)?)
     })
 }
 

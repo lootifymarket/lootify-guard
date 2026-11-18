@@ -172,6 +172,7 @@ export const backend: Record<BackendMessage, string> = {
     'профиль с таким названием уже есть',
   'the profile is no longer in the vault':
     'этого профиля больше нет в хранилище',
+  'unknown time zone': 'неизвестный часовой пояс',
   'the group is no longer in the vault': 'группы больше нет в хранилище',
 
   // Free games

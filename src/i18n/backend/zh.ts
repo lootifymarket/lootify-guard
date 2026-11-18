@@ -151,6 +151,7 @@ export const backend: Record<BackendMessage, string> = {
   'give the profile a name': '请为配置命名',
   "there's already a profile with that name": '已有同名配置',
   'the profile is no longer in the vault': '该配置已不在保险库中',
+  'unknown time zone': '未知的时区',
   'the group is no longer in the vault': '该分组已不在保险库中',
 
   // Free games

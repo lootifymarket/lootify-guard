@@ -246,6 +246,7 @@ fn to_account(
         wallet: None,
         last_check: None,
         saved_cookies: Vec::new(),
+        browser_region: Default::default(),
     })
 }
 

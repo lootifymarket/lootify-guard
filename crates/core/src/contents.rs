@@ -6,6 +6,7 @@ use zeroize::Zeroizing;
 
 use crate::browser::{Bookmark, SavedCookie};
 use crate::browser_profiles::BrowserProfile;
+use crate::browser_region::RegionChoice;
 use crate::games::PlayingList;
 use crate::proxy::{Proxy, ProxyAddress};
 
@@ -103,6 +104,9 @@ pub struct Account {
     /// The account's browser tab's sign-ins to other sites, put back when it opens.
     #[serde(default)]
     pub saved_cookies: Vec<SavedCookie>,
+    /// The time zone and language its browser tab shows pages.
+    #[serde(default)]
+    pub browser_region: RegionChoice,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -447,6 +451,7 @@ mod tests {
             wallet: None,
             last_check: None,
             saved_cookies: Vec::new(),
+            browser_region: RegionChoice::default(),
         }
     }
 

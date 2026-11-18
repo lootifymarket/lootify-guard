@@ -9,6 +9,7 @@ use lootify_guard_core::browser::{
     profile_url, same_cookies, session_cookies, site_icon, typed_url,
 };
 use lootify_guard_core::browser_profiles::ProfileError;
+use lootify_guard_core::browser_region::{self, Region, RegionChoice};
 use lootify_guard_core::contents::Contents;
 use lootify_guard_core::forward::Forwarder;
 use lootify_guard_core::proxy::ProxyAddress;
@@ -190,6 +191,9 @@ pub async fn open_browser(
     let (account, proxy) = account_and_proxy(&state, &account_name)?;
     let steam_id = account.steam_id;
     let saved = cookies_to_keep(account.saved_cookies.clone(), unix_now_signed(), true);
+    let region = account
+        .browser_region
+        .resolve(proxy_country(&state, account.proxy)?.as_deref());
     let session = {
         let proxy = proxy.clone();
         spawn_blocking(move || steam::check_session(&account, proxy.as_ref())).await?
@@ -207,6 +211,7 @@ pub async fn open_browser(
         &label,
         &account_name,
         forwarder.as_ref(),
+        region,
         page.clone(),
     )?;
     let rect = bounds.in_window(&window);
@@ -257,7 +262,7 @@ pub async fn open_private_browser(
     browsers: State<'_, Browsers>,
     proxy_id: Option<u32>,
 ) -> Result<String, CommandError> {
-    let proxy = match proxy_id {
+    let (proxy, country) = match proxy_id {
         Some(id) => {
             let unlocked = state.unlocked();
             let vault = unlocked.as_ref().ok_or(CommandError::Locked)?;
@@ -265,10 +270,11 @@ pub async fn open_private_browser(
             let proxy = contents
                 .proxy(id)
                 .ok_or_else(|| CommandError::Failed("the proxy is no longer there".to_owned()))?;
-            Some(proxy.address.clone())
+            (Some(proxy.address.clone()), proxy.country.clone())
         }
-        None => None,
+        None => (None, None),
     };
+    let region = RegionChoice::MatchProxy.resolve(country.as_deref());
     // The lowest free number, so tab names, and on Windows their folders, get reused.
     let name = {
         let tabs = browsers.tabs();
@@ -278,7 +284,16 @@ pub async fn open_private_browser(
             .expect("fewer tabs than numbers")
     };
     let start = UNSIGNED_START.parse().expect("a valid URL");
-    open_unsigned(&window, &browsers, &name, Owner::Nobody, proxy, &[], start)?;
+    open_unsigned(
+        &window,
+        &browsers,
+        &name,
+        Owner::Nobody,
+        proxy,
+        region,
+        &[],
+        start,
+    )?;
     Ok(name)
 }
 
@@ -295,15 +310,18 @@ pub async fn open_profile_browser(
     if browsers.tabs().contains_key(&name) {
         return Ok(name);
     }
-    let (proxy, saved, start) = {
+    let (proxy, region, saved, start) = {
         let mut unlocked = state.unlocked();
         let vault = unlocked.as_mut().ok_or(CommandError::Locked)?;
         let mut contents = Contents::from_bytes(vault.data())?;
         let profile = contents.profile(profile_id).ok_or(ProfileError::Missing)?;
         let proxy = contents
             .proxy_of_profile(profile)
-            .map_err(|_| ProfileError::MissingProxy)?
-            .map(|proxy| proxy.address.clone());
+            .map_err(|_| ProfileError::MissingProxy)?;
+        let region = profile
+            .region
+            .resolve(proxy.and_then(|proxy| proxy.country.as_deref()));
+        let proxy = proxy.map(|proxy| proxy.address.clone());
         let saved = cookies_to_keep(profile.saved_cookies.clone(), unix_now_signed(), false);
         let start = profile
             .last_url
@@ -315,7 +333,7 @@ pub async fn open_profile_browser(
             profile.last_opened = Some(unix_now());
         }
         vault.save_data(contents.to_bytes())?;
-        (proxy, saved, start)
+        (proxy, region, saved, start)
     };
     open_unsigned(
         &window,
@@ -323,6 +341,7 @@ pub async fn open_profile_browser(
         &name,
         Owner::Profile(profile_id),
         proxy,
+        region,
         &saved,
         start,
     )?;
@@ -330,12 +349,14 @@ pub async fn open_profile_browser(
 }
 
 /// Adds a hidden tab signed in to no Steam account, with `saved` cookies put back.
+#[allow(clippy::too_many_arguments)]
 fn open_unsigned(
     window: &Window,
     browsers: &Browsers,
     name: &str,
     owner: Owner,
     proxy: Option<ProxyAddress>,
+    region: Option<Region>,
     saved: &[SavedCookie],
     start: Url,
 ) -> Result<(), CommandError> {
@@ -346,6 +367,7 @@ fn open_unsigned(
         &browsers.next_label(),
         &name.replace(':', "-"),
         forwarder.as_ref(),
+        region,
         page.clone(),
     )?;
     let webview = window.add_child(
@@ -378,6 +400,48 @@ fn open_unsigned(
     Ok(())
 }
 
+/// Where the proxy with this id comes out, as its last check found.
+fn proxy_country(
+    state: &VaultState,
+    proxy_id: Option<u32>,
+) -> Result<Option<String>, CommandError> {
+    let Some(id) = proxy_id else {
+        return Ok(None);
+    };
+    let unlocked = state.unlocked();
+    let vault = unlocked.as_ref().ok_or(CommandError::Locked)?;
+    let contents = Contents::from_bytes(vault.data())?;
+    Ok(contents.proxy(id).and_then(|proxy| proxy.country.clone()))
+}
+
+/// Every time zone a tab can show pages, with its language.
+#[tauri::command]
+pub fn browser_regions() -> &'static [Region] {
+    browser_region::regions()
+}
+
+/// Sets the time zone and language the account's tab shows pages, from the next
+/// time it opens.
+#[tauri::command]
+pub fn set_browser_region(
+    state: State<'_, VaultState>,
+    account_name: String,
+    region: RegionChoice,
+) -> Result<(), CommandError> {
+    if !region.is_known() {
+        return Err(ProfileError::UnknownRegion.into());
+    }
+    let mut unlocked = state.unlocked();
+    let vault = unlocked.as_mut().ok_or(CommandError::Locked)?;
+    let mut contents = Contents::from_bytes(vault.data())?;
+    contents
+        .account_mut(&account_name)
+        .ok_or_else(no_such_account)?
+        .browser_region = region;
+    vault.save_data(contents.to_bytes())?;
+    Ok(())
+}
+
 fn start_forwarder(proxy: Option<&ProxyAddress>) -> Result<Option<Forwarder>, CommandError> {
     proxy
         .map(|proxy| Forwarder::start(Some(proxy.clone())))
@@ -385,12 +449,14 @@ fn start_forwarder(proxy: Option<&ProxyAddress>) -> Result<Option<Forwarder>, Co
         .map_err(|_| CommandError::Failed("could not start the tab's proxy".to_owned()))
 }
 
-/// `folder` names the tab's data folder on Windows.
+/// `folder` names the tab's data folder on Windows. `region` is the time zone and
+/// language its pages see; `None` leaves them the computer's.
 fn tab_builder(
     app: &AppHandle,
     label: &str,
     folder: &str,
     forwarder: Option<&Forwarder>,
+    region: Option<Region>,
     page: Arc<Mutex<PageState>>,
 ) -> Result<WebviewBuilder<tauri::Wry>, CommandError> {
     let blank = "about:blank".parse().expect("a valid URL");
@@ -428,6 +494,9 @@ fn tab_builder(
             // Browsing Steam is using the app, as far as locking it goes.
             webview.state::<VaultState>().touch();
         });
+    if let Some(region) = &region {
+        builder = builder.initialization_script_for_all_frames(browser_region::script(region));
+    }
     if let Some(forwarder) = forwarder {
         let proxy = format!("http://127.0.0.1:{}", forwarder.port());
         builder = builder.proxy_url(proxy.parse().expect("a valid URL"));
@@ -435,6 +504,17 @@ fn tab_builder(
     #[cfg(windows)]
     {
         // WebView2 sets the proxy per data folder, so each tab needs its own.
+        let mut args = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection \
+                        --force-webrtc-ip-handling-policy=disable_non_proxied_udp"
+            .to_owned();
+        // Chromium can also send the language with every request, which WebKit can't.
+        if let Some(region) = &region {
+            let base = region.language.split('-').next().unwrap_or(region.language);
+            args.push_str(&format!(
+                " --lang={0} --accept-lang={0},{base}",
+                region.language
+            ));
+        }
         builder = builder
             .data_directory(
                 app.path()
@@ -442,10 +522,7 @@ fn tab_builder(
                     .join("browser")
                     .join(folder),
             )
-            .additional_browser_args(
-                "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection \
-                 --force-webrtc-ip-handling-policy=disable_non_proxied_udp",
-            );
+            .additional_browser_args(&args);
     }
     #[cfg(not(windows))]
     let _ = folder;

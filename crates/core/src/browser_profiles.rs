@@ -4,6 +4,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::browser::SavedCookie;
+use crate::browser_region::RegionChoice;
 use crate::contents::{Contents, MissingProxy};
 use crate::proxy::Proxy;
 
@@ -24,6 +25,9 @@ pub struct BrowserProfile {
     /// Unix seconds.
     #[serde(default)]
     pub last_opened: Option<u64>,
+    /// The time zone and language its pages see.
+    #[serde(default)]
+    pub region: RegionChoice,
 }
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
@@ -38,13 +42,29 @@ pub enum ProfileError {
     Missing,
     #[error("the proxy is no longer there")]
     MissingProxy,
+    #[error("unknown time zone")]
+    UnknownRegion,
+}
+
+fn check_region(region: &RegionChoice) -> Result<(), ProfileError> {
+    if region.is_known() {
+        Ok(())
+    } else {
+        Err(ProfileError::UnknownRegion)
+    }
 }
 
 impl Contents {
     /// Makes a profile and returns its id.
-    pub fn add_profile(&mut self, name: &str, proxy: Option<u32>) -> Result<u32, ProfileError> {
+    pub fn add_profile(
+        &mut self,
+        name: &str,
+        proxy: Option<u32>,
+        region: RegionChoice,
+    ) -> Result<u32, ProfileError> {
         let name = self.profile_name(name, None)?;
         self.check_proxy(proxy)?;
+        check_region(&region)?;
         self.last_profile_id += 1;
         self.profiles.push(BrowserProfile {
             id: self.last_profile_id,
@@ -53,6 +73,7 @@ impl Contents {
             saved_cookies: Vec::new(),
             last_url: None,
             last_opened: None,
+            region,
         });
         Ok(self.last_profile_id)
     }
@@ -62,12 +83,15 @@ impl Contents {
         id: u32,
         name: &str,
         proxy: Option<u32>,
+        region: RegionChoice,
     ) -> Result<(), ProfileError> {
         let name = self.profile_name(name, Some(id))?;
         self.check_proxy(proxy)?;
+        check_region(&region)?;
         let profile = self.profile_mut(id).ok_or(ProfileError::Missing)?;
         profile.name = name;
         profile.proxy = proxy;
+        profile.region = region;
         Ok(())
     }
 
@@ -129,24 +153,26 @@ mod tests {
     #[test]
     fn profile_names_are_unique_and_tidy() {
         let mut contents = Contents::default();
-        let mail = contents.add_profile("  Shared mailbox ", None).unwrap();
+        let mail = contents
+            .add_profile("  Shared mailbox ", None, RegionChoice::default())
+            .unwrap();
         assert_eq!(contents.profile(mail).unwrap().name, "Shared mailbox");
         assert_eq!(
-            contents.add_profile("shared MAILBOX", None),
+            contents.add_profile("shared MAILBOX", None, RegionChoice::default()),
             Err(ProfileError::Taken)
         );
         assert_eq!(
-            contents.add_profile(" ", None),
+            contents.add_profile(" ", None, RegionChoice::default()),
             Err(ProfileError::EmptyName)
         );
         assert_eq!(
-            contents.add_profile(&"x".repeat(41), None),
+            contents.add_profile(&"x".repeat(41), None, RegionChoice::default()),
             Err(ProfileError::LongName)
         );
         // Keeping its own name is no clash.
         assert!(
             contents
-                .update_profile(mail, "Shared mailbox", None)
+                .update_profile(mail, "Shared mailbox", None, RegionChoice::default())
                 .is_ok()
         );
     }
@@ -155,12 +181,14 @@ mod tests {
     fn a_profile_takes_only_a_proxy_that_exists() {
         let mut contents = Contents::default();
         assert_eq!(
-            contents.add_profile("Forum", Some(7)),
+            contents.add_profile("Forum", Some(7), RegionChoice::default()),
             Err(ProfileError::MissingProxy)
         );
-        let forum = contents.add_profile("Forum", None).unwrap();
+        let forum = contents
+            .add_profile("Forum", None, RegionChoice::default())
+            .unwrap();
         assert_eq!(
-            contents.update_profile(forum, "Forum", Some(7)),
+            contents.update_profile(forum, "Forum", Some(7), RegionChoice::default()),
             Err(ProfileError::MissingProxy)
         );
     }
@@ -168,9 +196,13 @@ mod tests {
     #[test]
     fn ids_are_never_reused() {
         let mut contents = Contents::default();
-        let first = contents.add_profile("One", None).unwrap();
+        let first = contents
+            .add_profile("One", None, RegionChoice::default())
+            .unwrap();
         assert!(contents.remove_profile(first));
-        let second = contents.add_profile("Two", None).unwrap();
+        let second = contents
+            .add_profile("Two", None, RegionChoice::default())
+            .unwrap();
         assert_ne!(first, second);
         assert!(!contents.remove_profile(first));
     }

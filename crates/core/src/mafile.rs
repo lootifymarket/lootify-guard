@@ -107,6 +107,7 @@ pub fn parse(file: &[u8]) -> Result<Account, MaFileError> {
         wallet: None,
         last_check: None,
         saved_cookies: Vec::new(),
+        browser_region: Default::default(),
     })
 }
 

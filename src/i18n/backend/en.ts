@@ -138,6 +138,7 @@ export const BACKEND_MESSAGES = [
   'give the profile a name',
   "there's already a profile with that name",
   'the profile is no longer in the vault',
+  'unknown time zone',
   'the group is no longer in the vault',
 
   // Free games

@@ -160,6 +160,7 @@ export const backend: Record<BackendMessage, string> = {
   "there's already a profile with that name": 'профіль із такою назвою вже є',
   'the profile is no longer in the vault':
     'цього профілю більше немає у сховищі',
+  'unknown time zone': 'невідомий часовий пояс',
   'the group is no longer in the vault': 'групи вже немає у сховищі',
   "the license wasn't added": 'ліцензію не додано',
   'the store has no such app': 'у магазині немає такого застосунку',

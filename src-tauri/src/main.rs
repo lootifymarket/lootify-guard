@@ -195,6 +195,8 @@ fn main() {
             browser::hide_browser,
             browser::close_browser,
             browser::clear_saved_cookies,
+            browser::browser_regions,
+            browser::set_browser_region,
             browser::browser_navigate,
             browser::browser_snapshot,
             browser::browser_back,
