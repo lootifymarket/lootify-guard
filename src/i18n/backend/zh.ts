@@ -127,6 +127,7 @@ export const backend: Record<BackendMessage, string> = {
   'keep the name under {} characters': '名称请少于 {} 个字符',
   'keep the note under {} characters': '备注请少于 {} 个字符',
   "that is this app's own session": '这是本应用自己的会话',
+  'Steam refused to sign that device out': 'Steam 拒绝让该设备退出登录',
   'unknown trade offer': '未知的交易报价',
   'unknown trade partner': '未知的交易对象',
   "that isn't a Steam trade URL": '这不是 Steam 交易链接',
@@ -147,6 +148,10 @@ export const backend: Record<BackendMessage, string> = {
     '未知的代理类型，请使用 http:// 或 socks5://',
   'give the group a name': '请为分组命名',
   "there's already a group with that name": '已有同名分组',
+  'give the profile a name': '请为配置命名',
+  "there's already a profile with that name": '已有同名配置',
+  'the profile is no longer in the vault': '该配置已不在保险库中',
+  'unknown time zone': '未知的时区',
   'the group is no longer in the vault': '该分组已不在保险库中',
 
   // Free games
@@ -224,6 +229,7 @@ export const backend: Record<BackendMessage, string> = {
   stopped: '已停止',
   'the browser tab is closed': '浏览器标签页已关闭',
   "could not start the tab's proxy": '无法启动标签页的代理',
+  'the proxy is no longer there': '该代理已不存在',
   'not a web address': '这不是网址',
   'there are already {} bookmarks, remove one first':
     '已有 {} 个书签，请先删除一个',

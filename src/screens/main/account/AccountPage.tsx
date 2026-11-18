@@ -2,6 +2,7 @@ import { useEffect, useEffectEvent, useState } from 'react'
 import {
   CODE_PERIOD_SECS,
   describe,
+  exportAccount,
   exportMaFile,
   refreshProfile,
   revealRevocationCode,
@@ -66,7 +67,13 @@ import styles from './AccountPage.module.css'
 import Private from '../../../components/Private.tsx'
 import { MASK } from '../../../lib/streamer.ts'
 import SteamIdLine from '../SteamIdLine.tsx'
+import {
+  clearSavedCookies,
+  setBrowserRegion,
+  type RegionChoice,
+} from '../../../api/browser.ts'
 import { BROWSER_ICON } from '../browser/icons.ts'
+import RegionPicker from '../browser/RegionPicker.tsx'
 
 type Props = {
   account: Account
@@ -85,8 +92,18 @@ type Tab = 'profile' | 'playing' | 'security'
 // Each is named by the tab's key in the dictionary.
 const TABS: Tab[] = ['profile', 'playing', 'security']
 
+const REFRESH_ICON =
+  'M23 4v6h-6M1 20v-6h6M3.5 9a9 9 0 0 1 14.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15'
+
 type OpenDialog =
-  'signIn' | 'reveal' | 'export' | 'remove' | 'rules' | 'signOut' | null
+  | 'signIn'
+  | 'reveal'
+  | 'export'
+  | 'exportDetails'
+  | 'remove'
+  | 'rules'
+  | 'signOut'
+  | null
 
 export default function AccountPage({
   account,
@@ -109,6 +126,9 @@ export default function AccountPage({
   const [ruleError, setRuleError] = useState('')
   const [groupError, setGroupError] = useState('')
   const [checking, setChecking] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [clearing, setClearing] = useState(false)
+  const [browserError, setBrowserError] = useState('')
   // `undefined` until Steam was asked, `null` when the account has no key.
   const [apiKey, setApiKey] = useState<ApiKey | null | undefined>(undefined)
   const [checkingKey, setCheckingKey] = useState(false)
@@ -136,6 +156,8 @@ export default function AccountPage({
 
   const checkOnOpen = useEffectEvent(() => {
     if (!account.signedIn) return
+    // Picks up a nickname or avatar changed on Steam since the list last had them.
+    refreshProfile(name).then(onChanged, onChanged)
     void checkKey()
     void loadDevices()
     void loadStanding()
@@ -217,6 +239,44 @@ export default function AccountPage({
     }
   }
 
+  async function changeRegion(region: RegionChoice) {
+    setBrowserError('')
+    try {
+      await setBrowserRegion(name, region)
+    } catch (err) {
+      setBrowserError(errorMessage(err))
+    }
+    onChanged()
+  }
+
+  async function clearSaved() {
+    setClearing(true)
+    setBrowserError('')
+    try {
+      await clearSavedCookies(name)
+      toast(t.browser.cleared)
+      onChanged()
+    } catch (err) {
+      setBrowserError(errorMessage(err))
+    } finally {
+      setClearing(false)
+    }
+  }
+
+  /** Reads everything on the page from Steam again. */
+  async function refresh() {
+    setRefreshing(true)
+    await Promise.allSettled([
+      refreshProfile(name),
+      checkKey(),
+      loadDevices(),
+      loadStanding(),
+      loadWallet(),
+    ])
+    setRefreshing(false)
+    onChanged()
+  }
+
   async function checkKey() {
     setCheckingKey(true)
     setKeyError('')
@@ -272,6 +332,12 @@ export default function AccountPage({
     if (saved) toast(t.security.saved(saved))
   }
 
+  async function exportDetails(password: string | null) {
+    const saved = await exportAccount(name, password)
+    setDialog(null)
+    if (saved) toast(t.security.saved(saved))
+  }
+
   return (
     <>
       <div className={styles.top}>
@@ -303,6 +369,21 @@ export default function AccountPage({
             </div>
           </div>
           <div className={styles.headSide}>
+            {account.signedIn && (
+              <Button
+                variant="secondary"
+                size="sm"
+                busy={refreshing}
+                disabled={refreshing}
+                title={t.refreshTitle}
+                onClick={() => void refresh()}
+              >
+                {!refreshing && (
+                  <Icon path={REFRESH_ICON} size={15} stroke={1.9} />
+                )}
+                {t.refresh}
+              </Button>
+            )}
             {account.signedIn && (
               <Button variant="secondary" size="sm" onClick={onBrowse}>
                 <Icon path={BROWSER_ICON} size={15} stroke={1.9} />
@@ -658,12 +739,72 @@ export default function AccountPage({
             </button>
             <button
               type="button"
+              className={styles.action}
+              onClick={() => setDialog('exportDetails')}
+            >
+              {t.security.exportDetails}
+            </button>
+            <button
+              type="button"
               className={`${styles.action} ${styles.danger}`}
               onClick={() => setDialog('remove')}
             >
               {t.security.remove}
             </button>
           </div>
+        </section>
+
+        <section className={styles.section} aria-labelledby="browser-title">
+          <div className={styles.sectionHead}>
+            <h2 id="browser-title" className={styles.sectionTitle}>
+              {t.browser.title}
+            </h2>
+          </div>
+          <dl className={styles.facts}>
+            <div className={styles.fact}>
+              <dt>{words.browser.region}</dt>
+              <dd>
+                <div className={styles.regionPicker}>
+                  <RegionPicker
+                    hideLabel
+                    size="sm"
+                    value={account.browserRegion}
+                    proxyCountry={
+                      proxies.find((proxy) => proxy.id === account.proxyId)
+                        ?.country ?? null
+                    }
+                    onChange={(region) => void changeRegion(region)}
+                  />
+                </div>
+              </dd>
+            </div>
+            <div className={styles.fact}>
+              <dt>{t.browser.signIns}</dt>
+              {account.savedSites > 0 ? (
+                <dd className={styles.reveal}>
+                  {t.browser.sites(account.savedSites)}
+                  <button
+                    type="button"
+                    className={styles.link}
+                    disabled={clearing}
+                    onClick={() => void clearSaved()}
+                  >
+                    {t.browser.clear}
+                  </button>
+                </dd>
+              ) : (
+                <dd className={styles.muted}>{t.browser.nothingSaved}</dd>
+              )}
+            </div>
+          </dl>
+          {browserError && (
+            <p className={styles.error} role="alert">
+              {browserError}
+            </p>
+          )}
+          <p className={styles.muted}>
+            {t.browser.hint} {words.browser.regionHint}
+          </p>
         </section>
 
         <section
@@ -731,6 +872,16 @@ export default function AccountPage({
         action={t.exportFile.action}
         biometric={biometric}
         onConfirm={exportFile}
+        onBiometricsOutdated={() => setBiometric(null)}
+        onClose={() => setDialog(null)}
+      />
+      <ConfirmOwner
+        open={dialog === 'exportDetails'}
+        title={t.exportDetails.title}
+        text={t.exportDetails.text}
+        action={t.exportDetails.action}
+        biometric={biometric}
+        onConfirm={exportDetails}
         onBiometricsOutdated={() => setBiometric(null)}
         onClose={() => setDialog(null)}
       />

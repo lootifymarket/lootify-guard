@@ -134,6 +134,8 @@ export const backend: Record<BackendMessage, string> = {
   'keep the note under {} characters':
     'нотатка має бути коротшою за {} символів',
   "that is this app's own session": 'це власна сесія застосунку',
+  'Steam refused to sign that device out':
+    'Steam не дав завершити сеанс цього пристрою',
   'unknown trade offer': 'невідома пропозиція обміну',
   'unknown trade partner': 'невідомий партнер з обміну',
   "that isn't a Steam trade URL": 'це не трейд-посилання Steam',
@@ -154,6 +156,11 @@ export const backend: Record<BackendMessage, string> = {
     'невідомий тип проксі, використайте http:// або socks5://',
   'give the group a name': 'дайте групі назву',
   "there's already a group with that name": 'група з такою назвою вже є',
+  'give the profile a name': 'дайте профілю назву',
+  "there's already a profile with that name": 'профіль із такою назвою вже є',
+  'the profile is no longer in the vault':
+    'цього профілю більше немає у сховищі',
+  'unknown time zone': 'невідомий часовий пояс',
   'the group is no longer in the vault': 'групи вже немає у сховищі',
   "the license wasn't added": 'ліцензію не додано',
   'the store has no such app': 'у магазині немає такого застосунку',
@@ -233,6 +240,7 @@ export const backend: Record<BackendMessage, string> = {
   stopped: 'зупинено',
   'the browser tab is closed': 'вкладку браузера закрито',
   "could not start the tab's proxy": 'не вдалося запустити проксі вкладки',
+  'the proxy is no longer there': 'цього проксі більше немає',
   'not a web address': 'не схоже на веб-адресу',
   'there are already {} bookmarks, remove one first':
     'закладок уже {}, спершу приберіть одну',

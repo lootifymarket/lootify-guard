@@ -10,7 +10,7 @@ use reqwest::blocking::{Client, Response};
 use reqwest::header::CONTENT_TYPE;
 use serde::{Deserialize, Serialize};
 
-use crate::contents::Session;
+use crate::contents::{Secret, Session};
 use crate::proxy::ProxyAddress;
 use crate::steam::{builder, session_id};
 
@@ -56,6 +56,98 @@ pub fn session_cookies(session: &Session, steam_id: u64) -> Vec<SessionCookie> {
             ]
         })
         .collect()
+}
+
+/// A cookie a tab had, kept in the vault and put back when the tab opens again.
+/// Most are sign-ins, so the value is kept like any other secret.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SavedCookie {
+    pub name: String,
+    pub value: Secret,
+    pub domain: String,
+    pub path: String,
+    pub secure: bool,
+    pub http_only: bool,
+    /// Unix seconds; `None` for one the site meant to last until the browser closes.
+    pub expires: Option<i64>,
+    /// `"strict"`, `"lax"` or `"none"`, as the site set it.
+    pub same_site: Option<String>,
+}
+
+// Sites keep a sign-in in a few kilobytes at most. The caps stop a site that
+// floods the tab with cookies from swelling the vault.
+const MAX_SAVED_COOKIES: usize = 1000;
+const MAX_COOKIE_VALUE: usize = 4096;
+
+/// Whether the cookie belongs to Steam. An account's tab gets Steam's sign-in
+/// fresh from the vault each time, so its old Steam cookies aren't kept.
+pub fn is_steam_cookie(domain: &str) -> bool {
+    let host = domain.trim_start_matches('.');
+    ["steamcommunity.com", "steampowered.com"]
+        .iter()
+        .any(|site| host == *site || host.ends_with(&format!(".{site}")))
+}
+
+/// The cookies worth keeping out of what the tab has: none that ran out by `now`
+/// (Unix seconds), none of Steam's for an account's tab, in a steady order so an
+/// unchanged set compares equal.
+pub fn cookies_to_keep(
+    mut cookies: Vec<SavedCookie>,
+    now: i64,
+    for_account: bool,
+) -> Vec<SavedCookie> {
+    cookies.retain(|cookie| {
+        cookie.expires.is_none_or(|expires| expires > now)
+            && cookie.value.expose().len() <= MAX_COOKIE_VALUE
+            && !(for_account && is_steam_cookie(&cookie.domain))
+    });
+    cookies.sort_by(|a, b| (&a.domain, &a.path, &a.name).cmp(&(&b.domain, &b.path, &b.name)));
+    cookies.dedup_by(|a, b| a.domain == b.domain && a.path == b.path && a.name == b.name);
+    cookies.truncate(MAX_SAVED_COOKIES);
+    cookies
+}
+
+/// Whether two kept sets hold the same cookies, so an unchanged one isn't saved again.
+pub fn same_cookies(a: &[SavedCookie], b: &[SavedCookie]) -> bool {
+    a.len() == b.len()
+        && a.iter().zip(b).all(|(a, b)| {
+            (
+                &a.name,
+                &a.domain,
+                &a.path,
+                a.secure,
+                a.http_only,
+                a.expires,
+                &a.same_site,
+            ) == (
+                &b.name,
+                &b.domain,
+                &b.path,
+                b.secure,
+                b.http_only,
+                b.expires,
+                &b.same_site,
+            ) && a.value.expose() == b.value.expose()
+        })
+}
+
+/// How many sites the cookies are for, counting `mail.example.com` and
+/// `example.com` as one.
+pub fn cookie_sites(cookies: &[SavedCookie]) -> usize {
+    let mut sites: Vec<String> = cookies
+        .iter()
+        .map(|cookie| {
+            let host = cookie.domain.trim_start_matches('.');
+            let labels: Vec<&str> = host.rsplitn(3, '.').collect();
+            match labels.as_slice() {
+                [top, second, ..] => format!("{second}.{top}"),
+                _ => host.to_owned(),
+            }
+        })
+        .collect();
+    sites.sort();
+    sites.dedup();
+    sites.len()
 }
 
 /// The account's profile, where a tab starts.
@@ -303,6 +395,86 @@ impl History {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn cookie(domain: &str, name: &str, expires: Option<i64>) -> SavedCookie {
+        SavedCookie {
+            name: name.to_owned(),
+            value: "value".to_owned().into(),
+            domain: domain.to_owned(),
+            path: "/".to_owned(),
+            secure: true,
+            http_only: true,
+            expires,
+            same_site: None,
+        }
+    }
+
+    fn names(cookies: &[SavedCookie]) -> Vec<String> {
+        cookies
+            .iter()
+            .map(|cookie| format!("{} {}", cookie.domain, cookie.name))
+            .collect()
+    }
+
+    #[test]
+    fn an_accounts_tab_keeps_every_cookie_but_steams() {
+        let cookies = vec![
+            cookie(".login.live.com", "MSPAuth", Some(2_000)),
+            cookie("steamcommunity.com", "steamLoginSecure", None),
+            cookie(".store.steampowered.com", "sessionid", None),
+            cookie("outlook.live.com", "X-OWA", None),
+        ];
+        assert_eq!(
+            names(&cookies_to_keep(cookies.clone(), 1_000, true)),
+            [".login.live.com MSPAuth", "outlook.live.com X-OWA"]
+        );
+        assert_eq!(cookies_to_keep(cookies, 1_000, false).len(), 4);
+    }
+
+    #[test]
+    fn expired_and_oversized_cookies_are_dropped() {
+        let mut big = cookie("example.com", "big", None);
+        big.value = "x".repeat(MAX_COOKIE_VALUE + 1).into();
+        let cookies = vec![
+            cookie("example.com", "old", Some(999)),
+            cookie("example.com", "fresh", Some(1_001)),
+            big,
+        ];
+        assert_eq!(
+            names(&cookies_to_keep(cookies, 1_000, false)),
+            ["example.com fresh"]
+        );
+    }
+
+    #[test]
+    fn kept_cookies_come_in_a_steady_order() {
+        let a = cookies_to_keep(
+            vec![cookie("b.com", "x", None), cookie("a.com", "y", None)],
+            0,
+            false,
+        );
+        let b = cookies_to_keep(
+            vec![cookie("a.com", "y", None), cookie("b.com", "x", None)],
+            0,
+            false,
+        );
+        assert!(same_cookies(&a, &b));
+
+        let mut changed = b.clone();
+        changed[0].value = "other".to_owned().into();
+        assert!(!same_cookies(&a, &changed));
+    }
+
+    #[test]
+    fn subdomains_count_as_one_site() {
+        let cookies = [
+            cookie(".live.com", "a", None),
+            cookie("login.live.com", "b", None),
+            cookie("outlook.live.com", "c", None),
+            cookie("example.org", "d", None),
+        ];
+        assert_eq!(cookie_sites(&cookies), 2);
+    }
 
     fn url(path: &str) -> Url {
         format!("https://steamcommunity.com{path}").parse().unwrap()

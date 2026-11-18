@@ -5,8 +5,7 @@ use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager};
 
-use crate::browser::Browsers;
-use crate::vault::{self, VaultState};
+use crate::vault;
 
 /// Passed when the system starts the app at login, which then stays in the tray.
 pub const HIDDEN_ARG: &str = "--hidden";
@@ -25,7 +24,7 @@ pub fn install(app: &AppHandle) -> tauri::Result<()> {
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id().as_ref() {
             "open" => show_window(app),
-            "lock" => vault::lock_vault(app.state::<VaultState>(), app.state::<Browsers>()),
+            "lock" => vault::lock_from_menu(app),
             "quit" => app.exit(0),
             _ => {}
         })

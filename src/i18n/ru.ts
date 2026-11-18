@@ -7,6 +7,7 @@ import { groups } from './groups/ru.ts'
 import { trades } from './trades/ru.ts'
 import { inventory } from './inventory/ru.ts'
 import { tasks } from './tasks/ru.ts'
+import { profiles } from './profiles/ru.ts'
 import { proxies } from './proxies/ru.ts'
 import { browser } from './browser/ru.ts'
 import { updates } from './updates/ru.ts'
@@ -21,6 +22,7 @@ export const ru: Dictionary = {
   inventory,
   tasks,
   proxies,
+  profiles,
   browser,
   updates,
 
@@ -172,6 +174,7 @@ export const ru: Dictionary = {
     inventory: 'Инвентарь',
     tasks: 'Задачи',
     proxies: 'Прокси',
+    profiles: 'Профили браузера',
     add: 'Добавить аккаунт',
     settings: 'Настройки',
     vaultUnlocked: 'Хранилище открыто',

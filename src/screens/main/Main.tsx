@@ -1,6 +1,19 @@
 import { useEffect, useEffectEvent, useState } from 'react'
 import type { Account } from '../../api/accounts.ts'
-import { closeBrowser } from '../../api/browser.ts'
+import {
+  closeBrowser,
+  isPrivateTab,
+  openPrivateBrowser,
+} from '../../api/browser.ts'
+import {
+  listBrowserProfiles,
+  openProfileBrowser,
+  profileOfTab,
+  profileTab,
+  profileTint,
+  type BrowserProfile,
+} from '../../api/browserProfiles.ts'
+import { errorMessage } from '../../api/vault.ts'
 import { listProxies, type Proxy } from '../../api/proxies.ts'
 import {
   getSettings,
@@ -8,12 +21,14 @@ import {
 } from '../../api/settings.ts'
 import { dismissInstalledUpdate } from '../../api/updates.ts'
 import { useT } from '../../i18n/index.ts'
+import { useToast } from '../../lib/toast.ts'
 import AccountPage from './account/AccountPage.tsx'
 import AddAccount from './add/AddAccount.tsx'
 import Accounts from './Accounts.tsx'
 import BrowserTab from './browser/BrowserTab.tsx'
-import TabBar from './browser/TabBar.tsx'
+import TabBar, { type TabInfo } from './browser/TabBar.tsx'
 import Inventory from './inventory/Inventory.tsx'
+import Profiles from './profiles/Profiles.tsx'
 import Proxies from './proxies/Proxies.tsx'
 import Sidebar, { type Section } from './Sidebar.tsx'
 import SteamGuard from './SteamGuard.tsx'
@@ -25,6 +40,9 @@ import { useAccounts } from './useAccounts.ts'
 import { useAutoLock } from './useAutoLock.ts'
 import { useUpdates } from './useUpdates.ts'
 import styles from './Main.module.css'
+
+// How many tabs the new tab menu lists as recent.
+const RECENT_TABS = 5
 
 type Props = {
   sidebarCollapsed: boolean
@@ -48,40 +66,55 @@ export default function Main({
   const [tabs, setTabs] = useState<string[]>([])
   const [activeTab, setActiveTab] = useState<string | null>(null)
   const [tabMenu, setTabMenu] = useState(false)
+  // The proxy each private tab was opened with, by tab name.
+  const [privateProxies, setPrivateProxies] = useState<
+    Record<string, number | null>
+  >({})
   const [proxies, setProxies] = useState<Proxy[]>([])
+  const [profiles, setProfiles] = useState<BrowserProfile[]>([])
+  // Tabs opened lately, newest first, for the new tab menu. Kept in memory only:
+  // the names would say which accounts are in the vault.
+  const [recent, setRecent] = useState<string[]>([])
   const updates = useUpdates()
   const [updateOpen, setUpdateOpen] = useState(false)
   // The version this restart installed, said once and then forgotten.
   const [installed, setInstalled] =
     useState<SettingsValues['installedUpdate']>(null)
   const [installedNoted, setInstalledNoted] = useState(false)
-  const t = useT().updates
+  const words = useT()
+  const t = words.updates
+  const toast = useToast()
   const openAccount = list?.accounts.find(
     (account) => account.accountName === openName,
   )
-  const browsing = list?.accounts.find(
-    (account) => account.accountName === activeTab,
-  )
   // A removed account's tab went with it.
   const shownTabs = list
-    ? tabs.filter((name) =>
-        list.accounts.some((account) => account.accountName === name),
+    ? tabs.filter(
+        (name) =>
+          isPrivateTab(name) ||
+          profileOfTab(name) !== null ||
+          list.accounts.some((account) => account.accountName === name),
       )
     : tabs
+  const browsing =
+    activeTab !== null && shownTabs.includes(activeTab) ? activeTab : null
 
-  // Proxies can change on their own screen, so they're read again with the tabs.
+  // Proxies and profiles change on their own screens, so they're read again
+  // with the tabs and the screen.
   useEffect(() => {
     let active = true
-    listProxies().then(
-      (next) => {
-        if (active) setProxies(next)
+    Promise.all([listProxies(), listBrowserProfiles()]).then(
+      ([nextProxies, nextProfiles]) => {
+        if (!active) return
+        setProxies(nextProxies)
+        setProfiles(nextProfiles)
       },
       () => {},
     )
     return () => {
       active = false
     }
-  }, [tabs, tabMenu])
+  }, [tabs, tabMenu, section])
 
   useEffect(() => {
     let active = true
@@ -106,7 +139,7 @@ export default function Main({
     if (name === 'new') {
       setTabMenu(true)
     } else if (name === 'close') {
-      if (browsing) closeTab(browsing.accountName)
+      if (browsing) closeTab(browsing)
     } else {
       // 1 is the dashboard, then the tabs in order.
       const index = Number(name) - 2
@@ -155,25 +188,82 @@ export default function Main({
     setActiveTab(null)
   }
 
-  function browse(accountName: string) {
-    setTabs((open) =>
-      open.includes(accountName) ? open : [...open, accountName],
+  /** Shows the tab, adding it to the bar if it isn't there yet. */
+  function show(tab: string) {
+    setTabs((open) => (open.includes(tab) ? open : [...open, tab]))
+    setActiveTab(tab)
+    setRecent((last) =>
+      [tab, ...last.filter((each) => each !== tab)].slice(0, RECENT_TABS),
     )
-    setActiveTab(accountName)
   }
 
-  function closeTab(accountName: string) {
-    void closeBrowser(accountName)
-    const index = tabs.indexOf(accountName)
-    const rest = tabs.filter((name) => name !== accountName)
+  function browse(accountName: string) {
+    show(accountName)
+  }
+
+  function browseProfile(id: number) {
+    openProfileBrowser(id).then(show, (err: unknown) =>
+      toast(errorMessage(err)),
+    )
+  }
+
+  function browsePrivate(proxyId: number | null) {
+    openPrivateBrowser(proxyId).then(
+      (tab) => {
+        setPrivateProxies((open) => ({ ...open, [tab]: proxyId }))
+        setTabs((open) => [...open, tab])
+        setActiveTab(tab)
+      },
+      (err: unknown) => toast(errorMessage(err)),
+    )
+  }
+
+  function closeTab(tab: string) {
+    void closeBrowser(tab)
+    const index = tabs.indexOf(tab)
+    const rest = tabs.filter((name) => name !== tab)
     setTabs(rest)
-    if (activeTab === accountName) {
+    if (activeTab === tab) {
       setActiveTab(rest[index] ?? rest[index - 1] ?? null)
     }
   }
 
   const proxyOf = (account: Account) =>
     proxies.find((proxy) => proxy.id === account.proxyId) ?? null
+
+  function tabInfo(tab: string): TabInfo {
+    if (isPrivateTab(tab)) {
+      const proxyId = privateProxies[tab] ?? null
+      return {
+        id: tab,
+        kind: 'private',
+        title: words.browser.privateName(Number(tab.split(':')[1])),
+        account: null,
+        proxy: proxies.find((proxy) => proxy.id === proxyId) ?? null,
+      }
+    }
+    const profileId = profileOfTab(tab)
+    if (profileId !== null) {
+      const profile = profiles.find((each) => each.id === profileId)
+      return {
+        id: tab,
+        kind: 'profile',
+        title: profile?.name ?? words.profiles.title,
+        account: null,
+        proxy: proxies.find((proxy) => proxy.id === profile?.proxyId) ?? null,
+        tint: profileTint(profileId),
+      }
+    }
+    const account =
+      list?.accounts.find((each) => each.accountName === tab) ?? null
+    return {
+      id: tab,
+      kind: 'account',
+      title: tab,
+      account,
+      proxy: account ? proxyOf(account) : null,
+    }
+  }
 
   function content() {
     if (!list) {
@@ -208,6 +298,23 @@ export default function Main({
       return <Tasks accounts={list.accounts} groups={list.groups} />
     }
     if (section === 'proxies') return <Proxies />
+    if (section === 'profiles') {
+      return (
+        <Profiles
+          accounts={list.accounts}
+          onOpen={browseProfile}
+          onOpenAccount={browse}
+          onShowAccount={(accountName) => {
+            select('accounts')
+            setOpenName(accountName)
+          }}
+          onRemoved={(id) => {
+            if (tabs.includes(profileTab(id))) closeTab(profileTab(id))
+          }}
+          onAccountsChanged={reload}
+        />
+      )
+    }
     if (section === 'settings') {
       return (
         <Settings
@@ -277,22 +384,30 @@ export default function Main({
         <TabBar
           accounts={list?.accounts ?? []}
           proxyOf={proxyOf}
-          tabs={shownTabs}
-          active={browsing ? browsing.accountName : null}
+          proxies={proxies}
+          profiles={profiles}
+          recent={recent}
+          tabs={shownTabs.map(tabInfo)}
+          active={browsing}
           onSelect={setActiveTab}
           onOpen={browse}
+          onOpenProfile={browseProfile}
+          onNewProfile={() => select('profiles')}
+          onOpenPrivate={browsePrivate}
           onClose={closeTab}
           menu={tabMenu}
           onMenu={setTabMenu}
         />
         {browsing && list ? (
           <BrowserTab
-            key={browsing.accountName}
-            account={browsing}
-            proxy={proxyOf(browsing)}
+            key={browsing}
+            tab={browsing}
+            kind={tabInfo(browsing).kind}
+            account={tabInfo(browsing).account}
+            proxy={tabInfo(browsing).proxy}
             codesExpireAt={list.codesExpireAt}
             covered={tabMenu || updateOpen}
-            onClose={() => closeTab(browsing.accountName)}
+            onClose={() => closeTab(browsing)}
           />
         ) : (
           <main className={styles.content}>

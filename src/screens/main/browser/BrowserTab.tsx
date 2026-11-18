@@ -34,6 +34,7 @@ import { useToast } from '../../../lib/toast.ts'
 import { useCodeSecondsLeft } from '../useAccounts.ts'
 import lootifyMarketIcon from '../../../assets/lootify-market.png'
 import steamIcon from '../../../assets/steam.png'
+import { PRIVATE_ICON, SAVED_ICON } from './icons.ts'
 import styles from './BrowserTab.module.css'
 
 const BACK_ICON = 'M15 18l-6-6 6-6'
@@ -92,7 +93,11 @@ function BookmarkIcon({ bookmark }: { bookmark: Bookmark }) {
 }
 
 type Props = {
-  account: Account
+  /** The tab's name: the account's, `profile:<id>` or `private:<n>`. */
+  tab: string
+  kind: 'account' | 'profile' | 'private'
+  /** `null` for a tab signed in to no account. */
+  account: Account | null
   proxy: Proxy | null
   codesExpireAt: number
   /** Something of the app's is drawn over the page, so the page steps aside. */
@@ -101,10 +106,14 @@ type Props = {
 }
 
 /**
- * Steam in the app, signed in as the account. The page itself is a webview the
- * backend lays over the page area, so this only keeps it in place.
+ * Steam in the app, signed in as the account, or a tab signed in to no account:
+ * a profile, which keeps its sign-ins, or a private tab, which keeps nothing. The
+ * page itself is a webview the backend lays over the page area, so this only
+ * keeps it in place.
  */
 export default function BrowserTab({
+  tab,
+  kind,
   account,
   proxy,
   codesExpireAt,
@@ -113,7 +122,8 @@ export default function BrowserTab({
 }: Props) {
   const words = useT()
   const t = words.browser
-  const name = account.accountName
+  const name = tab
+  const signedIn = kind === 'account' && account !== null
   const area = useRef<HTMLDivElement>(null)
   const [opened, setOpened] = useState(false)
   // Read by callbacks that outlive the render they were made in.
@@ -143,7 +153,11 @@ export default function BrowserTab({
     if (!element) return
     let active = true
     let shown = false
-    openBrowser(name, boundsOf(element)).then(
+    // A profile's or a private tab is made before it's shown; an account's is signed in here.
+    const opening = signedIn
+      ? openBrowser(name, boundsOf(element))
+      : placeBrowser(name, boundsOf(element))
+    opening.then(
       () => {
         // Left, or covered, before Steam answered: the page shouldn't cover what's here now.
         if (!active || coveredNow.current) void hideBrowser(name)
@@ -166,7 +180,7 @@ export default function BrowserTab({
       observer.disconnect()
       void hideBrowser(name)
     }
-  }, [name, attempt])
+  }, [name, signedIn, attempt])
 
   // The page is drawn by the system over the app, so nothing of the app's can
   // go over it. While something does, a picture of it stands in its place.
@@ -223,6 +237,7 @@ export default function BrowserTab({
   }, [name, opened])
 
   useEffect(() => {
+    if (!signedIn) return
     let active = true
     const read = () =>
       listConfirmations(name).then(
@@ -241,7 +256,7 @@ export default function BrowserTab({
       active = false
       clearInterval(timer)
     }
-  }, [name, confirmationsVersion])
+  }, [name, signedIn, confirmationsVersion])
 
   async function answer(confirmation: Confirmation, accept: boolean) {
     setAnswering(confirmation.id)
@@ -294,6 +309,7 @@ export default function BrowserTab({
   }
 
   async function copyCode() {
+    if (!account) return
     try {
       await navigator.clipboard.writeText(account.code)
       toast(words.common.copied)
@@ -416,7 +432,9 @@ export default function BrowserTab({
         </form>
         <span
           className={styles.badge}
-          title={proxy ? t.proxyHint : t.directHint}
+          title={
+            proxy ? (signedIn ? t.proxyHint : t.privateProxyHint) : t.directHint
+          }
           data-direct={!proxy}
         >
           <span className={styles.badgeDot} />
@@ -424,18 +442,35 @@ export default function BrowserTab({
             <Private>{proxyName}</Private>
           </span>
         </span>
-        <button
-          type="button"
-          className={styles.guardToggle}
-          aria-pressed={panel}
-          onClick={() => setPanel(!panel)}
-        >
-          <Icon path={SHIELD_ICON} size={15} stroke={1.9} />
-          {t.guard}
-          {confirmations.length > 0 && (
-            <span className={styles.count}>{confirmations.length}</span>
-          )}
-        </button>
+        {kind !== 'account' && (
+          <span
+            className={styles.badge}
+            title={kind === 'profile' ? t.savedChipHint : t.privateChipHint}
+          >
+            <Icon
+              path={kind === 'profile' ? SAVED_ICON : PRIVATE_ICON}
+              size={13}
+              stroke={2}
+            />
+            <span className={styles.badgeText}>
+              {kind === 'profile' ? t.savedChip : t.privateChip}
+            </span>
+          </span>
+        )}
+        {signedIn && (
+          <button
+            type="button"
+            className={styles.guardToggle}
+            aria-pressed={panel}
+            onClick={() => setPanel(!panel)}
+          >
+            <Icon path={SHIELD_ICON} size={15} stroke={1.9} />
+            {t.guard}
+            {confirmations.length > 0 && (
+              <span className={styles.count}>{confirmations.length}</span>
+            )}
+          </button>
+        )}
       </div>
 
       <nav className={styles.bookmarks} aria-label={t.bookmarks}>
@@ -519,7 +554,7 @@ export default function BrowserTab({
               <div
                 className={styles.placeholder}
                 role="status"
-                aria-label={t.signingIn}
+                aria-label={signedIn ? t.signingIn : t.opening}
               >
                 <Skeleton height={120} />
                 <Skeleton width="40%" height={18} />
@@ -530,101 +565,103 @@ export default function BrowserTab({
         </div>
 
         {/* Always there, so it can slide in and out; the page narrows with it. */}
-        <div className={styles.panelSlot} data-open={panel} inert={!panel}>
-          <aside className={styles.panel} aria-label={t.guardPanel}>
-            <div className={styles.panelCode}>
-              <span className={styles.label}>
-                {words.guard.title} · {name}
-              </span>
-              <button
-                type="button"
-                className={styles.bigCode}
-                title={t.copyCode}
-                onClick={() => void copyCode()}
-              >
-                <Private mask={MASK.code}>{account.code}</Private>
-              </button>
-              <span className={styles.panelBar}>
-                <span className={styles.codeBarFill} style={{ width: bar }} />
-              </span>
-            </div>
+        {account && (
+          <div className={styles.panelSlot} data-open={panel} inert={!panel}>
+            <aside className={styles.panel} aria-label={t.guardPanel}>
+              <div className={styles.panelCode}>
+                <span className={styles.label}>
+                  {words.guard.title} · {name}
+                </span>
+                <button
+                  type="button"
+                  className={styles.bigCode}
+                  title={t.copyCode}
+                  onClick={() => void copyCode()}
+                >
+                  <Private mask={MASK.code}>{account.code}</Private>
+                </button>
+                <span className={styles.panelBar}>
+                  <span className={styles.codeBarFill} style={{ width: bar }} />
+                </span>
+              </div>
 
-            <div className={styles.section}>
-              <span className={styles.label}>
-                {t.confirmations(confirmations.length)}
-              </span>
-              {confirmationsError && (
-                <p className={styles.error} role="alert">
-                  {confirmationsError}
-                </p>
-              )}
-              {confirmations.length === 0 && (
-                <span className={styles.nothing}>{t.nothingToConfirm}</span>
-              )}
-              {confirmations.map((confirmation) => (
-                <div key={confirmation.id} className={`${styles.item} rise`}>
-                  <span className={styles.itemText}>
-                    <span className={styles.itemTitle}>
-                      {confirmation.headline}
-                    </span>
-                    {confirmation.summary.length > 0 && (
-                      <span className={styles.itemSummary}>
-                        {confirmation.summary.join(', ')}
+              <div className={styles.section}>
+                <span className={styles.label}>
+                  {t.confirmations(confirmations.length)}
+                </span>
+                {confirmationsError && (
+                  <p className={styles.error} role="alert">
+                    {confirmationsError}
+                  </p>
+                )}
+                {confirmations.length === 0 && (
+                  <span className={styles.nothing}>{t.nothingToConfirm}</span>
+                )}
+                {confirmations.map((confirmation) => (
+                  <div key={confirmation.id} className={`${styles.item} rise`}>
+                    <span className={styles.itemText}>
+                      <span className={styles.itemTitle}>
+                        {confirmation.headline}
                       </span>
-                    )}
-                  </span>
-                  <span className={styles.itemActions}>
-                    <button
-                      type="button"
-                      className={styles.confirm}
-                      disabled={answering !== null}
-                      onClick={() => void answer(confirmation, true)}
-                    >
-                      {t.confirm}
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.decline}
-                      disabled={answering !== null}
-                      onClick={() => void answer(confirmation, false)}
-                    >
-                      {t.decline}
-                    </button>
-                  </span>
-                </div>
-              ))}
-            </div>
+                      {confirmation.summary.length > 0 && (
+                        <span className={styles.itemSummary}>
+                          {confirmation.summary.join(', ')}
+                        </span>
+                      )}
+                    </span>
+                    <span className={styles.itemActions}>
+                      <button
+                        type="button"
+                        className={styles.confirm}
+                        disabled={answering !== null}
+                        onClick={() => void answer(confirmation, true)}
+                      >
+                        {t.confirm}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.decline}
+                        disabled={answering !== null}
+                        onClick={() => void answer(confirmation, false)}
+                      >
+                        {t.decline}
+                      </button>
+                    </span>
+                  </div>
+                ))}
+              </div>
 
-            <div className={styles.section}>
-              <span className={styles.label}>{t.session}</span>
-              <dl className={styles.facts}>
-                <div className={styles.fact}>
-                  <dt>{t.proxy}</dt>
-                  <dd>
-                    <Private>{proxyName}</Private>
-                  </dd>
-                </div>
-                <div className={styles.fact}>
-                  <dt>{t.cookies}</dt>
-                  <dd>{t.cookiesIsolated}</dd>
-                </div>
-                <div className={styles.fact}>
-                  <dt>{t.signedIn}</dt>
-                  <dd>
-                    {since === null
-                      ? '—'
-                      : since === words.time.justNow
-                        ? since
-                        : t.signedInAgo(since)}
-                  </dd>
-                </div>
-              </dl>
-              <button type="button" className={styles.end} onClick={onClose}>
-                {t.endSession}
-              </button>
-            </div>
-          </aside>
-        </div>
+              <div className={styles.section}>
+                <span className={styles.label}>{t.session}</span>
+                <dl className={styles.facts}>
+                  <div className={styles.fact}>
+                    <dt>{t.proxy}</dt>
+                    <dd>
+                      <Private>{proxyName}</Private>
+                    </dd>
+                  </div>
+                  <div className={styles.fact}>
+                    <dt>{t.cookies}</dt>
+                    <dd>{t.cookiesIsolated}</dd>
+                  </div>
+                  <div className={styles.fact}>
+                    <dt>{t.signedIn}</dt>
+                    <dd>
+                      {since === null
+                        ? '—'
+                        : since === words.time.justNow
+                          ? since
+                          : t.signedInAgo(since)}
+                    </dd>
+                  </div>
+                </dl>
+                <button type="button" className={styles.end} onClick={onClose}>
+                  {t.endSession}
+                </button>
+              </div>
+            </aside>
+          </div>
+        )}
       </div>
     </div>
   )

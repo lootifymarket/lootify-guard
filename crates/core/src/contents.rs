@@ -4,7 +4,9 @@ use std::fmt;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroizing;
 
-use crate::browser::Bookmark;
+use crate::browser::{Bookmark, SavedCookie};
+use crate::browser_profiles::BrowserProfile;
+use crate::browser_region::RegionChoice;
 use crate::games::PlayingList;
 use crate::proxy::{Proxy, ProxyAddress};
 
@@ -29,6 +31,11 @@ pub struct Contents {
     /// In the vault rather than the settings: a saved profile page names the account.
     #[serde(default)]
     pub bookmarks: Vec<Bookmark>,
+    #[serde(default)]
+    pub profiles: Vec<BrowserProfile>,
+    /// Never reused, so a tab of a deleted profile can't turn into a new one.
+    #[serde(default)]
+    pub(crate) last_profile_id: u32,
 }
 
 /// A set of accounts the user handles together, like "Farm" or "Storage".
@@ -94,6 +101,12 @@ pub struct Account {
     /// What the last check found wrong, so the list can flag the account.
     #[serde(default)]
     pub last_check: Option<LastCheck>,
+    /// The account's browser tab's sign-ins to other sites, put back when it opens.
+    #[serde(default)]
+    pub saved_cookies: Vec<SavedCookie>,
+    /// The time zone and language its browser tab shows pages.
+    #[serde(default)]
+    pub browser_region: RegionChoice,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -437,6 +450,8 @@ mod tests {
             note: None,
             wallet: None,
             last_check: None,
+            saved_cookies: Vec::new(),
+            browser_region: RegionChoice::default(),
         }
     }
 

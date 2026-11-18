@@ -29,6 +29,36 @@ type Props = {
 
 const CHEVRON = 'M6 9l6 6 6-6'
 const CHECK = 'M20 6L9 17l-5-5'
+// Between the trigger and the list, and between the list and the window's edge.
+const GAP = 6
+const EDGE = 12
+const MAX_LIST = 300
+// Less room than this below the trigger, and more above, opens the list upwards.
+const ENOUGH_BELOW = 160
+
+/** Where the list goes, in the window: fixed, so a dialog's edge can't cut it off. */
+type Placement = {
+  right: number
+  minWidth: number
+  top?: number
+  bottom?: number
+  maxHeight: number
+}
+
+function placeBy(trigger: HTMLElement): Placement {
+  const rect = trigger.getBoundingClientRect()
+  const below = window.innerHeight - rect.bottom - GAP - EDGE
+  const above = rect.top - GAP - EDGE
+  const up = below < ENOUGH_BELOW && above > below
+  return {
+    right: window.innerWidth - rect.right,
+    minWidth: rect.width,
+    maxHeight: Math.min(MAX_LIST, up ? above : below),
+    ...(up
+      ? { bottom: window.innerHeight - rect.top + GAP }
+      : { top: rect.bottom + GAP }),
+  }
+}
 
 export default function Dropdown({
   label,
@@ -39,6 +69,7 @@ export default function Dropdown({
   size = 'md',
 }: Props) {
   const [open, setOpen] = useState(false)
+  const [placement, setPlacement] = useState<Placement | null>(null)
   const root = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
   const list = useRef<HTMLDivElement>(null)
@@ -53,9 +84,24 @@ export default function Dropdown({
     function closeOutside(event: PointerEvent) {
       if (!root.current?.contains(event.target as Node)) setOpen(false)
     }
+    // The list stays where it opened, so it closes once the page under it moves.
+    function closeOnMove(event: Event) {
+      if (!list.current?.contains(event.target as Node)) setOpen(false)
+    }
     document.addEventListener('pointerdown', closeOutside)
-    return () => document.removeEventListener('pointerdown', closeOutside)
+    window.addEventListener('scroll', closeOnMove, true)
+    window.addEventListener('resize', closeOnMove)
+    return () => {
+      document.removeEventListener('pointerdown', closeOutside)
+      window.removeEventListener('scroll', closeOnMove, true)
+      window.removeEventListener('resize', closeOnMove)
+    }
   }, [open])
+
+  function show() {
+    if (trigger.current) setPlacement(placeBy(trigger.current))
+    setOpen(true)
+  }
 
   function close() {
     setOpen(false)
@@ -109,11 +155,11 @@ export default function Dropdown({
           aria-haspopup="listbox"
           aria-expanded={open}
           aria-labelledby={labelId}
-          onClick={() => setOpen(!open)}
+          onClick={() => (open ? setOpen(false) : show())}
           onKeyDown={(event) => {
             if (event.key === 'ArrowDown' && !open) {
               event.preventDefault()
-              setOpen(true)
+              show()
             }
           }}
         >
@@ -129,6 +175,7 @@ export default function Dropdown({
             role="listbox"
             aria-labelledby={labelId}
             className={styles.list}
+            style={placement ?? undefined}
             onKeyDown={moveFocus}
           >
             {options.map((option) => (

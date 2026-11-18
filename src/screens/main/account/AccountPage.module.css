@@ -278,6 +278,11 @@
   width: 260px;
 }
 
+.regionPicker {
+  width: 300px;
+  max-width: 100%;
+}
+
 .dangerText {
   color: var(--color-danger);
   overflow-wrap: anywhere;

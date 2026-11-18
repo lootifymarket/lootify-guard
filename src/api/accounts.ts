@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import type { RegionChoice } from './browser.ts'
 import { fromBackend } from '../i18n/backend/index.ts'
 import type { AutoConfirm } from './autoConfirm.ts'
 
@@ -24,6 +25,10 @@ export type Account = {
   /** As Steam last showed it. */
   wallet: StoredWallet | null
   lastCheck: LastCheck | null
+  /** How many sites the account's browser tab keeps sign-ins for. */
+  savedSites: number
+  /** The time zone and language its browser tab shows pages. */
+  browserRegion: RegionChoice
 }
 
 export type StoredWallet = {
@@ -87,6 +92,13 @@ export const revealRevocationCode = (
 /** Resolves to the saved file's name, or `null` when saving was cancelled. */
 export const exportMaFile = (accountName: string, password: string | null) =>
   invoke<string | null>('export_mafile', { accountName, password })
+
+/**
+ * Saves a folder with the account's `.maFile` and `account_details.json`.
+ * Resolves to the folder's name, or `null` when saving was cancelled.
+ */
+export const exportAccount = (accountName: string, password: string | null) =>
+  invoke<string | null>('export_account', { accountName, password })
 
 export const removeAccount = (accountName: string) =>
   invoke<void>('remove_account', { accountName })

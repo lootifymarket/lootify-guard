@@ -3,8 +3,10 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use lootify_guard_core::browser::cookie_sites;
+use lootify_guard_core::browser_region::RegionChoice;
 use lootify_guard_core::contents::{
-    Account, AutoConfirm, Contents, LastCheck, Session, StoredWallet,
+    Account, AutoConfirm, Contents, LastCheck, Profile, Session, StoredWallet,
 };
 use lootify_guard_core::guard;
 use lootify_guard_core::mafile;
@@ -56,6 +58,9 @@ pub struct AccountSummary {
     /// As Steam last showed it.
     wallet: Option<StoredWallet>,
     last_check: Option<LastCheck>,
+    /// How many sites the account's browser tab keeps sign-ins for.
+    saved_sites: usize,
+    browser_region: RegionChoice,
 }
 
 #[derive(Default, Serialize)]
@@ -111,6 +116,8 @@ pub fn list_accounts(
                 note: account.note.clone(),
                 wallet: account.wallet.clone(),
                 last_check: account.last_check.clone(),
+                saved_sites: cookie_sites(&account.saved_cookies),
+                browser_region: account.browser_region.clone(),
             })
         })
         .collect::<Result<_, CommandError>>()?;
@@ -211,12 +218,7 @@ pub async fn export_mafile(
         let unlocked = state.unlocked();
         let vault = unlocked.as_ref().ok_or(CommandError::Locked)?;
         let contents = Contents::from_bytes(vault.data())?;
-        let account = find(&contents, &account_name)?;
-        // SDA names its files after the Steam ID, so other managers expect that.
-        match account.steam_id {
-            Some(steam_id) => format!("{steam_id}.maFile"),
-            None => format!("{}.maFile", account.account_name),
-        }
+        mafile::file_name(find(&contents, &account_name)?)
     };
     let picker = window
         .dialog()
@@ -241,6 +243,56 @@ pub async fn export_mafile(
     spawn_blocking(move || write_private(&path, &file))
         .await?
         .map_err(|err| CommandError::Failed(err.to_string()))?;
+    Ok(Some(name))
+}
+
+/// Saves the account as a folder where the user picks: its `.maFile`, and
+/// `account_details.json` with the login, password and revocation code. Returns
+/// the folder's name, or `None` when the picker is closed without saving.
+#[tauri::command]
+pub async fn export_account(
+    window: Window,
+    state: State<'_, VaultState>,
+    account_name: String,
+    password: Option<String>,
+) -> Result<Option<String>, CommandError> {
+    confirm_owner(&state, password, "export an account with its details").await?;
+    {
+        let unlocked = state.unlocked();
+        let vault = unlocked.as_ref().ok_or(CommandError::Locked)?;
+        find(&Contents::from_bytes(vault.data())?, &account_name)?;
+    }
+    let picker = window
+        .dialog()
+        .file()
+        .set_parent(&window)
+        .set_file_name(&account_name);
+    let Some(target) = spawn_blocking(move || picker.blocking_save_file()).await? else {
+        return Ok(None);
+    };
+    let folder = target
+        .into_path()
+        .map_err(|err| CommandError::Failed(err.to_string()))?;
+
+    let (mafile_name, mafile, details) = {
+        let unlocked = state.unlocked();
+        let vault = unlocked.as_ref().ok_or(CommandError::Locked)?;
+        let contents = Contents::from_bytes(vault.data())?;
+        let account = find(&contents, &account_name)?;
+        (
+            mafile::file_name(account),
+            mafile::export(account),
+            mafile::export_details(account),
+        )
+    };
+    let name = file_name(&folder);
+    spawn_blocking(move || {
+        create_private_dir(&folder)?;
+        write_private(&folder.join(mafile_name), &mafile)?;
+        write_private(&folder.join("account_details.json"), &details)
+    })
+    .await?
+    .map_err(|err| CommandError::Failed(err.to_string()))?;
     Ok(Some(name))
 }
 
@@ -300,12 +352,20 @@ pub async fn refresh_profile(
 ) -> Result<(), CommandError> {
     let (account, proxy) = account_and_proxy(&state, &account_name)?;
     let fetched = spawn_blocking(move || steam::fetch_profile(&account, proxy.as_ref())).await?;
+    store_profile(&state, &account_name, fetched)
+}
 
+/// Keeps what `fetch_profile` brought back, or drops the session it found expired.
+pub(crate) fn store_profile(
+    state: &VaultState,
+    account_name: &str,
+    fetched: Result<(Session, Profile), SteamError>,
+) -> Result<(), CommandError> {
     let mut unlocked = state.unlocked();
     let vault = unlocked.as_mut().ok_or(CommandError::Locked)?;
     let mut contents = Contents::from_bytes(vault.data())?;
     let account = contents
-        .account_mut(&account_name)
+        .account_mut(account_name)
         .ok_or_else(no_such_account)?;
     let result = match fetched {
         Ok((session, profile)) => {
@@ -474,6 +534,15 @@ pub(crate) fn no_such_account() -> CommandError {
 }
 
 // The file holds every secret of the account, so only the user may read it.
+/// A folder only the user can open, for files with secrets in them.
+fn create_private_dir(path: &Path) -> io::Result<()> {
+    let mut builder = fs::DirBuilder::new();
+    builder.recursive(true);
+    #[cfg(unix)]
+    std::os::unix::fs::DirBuilderExt::mode(&mut builder, 0o700);
+    builder.create(path)
+}
+
 pub(crate) fn write_private(path: &Path, contents: &[u8]) -> io::Result<()> {
     let mut options = OpenOptions::new();
     options.write(true).create(true).truncate(true);

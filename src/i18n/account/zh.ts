@@ -5,6 +5,8 @@ export const account: typeof en = {
   importedFromMaFile: '从 .maFile 导入',
   guardTitle: 'Steam 令牌',
   copy: '复制',
+  refresh: '刷新',
+  refreshTitle: '重新从 Steam 加载资料、钱包和安全信息',
   refreshesIn: (seconds) => `${seconds} 秒后刷新`,
   sections: '分区',
   tabs: {
@@ -54,6 +56,7 @@ export const account: typeof en = {
     signedOutDevices: (n) => `已登出 ${n} 台设备。`,
     signOutEverywhere: '在所有设备上登出',
     exportMaFile: '导出 .maFile',
+    exportDetails: '连同详情导出',
     remove: '从 Lootify Guard 移除',
     saved: (file) => `已保存 ${file}`,
     unknown: '未知',
@@ -63,6 +66,16 @@ export const account: typeof en = {
     thisAppAnd: (n) => `此应用和另外 ${n} 台设备`,
     noWallet: '没有钱包',
     pending: (balance, pending) => `${balance} · ${pending} 待处理`,
+  },
+
+  browser: {
+    title: '浏览器',
+    signIns: '已保存的登录',
+    sites: (n) => `${n} 个网站`,
+    nothingSaved: '暂无',
+    clear: '清除',
+    cleared: '已清除登录',
+    hint: '该账户的浏览器标签页会把其他网站（例如它的邮箱）的登录保存在加密保险库中。Steam 每次都会重新登录。',
   },
 
   autoConfirm: {
@@ -85,6 +98,12 @@ export const account: typeof en = {
     title: '导出 .maFile',
     text: '该文件包含此账户未加密的 Steam 令牌密钥。拿到它的人可以用其中的代码登录并确认交易。请把它放在只有你能访问的地方。',
     action: '保存文件…',
+  },
+
+  exportDetails: {
+    title: '连同详情导出',
+    text: '将保存一个文件夹，内含 .maFile 和 account_details.json（登录名、密码和撤销码）。其中内容均未加密：拿到它的人可以登录、确认交易并移除 Steam 令牌。请把它放在只有你能访问的地方。',
+    action: '保存文件夹…',
   },
 
   confirmOwner: {
@@ -213,6 +232,10 @@ export const account: typeof en = {
   },
 
   playing: {
+    freeNoAnswer: 'Steam 没有回应添加免费游戏的请求。',
+    freeRefused: (code) => `Steam 没有添加免费游戏（错误 ${code}）。`,
+    freeAdded: (games) => `Steam 已添加：${games}。`,
+    freeNotAdded: (games) => `未添加，账户已拥有或 Steam 未发放：${games}。`,
     applied: '游戏已更新',
     label: '游戏',
     signInFirst: '请在“安全”选项卡中登录 Steam 以运行游戏。',
@@ -258,6 +281,7 @@ export const account: typeof en = {
   },
 
   picker: {
+    tryAgain: '重试',
     title: '添加游戏',
     picked: (count, room) => `已选 · ${count}/${room}`,
     find: '查找游戏',
@@ -267,5 +291,9 @@ export const account: typeof en = {
     app: (id) => `应用 ${id}`,
     hours: (hours) => `${hours} 小时`,
     done: '完成',
+    inLibrary: '库中',
+    freeToAdd: '免费游戏',
+    freeHint: '开始游玩时自动添加到账户',
+    free: '免费',
   },
 }

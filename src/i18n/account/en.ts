@@ -3,6 +3,9 @@ export const account = {
   importedFromMaFile: 'Imported from .maFile',
   guardTitle: 'Steam Guard',
   copy: 'Copy',
+  refresh: 'Refresh',
+  refreshTitle:
+    'Load the profile, wallet and security details from Steam again',
   refreshesIn: (seconds: number) => `Refreshes in ${seconds} s`,
   sections: 'Sections',
   tabs: {
@@ -53,6 +56,7 @@ export const account = {
       `Signed out ${n} ${n === 1 ? 'device' : 'devices'}.`,
     signOutEverywhere: 'Sign out everywhere',
     exportMaFile: 'Export .maFile',
+    exportDetails: 'Export with details',
     remove: 'Remove from Lootify Guard',
     saved: (file: string) => `Saved ${file}`,
     unknown: 'Unknown',
@@ -64,6 +68,16 @@ export const account = {
     noWallet: 'No wallet',
     pending: (balance: string, pending: string) =>
       `${balance} · ${pending} pending`,
+  },
+
+  browser: {
+    title: 'Browser',
+    signIns: 'Saved sign-ins',
+    sites: (n: number) => `${n} ${n === 1 ? 'site' : 'sites'}`,
+    nothingSaved: 'Nothing yet',
+    clear: 'Clear',
+    cleared: 'Sign-ins cleared',
+    hint: 'The account’s browser tab keeps sign-ins to other sites, like its mailbox, in the encrypted vault. Steam itself is signed in fresh each time.',
   },
 
   autoConfirm: {
@@ -87,6 +101,12 @@ export const account = {
     title: 'Export .maFile',
     text: 'The file holds this account’s Steam Guard secrets unencrypted. Anyone who gets it can sign in with its codes and confirm trades. Keep it where only you can reach it.',
     action: 'Save file…',
+  },
+
+  exportDetails: {
+    title: 'Export with details',
+    text: 'Saves a folder with the .maFile and account_details.json, which has the login, password and revocation code. Nothing in it is encrypted: anyone who gets it can sign in, confirm trades and remove Steam Guard. Keep it where only you can reach it.',
+    action: 'Save folder…',
   },
 
   confirmOwner: {
@@ -219,6 +239,12 @@ export const account = {
   },
 
   playing: {
+    freeNoAnswer: 'Steam didn’t answer the request to add the free games.',
+    freeRefused: (code: number) =>
+      `Steam didn’t add the free games (error ${code}).`,
+    freeAdded: (games: string) => `Steam added ${games}.`,
+    freeNotAdded: (games: string) =>
+      `Not added, the account has them already or Steam didn’t give them: ${games}.`,
     applied: 'Games updated',
     label: 'Playing',
     signInFirst: 'Sign in to Steam on the Security tab to play games.',
@@ -269,6 +295,7 @@ export const account = {
   },
 
   picker: {
+    tryAgain: 'Try again',
     title: 'Add games',
     picked: (count: number, room: number) => `Picked · ${count} of ${room}`,
     find: 'Find game',
@@ -278,5 +305,9 @@ export const account = {
     app: (id: number) => `App ${id}`,
     hours: (hours: number) => `${hours} h`,
     done: 'Done',
+    inLibrary: 'In the library',
+    freeToAdd: 'Free to play',
+    freeHint: 'added to the account when it starts playing',
+    free: 'Free',
   },
 }

@@ -143,6 +143,8 @@ export const backend: Record<BackendMessage, string> = {
     'название должно быть не длиннее {} символов',
   'keep the note under {} characters': 'заметка должна быть короче {} символов',
   "that is this app's own session": 'это сессия самого приложения',
+  'Steam refused to sign that device out':
+    'Steam не дал завершить сеанс этого устройства',
   'unknown trade offer': 'неизвестное предложение обмена',
   'unknown trade partner': 'неизвестный партнёр по обмену',
   "that isn't a Steam trade URL": 'это не трейд-ссылка Steam',
@@ -165,6 +167,12 @@ export const backend: Record<BackendMessage, string> = {
     'неизвестный тип прокси, используйте http:// или socks5://',
   'give the group a name': 'дайте группе название',
   "there's already a group with that name": 'группа с таким названием уже есть',
+  'give the profile a name': 'дайте профилю название',
+  "there's already a profile with that name":
+    'профиль с таким названием уже есть',
+  'the profile is no longer in the vault':
+    'этого профиля больше нет в хранилище',
+  'unknown time zone': 'неизвестный часовой пояс',
   'the group is no longer in the vault': 'группы больше нет в хранилище',
 
   // Free games
@@ -250,6 +258,7 @@ export const backend: Record<BackendMessage, string> = {
   stopped: 'остановлено',
   'the browser tab is closed': 'вкладка браузера закрыта',
   "could not start the tab's proxy": 'не удалось запустить прокси вкладки',
+  'the proxy is no longer there': 'этого прокси больше нет',
   'not a web address': 'не похоже на веб-адрес',
   'there are already {} bookmarks, remove one first':
     'закладок уже {}, сначала уберите одну',

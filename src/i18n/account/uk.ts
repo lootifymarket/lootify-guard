@@ -9,6 +9,8 @@ export const account: typeof en = {
   importedFromMaFile: 'Імпортовано з .maFile',
   guardTitle: 'Steam Guard',
   copy: 'Копіювати',
+  refresh: 'Оновити',
+  refreshTitle: 'Знову завантажити зі Steam профіль, гаманець і дані безпеки',
   refreshesIn: (seconds) => `Оновиться за ${seconds} с`,
   sections: 'Розділи',
   tabs: {
@@ -58,6 +60,7 @@ export const account: typeof en = {
     signedOutDevices: (n) => `Вихід виконано на ${n} ${devices(n)}.`,
     signOutEverywhere: 'Вийти всюди',
     exportMaFile: 'Експорт .maFile',
+    exportDetails: 'Експорт з даними',
     remove: 'Видалити з Lootify Guard',
     saved: (file) => `Збережено: ${file}`,
     unknown: 'Невідомо',
@@ -67,6 +70,17 @@ export const account: typeof en = {
     thisAppAnd: (n) => `Цей застосунок і ще ${n} ${devices(n)}`,
     noWallet: 'Гаманця немає',
     pending: (balance, pending) => `${balance} · ${pending} в очікуванні`,
+  },
+
+  browser: {
+    title: 'Браузер',
+    signIns: 'Збережені входи',
+    sites: (n) =>
+      `${n} ${plural('uk', n, { one: 'сайт', few: 'сайти', other: 'сайтів' })}`,
+    nothingSaved: 'Поки нічого',
+    clear: 'Очистити',
+    cleared: 'Входи очищено',
+    hint: 'Вкладка акаунта зберігає входи на інші сайти, наприклад у його пошту, у зашифрованому сховищі. У Steam вона щоразу входить заново.',
   },
 
   autoConfirm: {
@@ -90,6 +104,12 @@ export const account: typeof en = {
     title: 'Експорт .maFile',
     text: 'У файлі секрети Steam Guard цього акаунта у відкритому вигляді. Будь-хто, хто його отримає, зможе входити за його кодами й підтверджувати трейди. Зберігайте його там, куди маєте доступ лише ви.',
     action: 'Зберегти файл…',
+  },
+
+  exportDetails: {
+    title: 'Експорт з даними',
+    text: 'Збережеться тека з .maFile і account_details.json, де логін, пароль і код відновлення. Нічого в ній не зашифровано: будь-хто, хто її отримає, зможе входити, підтверджувати трейди й зняти Steam Guard. Зберігайте її там, куди маєте доступ лише ви.',
+    action: 'Зберегти теку…',
   },
 
   confirmOwner: {
@@ -226,6 +246,11 @@ export const account: typeof en = {
   },
 
   playing: {
+    freeNoAnswer: 'Steam не відповів на запит додати безкоштовні ігри.',
+    freeRefused: (code) => `Steam не додав безкоштовні ігри (помилка ${code}).`,
+    freeAdded: (games) => `Steam додав: ${games}.`,
+    freeNotAdded: (games) =>
+      `Не додано — вже є на акаунті або Steam їх не видав: ${games}.`,
     applied: 'Ігри оновлено',
     label: 'Ігри',
     signInFirst: 'Увійдіть у Steam на вкладці «Безпека», щоб запускати ігри.',
@@ -275,6 +300,7 @@ export const account: typeof en = {
   },
 
   picker: {
+    tryAgain: 'Спробувати ще раз',
     title: 'Додати ігри',
     picked: (count, room) => `Вибрано · ${count} з ${room}`,
     find: 'Знайти гру',
@@ -284,5 +310,9 @@ export const account: typeof en = {
     app: (id) => `Застосунок ${id}`,
     hours: (hours) => `${hours} год`,
     done: 'Готово',
+    inLibrary: 'У бібліотеці',
+    freeToAdd: 'Безкоштовні',
+    freeHint: 'додадуться на акаунт, коли він почне грати',
+    free: 'Безкоштовно',
   },
 }

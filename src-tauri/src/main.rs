@@ -6,6 +6,7 @@ mod add_account;
 mod auto_confirm;
 mod biometrics;
 mod browser;
+mod browser_profiles;
 mod confirmations;
 mod farming;
 mod groups;
@@ -14,6 +15,7 @@ mod inventory;
 mod menu;
 mod playing;
 mod profile;
+mod profiles;
 mod proxies;
 mod security;
 mod settings;
@@ -74,6 +76,8 @@ fn main() {
             }
             vault::watch_idle(app.handle().clone());
             auto_confirm::watch(app.handle().clone());
+            profiles::watch(app.handle().clone());
+            browser::watch_cookies(app.handle().clone());
             updates::watch(app.handle().clone());
             Ok(())
         })
@@ -95,6 +99,7 @@ fn main() {
             accounts::import_mafiles,
             accounts::reveal_revocation_code,
             accounts::export_mafile,
+            accounts::export_account,
             accounts::remove_account,
             accounts::sign_in,
             accounts::refresh_profile,
@@ -156,6 +161,7 @@ fn main() {
             playing::playing_now,
             playing::playing_list,
             playing::owned_games,
+            playing::free_games,
             tasks::start_task,
             tasks::task_queue,
             tasks::cancel_task,
@@ -180,9 +186,18 @@ fn main() {
             proxies::remove_proxy,
             proxies::check_proxy,
             browser::open_browser,
+            browser::open_private_browser,
+            browser::open_profile_browser,
+            browser_profiles::list_browser_profiles,
+            browser_profiles::add_browser_profile,
+            browser_profiles::update_browser_profile,
+            browser_profiles::remove_browser_profile,
             browser::place_browser,
             browser::hide_browser,
             browser::close_browser,
+            browser::clear_saved_cookies,
+            browser::browser_regions,
+            browser::set_browser_region,
             browser::browser_navigate,
             browser::browser_snapshot,
             browser::browser_back,

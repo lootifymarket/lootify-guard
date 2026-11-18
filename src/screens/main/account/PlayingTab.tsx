@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useState } from 'react'
 import {
   farmingNow,
+  freeGames,
   MAX_GAMES,
   ownedGames,
   playingList,
@@ -10,6 +11,8 @@ import {
   startPlaying,
   stopPlaying,
   type Farm,
+  type FreeGame,
+  type FreeGamesAsked,
   type OwnedGame,
   type Player,
   type PlayingList,
@@ -44,7 +47,10 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
   const [farm, setFarm] = useState<Farm | null>(null)
   const [owned, setOwned] = useState<OwnedGame[] | undefined>(undefined)
   const [ownedError, setOwnedError] = useState('')
+  const [free, setFree] = useState<FreeGame[]>([])
   const [picking, setPicking] = useState(false)
+  // Read again each time the picker opens: playing adds free games to the account.
+  const [ownedVersion, setOwnedVersion] = useState(0)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   // Read with each answer, so the elapsed time moves as the page polls.
@@ -72,18 +78,28 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
     void playingList(accountName).then(setDraft)
   }, [accountName])
 
+  useEffect(() => {
+    void freeGames().then(setFree, () => {})
+  }, [])
+
   const ownedFailed = useEffectEvent((err: unknown) =>
     setOwnedError(errorMessage(err)),
   )
   useEffect(() => {
-    if (signedIn) void ownedGames(accountName).then(setOwned, ownedFailed)
-  }, [accountName, signedIn])
+    if (!signedIn) return
+    void ownedGames(accountName).then((games) => {
+      setOwned(games)
+      setOwnedError('')
+    }, ownedFailed)
+  }, [accountName, signedIn, ownedVersion])
 
   if (!signedIn) {
     return <p className={styles.muted}>{t.signInFirst}</p>
   }
 
-  const names = new Map(owned?.map((game) => [game.appId, game.name]))
+  const names = new Map(
+    [...free, ...(owned ?? [])].map((game) => [game.appId, game.name]),
+  )
   const running = player !== null && player.state !== 'stopped'
   const status = draft.status?.trim() || null
   const room = MAX_GAMES - (status ? 1 : 0)
@@ -161,6 +177,13 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
           {error}
         </p>
       )}
+      {running && player.freeGames && (
+        <FreeGamesNote
+          t={t}
+          asked={player.freeGames}
+          name={(id) => names.get(id) || t.app(id)}
+        />
+      )}
 
       <div className={styles.run}>
         <span className={styles.runWords}>
@@ -218,7 +241,10 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
           <button
             type="button"
             className={styles.add}
-            onClick={() => setPicking(true)}
+            onClick={() => {
+              setPicking(true)
+              setOwnedVersion((version) => version + 1)
+            }}
           >
             {t.addGame}
           </button>
@@ -252,6 +278,9 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
       <GamePicker
         open={picking}
         owned={owned}
+        ownedError={ownedError}
+        onRetry={() => setOwnedVersion((version) => version + 1)}
+        free={free}
         picked={draft.games}
         room={room}
         onClose={() => setPicking(false)}
@@ -265,6 +294,32 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
 }
 
 type Words = Dictionary['account']['playing']
+
+/** What Steam said when asked to add the free games being played. */
+function FreeGamesNote({
+  t,
+  asked,
+  name,
+}: {
+  t: Words
+  asked: FreeGamesAsked
+  name: (id: number) => string
+}) {
+  const { answer } = asked
+  if (answer === null) return <p className={styles.muted}>{t.freeNoAnswer}</p>
+  if (answer.result !== 1) {
+    return <p className={styles.error}>{t.freeRefused(answer.result)}</p>
+  }
+  const kept = asked.asked.filter((id) => !answer.granted.includes(id))
+  return (
+    <p className={styles.muted}>
+      {answer.granted.length > 0 &&
+        t.freeAdded(answer.granted.map(name).join(', '))}
+      {answer.granted.length > 0 && kept.length > 0 && ' '}
+      {kept.length > 0 && t.freeNotAdded(kept.map(name).join(', '))}
+    </p>
+  )
+}
 
 function RunTitle({
   t,

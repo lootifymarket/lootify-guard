@@ -6,6 +6,7 @@ import { groups } from './groups/en.ts'
 import { trades } from './trades/en.ts'
 import { inventory } from './inventory/en.ts'
 import { tasks } from './tasks/en.ts'
+import { profiles } from './profiles/en.ts'
 import { proxies } from './proxies/en.ts'
 import { browser } from './browser/en.ts'
 import { updates } from './updates/en.ts'
@@ -21,6 +22,7 @@ export const en = {
   inventory,
   tasks,
   proxies,
+  profiles,
   browser,
   updates,
 
@@ -173,6 +175,7 @@ export const en = {
     inventory: 'Inventory',
     tasks: 'Tasks',
     proxies: 'Proxies',
+    profiles: 'Browser profiles',
     add: 'Add account',
     settings: 'Settings',
     vaultUnlocked: 'Vault unlocked',

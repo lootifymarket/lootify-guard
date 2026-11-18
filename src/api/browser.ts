@@ -13,30 +13,43 @@ export type BrowserState = {
   openedAt: number
 }
 
-/** Signs the tab in on first use, then shows it at `bounds` and hides the others. */
+/**
+ * Tabs are named after their account, or `private:1`, `private:2` and on for
+ * those signed in to nothing.
+ */
+export const isPrivateTab = (tab: string) => tab.startsWith('private:')
+
+/** Signs the account's tab in on first use, then shows it at `bounds` and hides the others. */
 export const openBrowser = (accountName: string, bounds: Bounds) =>
   invoke<void>('open_browser', { accountName, bounds })
 
-export const placeBrowser = (accountName: string, bounds: Bounds) =>
-  invoke<void>('place_browser', { accountName, bounds })
+/**
+ * Opens a tab signed in to nothing, through the proxy or straight out. It starts
+ * hidden until placed. Resolves to the tab's name.
+ */
+export const openPrivateBrowser = (proxyId: number | null) =>
+  invoke<string>('open_private_browser', { proxyId })
 
-export const hideBrowser = (accountName: string) =>
-  invoke<void>('hide_browser', { accountName })
+export const placeBrowser = (tab: string, bounds: Bounds) =>
+  invoke<void>('place_browser', { tab, bounds })
+
+export const hideBrowser = (tab: string) =>
+  invoke<void>('hide_browser', { tab })
 
 /** Ends the tab's session; its cookies are gone with it. */
-export const closeBrowser = (accountName: string) =>
-  invoke<void>('close_browser', { accountName })
+export const closeBrowser = (tab: string) =>
+  invoke<void>('close_browser', { tab })
 
 /** Opens what was typed into the address bar; fails when it isn't a web address. */
-export const browserNavigate = (accountName: string, address: string) =>
-  invoke<void>('browser_navigate', { accountName, address })
+export const browserNavigate = (tab: string, address: string) =>
+  invoke<void>('browser_navigate', { tab, address })
 
 /**
  * The page as a data URL, to show in its place while the app draws over it, or
  * `null` where none can be taken.
  */
-export const browserSnapshot = (accountName: string) =>
-  invoke<ArrayBuffer>('browser_snapshot', { accountName }).then((bytes) =>
+export const browserSnapshot = (tab: string) =>
+  invoke<ArrayBuffer>('browser_snapshot', { tab }).then((bytes) =>
     bytes.byteLength === 0
       ? null
       : new Promise<string>((resolve, reject) => {
@@ -47,18 +60,18 @@ export const browserSnapshot = (accountName: string) =>
         }),
   )
 
-export const browserBack = (accountName: string) =>
-  invoke<void>('browser_back', { accountName })
+export const browserBack = (tab: string) =>
+  invoke<void>('browser_back', { tab })
 
-export const browserForward = (accountName: string) =>
-  invoke<void>('browser_forward', { accountName })
+export const browserForward = (tab: string) =>
+  invoke<void>('browser_forward', { tab })
 
-export const browserReload = (accountName: string) =>
-  invoke<void>('browser_reload', { accountName })
+export const browserReload = (tab: string) =>
+  invoke<void>('browser_reload', { tab })
 
 /** `null` once the tab is closed. */
-export const browserState = (accountName: string) =>
-  invoke<BrowserState | null>('browser_state', { accountName })
+export const browserState = (tab: string) =>
+  invoke<BrowserState | null>('browser_state', { tab })
 
 /** A page saved to the bar under the address, the same for every account. */
 export type Bookmark = {
@@ -71,12 +84,45 @@ export type Bookmark = {
 export const listBookmarks = () => invoke<Bookmark[]>('list_bookmarks')
 
 /**
- * Saves the page the account's tab is on, fetching its site's icon. Resolves to
+ * Saves the page the tab is on, fetching its site's icon. Resolves to
  * every bookmark.
  */
-export const bookmarkPage = (accountName: string) =>
-  invoke<Bookmark[]>('bookmark_page', { accountName })
+export const bookmarkPage = (tab: string) =>
+  invoke<Bookmark[]>('bookmark_page', { tab })
+
+/**
+ * Forgets the sign-ins the tab keeps: an account's, all but Steam's; a profile's
+ * (`profile:<id>`), all of them.
+ */
+export const clearSavedCookies = (tab: string) =>
+  invoke<void>('clear_saved_cookies', { tab })
 
 /** Resolves to every bookmark left. */
 export const removeBookmark = (url: string) =>
   invoke<Bookmark[]>('remove_bookmark', { url })
+
+/** A time zone a tab can show pages, with the language spoken there. */
+export type Region = {
+  /** ISO 3166. */
+  country: string
+  /** IANA, like `Europe/Berlin`. */
+  timeZone: string
+  /** BCP 47, like `de-DE`. */
+  language: string
+}
+
+/** What a tab shows pages as its time zone and language. */
+export type RegionChoice =
+  | { kind: 'matchProxy' }
+  | { kind: 'thisComputer' }
+  | { kind: 'fixed'; timeZone: string }
+
+let regions: Promise<Region[]> | null = null
+
+/** Every region a tab can be set to. They never change, so they're asked for once. */
+export const browserRegions = () =>
+  (regions ??= invoke<Region[]>('browser_regions'))
+
+/** Takes effect the next time the account's tab opens. */
+export const setBrowserRegion = (accountName: string, region: RegionChoice) =>
+  invoke<void>('set_browser_region', { accountName, region })
