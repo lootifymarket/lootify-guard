@@ -1,10 +1,12 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::thread;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use lootify_guard_core::browser::{
-    Bookmark, History, add_bookmark, may_open, profile_url, session_cookies, site_icon, typed_url,
+    Bookmark, History, SavedCookie, add_bookmark, cookies_to_keep, is_steam_cookie, may_open,
+    profile_url, same_cookies, session_cookies, site_icon, typed_url,
 };
 use lootify_guard_core::contents::Contents;
 use lootify_guard_core::forward::Forwarder;
@@ -13,6 +15,8 @@ use lootify_guard_core::steam::{self, SteamError};
 use serde::{Deserialize, Serialize};
 use tauri::async_runtime::spawn_blocking;
 use tauri::ipc::Response;
+use tauri::webview::cookie::SameSite;
+use tauri::webview::cookie::time::OffsetDateTime;
 use tauri::webview::{
     Cookie, NewWindowResponse, PageLoadEvent, PermissionResponse, WebviewBuilder,
 };
@@ -20,7 +24,7 @@ use tauri::{
     AppHandle, LogicalPosition, LogicalSize, Manager, Rect, State, Webview, WebviewUrl, Window,
 };
 
-use crate::accounts::{account_and_proxy, settle, store_session};
+use crate::accounts::{account_and_proxy, no_such_account, settle, store_session};
 use crate::vault::{CommandError, VaultState};
 
 // A page could otherwise ask for a direct connection and reveal the computer's
@@ -31,6 +35,9 @@ const NO_WEBRTC: &str = "for (const name of ['RTCPeerConnection', 'webkitRTCPeer
 const PRIVATE_PREFIX: &str = "private:";
 // Where a private tab starts: the first of the sites on the bar.
 const PRIVATE_START: &str = "https://store.steampowered.com/";
+// How often open tabs' sign-ins go to the vault. An idle lock drops the vault
+// before anything can save, so this is the most a lock can lose.
+const SAVE_COOKIES_EVERY: Duration = Duration::from_secs(30);
 
 /// The browser tabs that are open: one per account at most, named after it, and
 /// private ones signed in to nothing, named `private:1`, `private:2` and on.
@@ -42,6 +49,8 @@ pub struct Browsers {
 
 struct Tab {
     webview: Webview,
+    /// The account the tab is signed in as; `None` for a private tab, which keeps nothing.
+    account: Option<String>,
     page: Arc<Mutex<PageState>>,
     /// What the tab's traffic goes through, so what it fetches besides goes the same way.
     proxy: Option<ProxyAddress>,
@@ -169,6 +178,7 @@ pub async fn open_browser(
     }
     let (account, proxy) = account_and_proxy(&state, &account_name)?;
     let steam_id = account.steam_id;
+    let saved = cookies_to_keep(account.saved_cookies.clone(), unix_now_signed(), true);
     let session = {
         let proxy = proxy.clone();
         spawn_blocking(move || steam::check_session(&account, proxy.as_ref())).await?
@@ -190,6 +200,10 @@ pub async fn open_browser(
     )?;
     let rect = bounds.in_window(&window);
     let webview = window.add_child(builder, rect.position, rect.size)?;
+    // Steam's own sign-in goes on last, over anything older for its sites.
+    for cookie in &saved {
+        webview.set_cookie(restored(cookie))?;
+    }
     for cookie in session_cookies(&session, steam_id) {
         webview.set_cookie(
             Cookie::build((cookie.name, cookie.value))
@@ -211,6 +225,7 @@ pub async fn open_browser(
             account_name.clone(),
             Tab {
                 webview,
+                account: Some(account_name.clone()),
                 page,
                 proxy,
                 opened_at: unix_now(),
@@ -271,6 +286,7 @@ pub async fn open_private_browser(
         name.clone(),
         Tab {
             webview,
+            account: None,
             page,
             proxy,
             opened_at: unix_now(),
@@ -386,9 +402,147 @@ pub fn hide_browser(browsers: State<'_, Browsers>, tab: String) -> Result<(), Co
     Ok(())
 }
 
+/// Closes the tab, keeping its sign-ins in the vault first.
 #[tauri::command]
-pub fn close_browser(browsers: State<'_, Browsers>, tab: String) {
+pub async fn close_browser(
+    state: State<'_, VaultState>,
+    browsers: State<'_, Browsers>,
+    tab: String,
+) -> Result<(), CommandError> {
+    let open = browsers
+        .tabs()
+        .get(&tab)
+        .and_then(|open| Some((open.account.clone()?, open.webview.clone())));
+    if let Some((account_name, webview)) = open {
+        save_tab(&state, &account_name, &webview);
+    }
     browsers.close(&tab);
+    Ok(())
+}
+
+/// Keeps every open account tab's sign-ins in the vault, every half minute
+/// while it's unlocked.
+pub fn watch_cookies(app: AppHandle) {
+    thread::spawn(move || {
+        loop {
+            thread::sleep(SAVE_COOKIES_EVERY);
+            save_cookies(&app.state::<VaultState>(), &app.state::<Browsers>());
+        }
+    });
+}
+
+/// Puts each open account tab's cookies in the vault, where they changed. Never
+/// on the main thread: WebView2 hands cookies over through it.
+pub(crate) fn save_cookies(state: &VaultState, browsers: &Browsers) {
+    let open: Vec<(String, Webview)> = browsers
+        .tabs()
+        .values()
+        .filter_map(|tab| Some((tab.account.clone()?, tab.webview.clone())))
+        .collect();
+    for (account_name, webview) in open {
+        save_tab(state, &account_name, &webview);
+    }
+}
+
+fn save_tab(state: &VaultState, account_name: &str, webview: &Webview) {
+    let Ok(cookies) = webview.cookies() else {
+        return;
+    };
+    let cookies = cookies_to_keep(
+        cookies.into_iter().filter_map(saved).collect(),
+        unix_now_signed(),
+        true,
+    );
+    let mut unlocked = state.unlocked();
+    let Some(vault) = unlocked.as_mut() else {
+        return;
+    };
+    let Ok(mut contents) = Contents::from_bytes(vault.data()) else {
+        return;
+    };
+    let Some(account) = contents.account_mut(account_name) else {
+        return;
+    };
+    if same_cookies(&account.saved_cookies, &cookies) {
+        return;
+    }
+    account.saved_cookies = cookies;
+    let _ = vault.save_data(contents.to_bytes());
+}
+
+/// Forgets the account tab's sign-ins to other sites, in the vault and in the
+/// tab if it's open. Steam's stay, as the tab needs them.
+#[tauri::command]
+pub async fn clear_saved_cookies(
+    state: State<'_, VaultState>,
+    browsers: State<'_, Browsers>,
+    account_name: String,
+) -> Result<(), CommandError> {
+    let webview = browsers
+        .tabs()
+        .get(&account_name)
+        .map(|tab| tab.webview.clone());
+    if let Some(webview) = webview {
+        for cookie in webview.cookies()? {
+            if !cookie.domain().is_some_and(is_steam_cookie) {
+                webview.delete_cookie(cookie)?;
+            }
+        }
+    }
+    let mut unlocked = state.unlocked();
+    let vault = unlocked.as_mut().ok_or(CommandError::Locked)?;
+    let mut contents = Contents::from_bytes(vault.data())?;
+    contents
+        .account_mut(&account_name)
+        .ok_or_else(no_such_account)?
+        .saved_cookies
+        .clear();
+    vault.save_data(contents.to_bytes())?;
+    Ok(())
+}
+
+/// A cookie from the tab as the vault keeps it. One with no domain can't be put
+/// back anywhere, so it's left out.
+fn saved(cookie: Cookie<'static>) -> Option<SavedCookie> {
+    Some(SavedCookie {
+        domain: cookie.domain()?.to_owned(),
+        path: cookie.path().unwrap_or("/").to_owned(),
+        secure: cookie.secure().unwrap_or(false),
+        http_only: cookie.http_only().unwrap_or(false),
+        expires: cookie
+            .expires_datetime()
+            .map(OffsetDateTime::unix_timestamp),
+        same_site: cookie.same_site().map(|same_site| match same_site {
+            SameSite::Strict => "strict".to_owned(),
+            SameSite::Lax => "lax".to_owned(),
+            SameSite::None => "none".to_owned(),
+        }),
+        name: cookie.name().to_owned(),
+        value: cookie.value().to_owned().into(),
+    })
+}
+
+fn restored(cookie: &SavedCookie) -> Cookie<'static> {
+    let mut built = Cookie::build((cookie.name.clone(), cookie.value.expose().to_owned()))
+        .domain(cookie.domain.clone())
+        .path(cookie.path.clone())
+        .secure(cookie.secure)
+        .http_only(cookie.http_only);
+    if let Some(expires) = cookie
+        .expires
+        .and_then(|expires| OffsetDateTime::from_unix_timestamp(expires).ok())
+    {
+        built = built.expires(expires);
+    }
+    if let Some(same_site) = match cookie.same_site.as_deref() {
+        Some("strict") => Some(SameSite::Strict),
+        Some("lax") => Some(SameSite::Lax),
+        Some("none") => Some(SameSite::None),
+        _ => None,
+    } {
+        built = built.same_site(same_site);
+    }
+    built.build()
 }
 
 /// Opens the address typed into the tab's address bar.
@@ -539,6 +693,10 @@ pub async fn browser_state(
         can_go_forward: page.history.can_go_forward(),
         opened_at,
     }))
+}
+
+fn unix_now_signed() -> i64 {
+    i64::try_from(unix_now()).unwrap_or(i64::MAX)
 }
 
 fn unix_now() -> u64 {

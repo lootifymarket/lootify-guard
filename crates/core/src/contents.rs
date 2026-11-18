@@ -4,7 +4,7 @@ use std::fmt;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroizing;
 
-use crate::browser::Bookmark;
+use crate::browser::{Bookmark, SavedCookie};
 use crate::games::PlayingList;
 use crate::proxy::{Proxy, ProxyAddress};
 
@@ -94,6 +94,9 @@ pub struct Account {
     /// What the last check found wrong, so the list can flag the account.
     #[serde(default)]
     pub last_check: Option<LastCheck>,
+    /// The account's browser tab's sign-ins to other sites, put back when it opens.
+    #[serde(default)]
+    pub saved_cookies: Vec<SavedCookie>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -437,6 +440,7 @@ mod tests {
             note: None,
             wallet: None,
             last_check: None,
+            saved_cookies: Vec::new(),
         }
     }
 
