@@ -13,6 +13,7 @@ import { useT } from '../../../i18n/index.ts'
 import { ago } from '../../../lib/ago.ts'
 import { useToast } from '../../../lib/toast.ts'
 import layout from '../layout.module.css'
+import { regionName, resolveRegion, useRegions } from '../browser/regions.ts'
 import ProfileDialog from './ProfileDialog.tsx'
 import styles from './Profiles.module.css'
 
@@ -37,6 +38,7 @@ export default function Profiles({ onOpen, onRemoved }: Props) {
   // `null` while closed; `'new'` for a new one.
   const [editing, setEditing] = useState<number | 'new' | null>(null)
   const reload = () => setRevision((r) => r + 1)
+  const regions = useRegions()
 
   useEffect(() => {
     let active = true
@@ -100,6 +102,7 @@ export default function Profiles({ onOpen, onRemoved }: Props) {
           <div className={`${styles.row} ${styles.head}`}>
             <span>{t.columns.profile}</span>
             <span>{t.columns.proxy}</span>
+            <span>{t.columns.region}</span>
             <span>{t.columns.signIns}</span>
             <span>{t.columns.lastOpened}</span>
             <span />
@@ -109,6 +112,7 @@ export default function Profiles({ onOpen, onRemoved }: Props) {
                 <div key={i} className={styles.row}>
                   <Skeleton width={160} height={12} />
                   <Skeleton width={120} height={12} />
+                  <Skeleton width={130} height={12} />
                   <Skeleton width={60} height={12} />
                   <Skeleton width={60} height={12} />
                   <span />
@@ -134,6 +138,11 @@ export default function Profiles({ onOpen, onRemoved }: Props) {
                     </button>
                   </span>
                   <ProxyCell proxyId={profile.proxyId} proxies={proxies} />
+                  <RegionCell
+                    profile={profile}
+                    proxies={proxies}
+                    regions={regions}
+                  />
                   <span
                     className={
                       profile.savedSites > 0 ? undefined : styles.muted
@@ -208,6 +217,26 @@ function ProxyCell({
     <span className={styles.proxy}>
       {proxy.country && <Flag code={proxy.country} />}
       <span className={styles.proxyName}>{proxyTitle(proxy)}</span>
+    </span>
+  )
+}
+
+function RegionCell({
+  profile,
+  proxies,
+  regions,
+}: {
+  profile: BrowserProfile
+  proxies: Proxy[]
+  regions: ReturnType<typeof useRegions>
+}) {
+  const t = useT().browser
+  const country =
+    proxies.find((proxy) => proxy.id === profile.proxyId)?.country ?? null
+  const region = resolveRegion(regions, profile.region, country)
+  return (
+    <span className={styles.region}>
+      {region ? regionName(region) : t.thisComputer}
     </span>
   )
 }

@@ -21,6 +21,12 @@ export const browser = {
     'Cookies go to the encrypted vault when the tab closes and come back next time',
   privateChip: 'Private · not saved',
   privateChipHint: 'Cookies are gone once this tab closes',
+  region: 'Time zone and language',
+  matchProxy: 'Match the proxy',
+  matchProxyUnknown: 'The proxy’s country isn’t known yet',
+  thisComputer: 'This computer’s',
+  regionHint:
+    'What pages in this tab see, so they agree with the proxy’s country. Takes effect the next time the tab opens.',
   close: (account: string) => `Close ${account}`,
   shortcuts: '⌘1 Dashboard · ⌘2–9 sessions',
   openInBrowser: 'Open in browser',

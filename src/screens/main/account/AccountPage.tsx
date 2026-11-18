@@ -67,8 +67,13 @@ import styles from './AccountPage.module.css'
 import Private from '../../../components/Private.tsx'
 import { MASK } from '../../../lib/streamer.ts'
 import SteamIdLine from '../SteamIdLine.tsx'
-import { clearSavedCookies } from '../../../api/browser.ts'
+import {
+  clearSavedCookies,
+  setBrowserRegion,
+  type RegionChoice,
+} from '../../../api/browser.ts'
 import { BROWSER_ICON } from '../browser/icons.ts'
+import RegionPicker from '../browser/RegionPicker.tsx'
 
 type Props = {
   account: Account
@@ -232,6 +237,16 @@ export default function AccountPage({
       setChecking(false)
       onChanged()
     }
+  }
+
+  async function changeRegion(region: RegionChoice) {
+    setBrowserError('')
+    try {
+      await setBrowserRegion(name, region)
+    } catch (err) {
+      setBrowserError(errorMessage(err))
+    }
+    onChanged()
   }
 
   async function clearSaved() {
@@ -747,6 +762,23 @@ export default function AccountPage({
           </div>
           <dl className={styles.facts}>
             <div className={styles.fact}>
+              <dt>{words.browser.region}</dt>
+              <dd>
+                <div className={styles.regionPicker}>
+                  <RegionPicker
+                    hideLabel
+                    size="sm"
+                    value={account.browserRegion}
+                    proxyCountry={
+                      proxies.find((proxy) => proxy.id === account.proxyId)
+                        ?.country ?? null
+                    }
+                    onChange={(region) => void changeRegion(region)}
+                  />
+                </div>
+              </dd>
+            </div>
+            <div className={styles.fact}>
               <dt>{t.browser.signIns}</dt>
               {account.savedSites > 0 ? (
                 <dd className={styles.reveal}>
@@ -770,7 +802,9 @@ export default function AccountPage({
               {browserError}
             </p>
           )}
-          <p className={styles.muted}>{t.browser.hint}</p>
+          <p className={styles.muted}>
+            {t.browser.hint} {words.browser.regionHint}
+          </p>
         </section>
 
         <section

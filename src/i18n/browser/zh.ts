@@ -22,6 +22,12 @@ export const browser: typeof en = {
   savedChipHint: '标签页关闭时 Cookie 存入加密保险库，下次打开时恢复',
   privateChip: '无痕 · 不保存',
   privateChipHint: '此标签页关闭后 Cookie 即消失',
+  region: '时区和语言',
+  matchProxy: '与代理一致',
+  matchProxyUnknown: '代理所在国家尚未知',
+  thisComputer: '与本机一致',
+  regionHint:
+    '此标签页中的网页看到的时区和语言，与代理所在国家一致。下次打开标签页时生效。',
   close: (account: string) => `关闭 ${account}`,
   shortcuts: '⌘1 仪表盘 · ⌘2–9 会话',
   openInBrowser: '在浏览器中打开',

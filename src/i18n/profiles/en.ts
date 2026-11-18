@@ -8,6 +8,7 @@ export const profiles = {
   columns: {
     profile: 'Profile',
     proxy: 'Proxy',
+    region: 'Time zone · language',
     signIns: 'Saved sign-ins',
     lastOpened: 'Last opened',
   },

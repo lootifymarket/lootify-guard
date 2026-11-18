@@ -11,6 +11,7 @@ export const profiles: typeof en = {
   columns: {
     profile: 'Профиль',
     proxy: 'Прокси',
+    region: 'Пояс · язык',
     signIns: 'Сохранённые входы',
     lastOpened: 'Открывали',
   },

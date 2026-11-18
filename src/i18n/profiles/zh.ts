@@ -9,6 +9,7 @@ export const profiles: typeof en = {
   columns: {
     profile: '配置',
     proxy: '代理',
+    region: '时区 · 语言',
     signIns: '已保存的登录',
     lastOpened: '上次打开',
   },

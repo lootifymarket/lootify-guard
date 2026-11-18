@@ -27,7 +27,7 @@
 }
 
 .row {
-  min-width: 680px;
+  min-width: 860px;
   display: grid;
   grid-template-columns:
     minmax(200px, 2fr) minmax(150px, 1.4fr)
@@ -99,6 +99,19 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.region {
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hint {
+  color: var(--color-text-faint);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .open {

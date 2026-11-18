@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import type { RegionChoice } from './browser.ts'
 
 /** A browser tab signed in to no Steam account that keeps its sign-ins. */
 export type BrowserProfile = {
@@ -10,21 +11,26 @@ export type BrowserProfile = {
   savedSites: number
   /** Unix seconds. */
   lastOpened: number | null
+  region: RegionChoice
 }
 
 export const listBrowserProfiles = () =>
   invoke<BrowserProfile[]>('list_browser_profiles')
 
 /** Resolves to the new profile's id. */
-export const addBrowserProfile = (name: string, proxyId: number | null) =>
-  invoke<number>('add_browser_profile', { name, proxyId })
+export const addBrowserProfile = (
+  name: string,
+  proxyId: number | null,
+  region: RegionChoice,
+) => invoke<number>('add_browser_profile', { name, proxyId, region })
 
-/** A new proxy takes effect the next time the profile's tab opens. */
+/** A new proxy or region takes effect the next time the profile's tab opens. */
 export const updateBrowserProfile = (
   id: number,
   name: string,
   proxyId: number | null,
-) => invoke<void>('update_browser_profile', { id, name, proxyId })
+  region: RegionChoice,
+) => invoke<void>('update_browser_profile', { id, name, proxyId, region })
 
 /** Removes the profile and its sign-ins, closing its tab. */
 export const removeBrowserProfile = (id: number) =>

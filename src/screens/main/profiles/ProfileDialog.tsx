@@ -6,7 +6,7 @@ import {
   updateBrowserProfile,
   type BrowserProfile,
 } from '../../../api/browserProfiles.ts'
-import { clearSavedCookies } from '../../../api/browser.ts'
+import { clearSavedCookies, type RegionChoice } from '../../../api/browser.ts'
 import { proxyTitle, type Proxy } from '../../../api/proxies.ts'
 import { errorMessage } from '../../../api/vault.ts'
 import Button from '../../../components/Button.tsx'
@@ -15,6 +15,7 @@ import dialogStyles from '../../../components/Dialog.module.css'
 import Dropdown from '../../../components/Dropdown.tsx'
 import TextField from '../../../components/TextField.tsx'
 import { useT } from '../../../i18n/index.ts'
+import RegionPicker from '../browser/RegionPicker.tsx'
 import styles from './Profiles.module.css'
 
 type Props = {
@@ -47,6 +48,9 @@ export default function ProfileDialog({
     profile?.proxyId?.toString() ??
       (profile ? NO_PROXY : (proxies[0]?.id.toString() ?? NO_PROXY)),
   )
+  const [region, setRegion] = useState<RegionChoice>(
+    profile?.region ?? { kind: 'matchProxy' },
+  )
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const proxyId = proxy === NO_PROXY ? null : Number(proxy)
@@ -68,10 +72,10 @@ export default function ProfileDialog({
     event.preventDefault()
     void run(async () => {
       if (profile) {
-        await updateBrowserProfile(profile.id, name, proxyId)
+        await updateBrowserProfile(profile.id, name, proxyId, region)
         onSaved()
       } else {
-        onCreated(await addBrowserProfile(name, proxyId))
+        onCreated(await addBrowserProfile(name, proxyId, region))
       }
     })
   }
@@ -111,6 +115,16 @@ export default function ProfileDialog({
               {t.dialog.proxyNextTime}
             </span>
           )}
+        </div>
+        <div className={styles.field}>
+          <RegionPicker
+            value={region}
+            proxyCountry={
+              proxies.find((each) => each.id === proxyId)?.country ?? null
+            }
+            onChange={setRegion}
+          />
+          <span className={styles.hint}>{words.browser.regionHint}</span>
         </div>
         {profile && (
           <div className={styles.saved}>
