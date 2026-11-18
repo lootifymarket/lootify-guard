@@ -301,10 +301,17 @@ export default function Main({
     if (section === 'profiles') {
       return (
         <Profiles
+          accounts={list.accounts}
           onOpen={browseProfile}
+          onOpenAccount={browse}
+          onShowAccount={(accountName) => {
+            select('accounts')
+            setOpenName(accountName)
+          }}
           onRemoved={(id) => {
             if (tabs.includes(profileTab(id))) closeTab(profileTab(id))
           }}
+          onAccountsChanged={reload}
         />
       )
     }

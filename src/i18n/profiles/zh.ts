@@ -2,10 +2,19 @@ import type { profiles as en } from './en.ts'
 
 export const profiles: typeof en = {
   title: '浏览器配置',
-  summary: (count, signedIn) => `${count} 个配置 · ${signedIn} 个保存了登录`,
-  intro: '会记住登录的浏览器标签页',
+  summary: (accounts, profiles) =>
+    `${accounts} 个 Steam 账户 · ${profiles} 个不含 Steam`,
+  find: '查找配置或账户',
+  withoutSteam: (n) => `不含 Steam · ${n}`,
+  steamAccounts: (n) => `Steam 账户 · ${n}`,
+  showAllAccounts: (n) => `显示全部 ${n} 个账户`,
+  noMatches: '没有这个名称。',
+  signInFirst: '登录 Steam 后才能打开该账户的标签页',
+  accountPage: '在账户页面更改',
+  accountProxy: '账户自己的代理，标签页和 Steam 始终来自同一地址。',
+  steamStays: '清除后标签页仍保持 Steam 登录。',
+  close: '关闭',
   newProfile: '新建配置',
-  list: '配置',
   columns: {
     profile: '配置',
     proxy: '代理',
@@ -22,9 +31,8 @@ export const profiles: typeof en = {
   open: '打开',
   openName: (name) => `打开 ${name}`,
   edit: (name) => `编辑 ${name}`,
-  emptyTitle: '还没有配置',
   emptyText:
-    '配置是一个不登录 Steam 账户、但会记住登录的浏览器标签页：共享邮箱、论坛、代理商店。它始终经过同一个代理。每个 Steam 账户都已有自己的标签页。',
+    '配置是一个不登录 Steam 账户、但会记住登录的浏览器标签页：共享邮箱、论坛、代理商店。它始终经过同一个代理。Steam 账户自己的标签页在下方。',
   note: '登录以 Cookie 形式保存在加密保险库中，打开配置时恢复。磁盘上不会留下未加密的内容，保险库锁定时所有配置都会关闭。',
   dialog: {
     newTitle: '新建配置',

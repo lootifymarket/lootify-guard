@@ -1,10 +1,19 @@
 export const profiles = {
   title: 'Browser profiles',
-  summary: (count: number, signedIn: number) =>
-    `${count} ${count === 1 ? 'profile' : 'profiles'} · ${signedIn} with saved sign-ins`,
-  intro: 'Browser tabs that keep their sign-ins',
+  summary: (accounts: number, profiles: number) =>
+    `${accounts} Steam ${accounts === 1 ? 'account' : 'accounts'} · ${profiles} without Steam`,
+  find: 'Find a profile or account',
+  withoutSteam: (n: number) => `Without Steam · ${n}`,
+  steamAccounts: (n: number) => `Steam accounts · ${n}`,
+  showAllAccounts: (n: number) => `Show all ${n} accounts`,
+  noMatches: 'Nothing with that name.',
+  signInFirst: 'Sign in to Steam to open the account’s tab',
+  accountPage: 'Change on the account page',
+  accountProxy:
+    'The account’s own proxy, so its tab and Steam always come from the same address.',
+  steamStays: 'Clearing keeps the tab signed in to Steam.',
+  close: 'Close',
   newProfile: 'New profile',
-  list: 'Profiles',
   columns: {
     profile: 'Profile',
     proxy: 'Proxy',
@@ -21,9 +30,8 @@ export const profiles = {
   open: 'Open',
   openName: (name: string) => `Open ${name}`,
   edit: (name: string) => `Edit ${name}`,
-  emptyTitle: 'No profiles yet',
   emptyText:
-    'A profile is a browser tab with no Steam account that remembers its sign-ins: a shared mailbox, a forum, a proxy shop. It always goes through the same proxy. Each Steam account already has a tab of its own.',
+    'A profile is a browser tab with no Steam account that remembers its sign-ins: a shared mailbox, a forum, a proxy shop. It always goes through the same proxy. Each Steam account’s own tab is below.',
   note: 'Sign-ins are kept as cookies in the encrypted vault and put back when the profile opens. Nothing is left on disk unencrypted, and a locked vault closes every profile.',
   dialog: {
     newTitle: 'New profile',

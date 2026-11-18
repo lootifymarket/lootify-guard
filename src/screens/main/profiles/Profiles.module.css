@@ -139,30 +139,25 @@
 .note {
   max-width: 720px;
   margin: 0;
-  padding: 16px 4px 0;
-  border-top: 1px solid var(--color-line);
+  padding: 0 4px;
   color: var(--color-text-faint);
   font-size: 12.5px;
   line-height: 1.55;
 }
 
 .empty {
-  max-width: 520px;
+  max-width: 560px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 14px;
-  padding: 24px 0;
+  padding: 12px 4px 8px;
+  border-top: 1px solid var(--color-line);
 }
 
 .empty .muted {
   margin: 0;
   line-height: 1.6;
-}
-
-.emptyTitle {
-  font-size: 16px;
-  font-weight: 500;
 }
 
 .form {
@@ -208,4 +203,87 @@
   color: var(--color-danger);
   font-size: 13px;
   cursor: pointer;
+}
+
+.search {
+  width: 100%;
+  max-width: 360px;
+}
+
+.sectionTitle {
+  margin: 0 0 4px;
+  padding: 0 4px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.accountMark {
+  display: flex;
+}
+
+/* An account's avatar, the size of a profile's mark. */
+.accountMark > * {
+  width: 26px;
+  height: 26px;
+  font-size: 9px;
+}
+
+.more {
+  margin: 4px 0 0;
+  padding: 12px 4px;
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--color-line);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.more:hover {
+  color: var(--color-text);
+}
+
+.open:disabled {
+  color: var(--color-text-faint);
+  cursor: default;
+}
+
+.open:disabled:hover {
+  background: transparent;
+}
+
+.fieldLabel {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.fixed {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 12px;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 8px;
+}
+
+.link {
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--color-text-secondary);
+  font-size: 12.5px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.link:focus-visible,
+.more:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
 }
