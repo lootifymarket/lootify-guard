@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use lootify_guard_core::cm::{self, Connection, Event, MAX_GAMES};
+use lootify_guard_core::cm::{self, Connection, Event, FreeLicenses, MAX_GAMES};
 use lootify_guard_core::contents::{Account, Contents};
 use lootify_guard_core::free_games::{self, FreeGame};
 use lootify_guard_core::games::{self, OwnedGame, PlayingList};
@@ -46,6 +46,17 @@ pub struct PlayerView {
     list: PlayingList,
     #[serde(flatten)]
     state: PlayState,
+    /// How the last request to add free games went, when there was one.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    free_games: Option<FreeGamesAsked>,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FreeGamesAsked {
+    asked: Vec<u32>,
+    /// `None` when Steam didn't answer in time.
+    answer: Option<FreeLicenses>,
 }
 
 #[derive(Clone, Serialize)]
@@ -89,6 +100,7 @@ impl Players {
             account_name: account_name.to_owned(),
             list: list.clone(),
             state: PlayState::Connecting,
+            free_games: None,
         }));
         let (app, name, shared) = (app.clone(), account_name.to_owned(), view.clone());
         thread::spawn(move || keep_playing(&app, &name, list, &inbox, &shared));
@@ -207,7 +219,13 @@ fn play(
             .copied()
             .filter(|&game| free_games::is_free(game))
             .collect();
-        connection.request_free_licenses(&free)?;
+        if !free.is_empty() {
+            let answer = connection.request_free_licenses(&free)?;
+            lock(view).free_games = Some(FreeGamesAsked {
+                asked: free,
+                answer,
+            });
+        }
         connection.show_as(list.presence)?;
         connection.play(&list.games, list.status.as_deref())
     };

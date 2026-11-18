@@ -48,7 +48,23 @@ export type PlayState =
   | { state: 'reconnecting'; reason: string; at: number }
   | { state: 'stopped'; reason: string }
 
-export type Player = { accountName: string } & PlayingList & PlayState
+/** How the last request to add free games went. */
+export type FreeGamesAsked = {
+  asked: number[]
+  /** `null` when Steam didn't answer in time. */
+  answer: {
+    /** Steam's EResult: 1 is OK. */
+    result: number
+    /** Added now; ones the account had already aren't among them. */
+    granted: number[]
+  } | null
+}
+
+export type Player = {
+  accountName: string
+  freeGames?: FreeGamesAsked
+} & PlayingList &
+  PlayState
 
 /** Every account with a game connection, playing or trying to. */
 export const playingNow = () =>

@@ -12,6 +12,7 @@ import {
   stopPlaying,
   type Farm,
   type FreeGame,
+  type FreeGamesAsked,
   type OwnedGame,
   type Player,
   type PlayingList,
@@ -172,6 +173,13 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
           {error}
         </p>
       )}
+      {running && player.freeGames && (
+        <FreeGamesNote
+          t={t}
+          asked={player.freeGames}
+          name={(id) => names.get(id) || t.app(id)}
+        />
+      )}
 
       <div className={styles.run}>
         <span className={styles.runWords}>
@@ -280,6 +288,32 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
 }
 
 type Words = Dictionary['account']['playing']
+
+/** What Steam said when asked to add the free games being played. */
+function FreeGamesNote({
+  t,
+  asked,
+  name,
+}: {
+  t: Words
+  asked: FreeGamesAsked
+  name: (id: number) => string
+}) {
+  const { answer } = asked
+  if (answer === null) return <p className={styles.muted}>{t.freeNoAnswer}</p>
+  if (answer.result !== 1) {
+    return <p className={styles.error}>{t.freeRefused(answer.result)}</p>
+  }
+  const kept = asked.asked.filter((id) => !answer.granted.includes(id))
+  return (
+    <p className={styles.muted}>
+      {answer.granted.length > 0 &&
+        t.freeAdded(answer.granted.map(name).join(', '))}
+      {answer.granted.length > 0 && kept.length > 0 && ' '}
+      {kept.length > 0 && t.freeNotAdded(kept.map(name).join(', '))}
+    </p>
+  )
+}
 
 function RunTitle({
   t,

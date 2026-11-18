@@ -246,6 +246,11 @@ export const account: typeof en = {
   },
 
   playing: {
+    freeNoAnswer: 'Steam не відповів на запит додати безкоштовні ігри.',
+    freeRefused: (code) => `Steam не додав безкоштовні ігри (помилка ${code}).`,
+    freeAdded: (games) => `Steam додав: ${games}.`,
+    freeNotAdded: (games) =>
+      `Не додано — вже є на акаунті або Steam їх не видав: ${games}.`,
     applied: 'Ігри оновлено',
     label: 'Ігри',
     signInFirst: 'Увійдіть у Steam на вкладці «Безпека», щоб запускати ігри.',

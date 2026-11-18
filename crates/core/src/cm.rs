@@ -281,24 +281,28 @@ impl Connection {
 
     /// Asks Steam to add free games the account doesn't have yet, as the client
     /// does when Play is pressed on one, and waits a little for the answer. Games
-    /// it owns already, or that aren't free, stay as they are.
-    pub fn request_free_licenses(&mut self, apps: &[u32]) -> Result<(), SteamError> {
-        if apps.is_empty() {
-            return Ok(());
-        }
+    /// it owns already, or that aren't free, stay as they are. `None` when Steam
+    /// didn't answer in time.
+    pub fn request_free_licenses(
+        &mut self,
+        apps: &[u32],
+    ) -> Result<Option<FreeLicenses>, SteamError> {
         self.send(emsg::REQUEST_FREE_LICENSE, &free_license_request(apps))?;
         let deadline = Instant::now() + FREE_LICENSE_WAIT;
         while Instant::now() < deadline {
             for message in self.receive()? {
                 match message.emsg {
-                    emsg::REQUEST_FREE_LICENSE_RESPONSE => return Ok(()),
+                    emsg::REQUEST_FREE_LICENSE_RESPONSE => {
+                        return Ok(Some(
+                            read_free_licenses(&message.body).ok_or_else(unreadable)?,
+                        ));
+                    }
                     emsg::LOGGED_OFF => return Err(SteamError::Network),
                     _ => {}
                 }
             }
         }
-        // No answer: the games are played anyway, and Steam may still add them.
-        Ok(())
+        Ok(None)
     }
 
     pub fn show_as(&mut self, presence: Presence) -> Result<(), SteamError> {
@@ -419,6 +423,29 @@ fn logon(steam_id: u64, token: &str) -> Vec<u8> {
         // The field is called access_token, but takes the refresh token.
         .string(108, token)
         .finish()
+}
+
+/// What Steam said to a request for free games.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FreeLicenses {
+    /// Steam's EResult: 1 is OK.
+    pub result: i32,
+    /// The apps it added; ones the account had already aren't among them.
+    pub granted: Vec<u32>,
+}
+
+/// CMsgClientRequestFreeLicenseResponse: the EResult as field 1, granted apps as 3.
+fn read_free_licenses(body: &[u8]) -> Option<FreeLicenses> {
+    let fields = Fields::read(body).ok()?;
+    Some(FreeLicenses {
+        result: fields.int32(1).unwrap_or(2),
+        granted: fields
+            .varints(3)
+            .into_iter()
+            .filter_map(|app| u32::try_from(app).ok())
+            .collect(),
+    })
 }
 
 /// CMsgClientRequestFreeLicense: the apps, each as field 2.
@@ -649,5 +676,23 @@ mod tests {
             free_license_request(&[570, 440]),
             [0x10, 0xBA, 0x04, 0x10, 0xB8, 0x03]
         );
+    }
+
+    #[test]
+    fn a_free_license_answer_says_what_was_added() {
+        // eresult 1, a package 7 as field 2, then apps 570 and 440 as field 3.
+        let body = [0x08, 0x01, 0x10, 0x07, 0x18, 0xBA, 0x04, 0x18, 0xB8, 0x03];
+        assert_eq!(
+            read_free_licenses(&body),
+            Some(FreeLicenses {
+                result: 1,
+                granted: vec![570, 440],
+            })
+        );
+        // Packed, as some senders write repeated numbers.
+        let packed = [0x08, 0x01, 0x1A, 0x03, 0xBA, 0x04, 0x07];
+        assert_eq!(read_free_licenses(&packed).unwrap().granted, [570, 7]);
+        // No eresult means Steam's default, a failure.
+        assert_eq!(read_free_licenses(&[]).unwrap().result, 2);
     }
 }

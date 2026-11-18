@@ -239,6 +239,12 @@ export const account = {
   },
 
   playing: {
+    freeNoAnswer: 'Steam didn’t answer the request to add the free games.',
+    freeRefused: (code: number) =>
+      `Steam didn’t add the free games (error ${code}).`,
+    freeAdded: (games: string) => `Steam added ${games}.`,
+    freeNotAdded: (games: string) =>
+      `Not added, the account has them already or Steam didn’t give them: ${games}.`,
     applied: 'Games updated',
     label: 'Playing',
     signInFirst: 'Sign in to Steam on the Security tab to play games.',
