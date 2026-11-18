@@ -171,6 +171,9 @@ fn place(seen: &Seen) -> Option<String> {
 
 // Only the account's authenticator may end another device's session, so Steam wants
 // the request signed with its shared secret.
+//
+// A refusal is Steam's answer about that device, not a sign our session is gone.
+// Reporting it as an expired session would make the app drop a session that works.
 fn revoke(
     client: &Client,
     session: &Session,
@@ -182,7 +185,7 @@ fn revoke(
     request.set_token_id(token_id);
     request.set_steamid(steam_id);
     request.set_revoke_action(EAuthTokenRevokeAction::k_EAuthTokenRevokePermanent);
-    request.set_signature(signature(shared_secret, token_id, steam_id)?);
+    request.set_signature(signature(shared_secret, token_id)?);
 
     let access_token = Jwt::from(session.access_token.expose().to_owned());
     let response = WebApiTransport::new(client.clone())
@@ -197,20 +200,22 @@ fn revoke(
         })?;
     match response.result() {
         EResult::OK => Ok(()),
-        EResult::AccessDenied => Err(SteamError::SessionExpired),
+        EResult::AccessDenied => Err(SteamError::Steam(
+            "Steam refused to sign that device out".to_owned(),
+        )),
         result => Err(SteamError::Steam(format!("{result:?}"))),
     }
 }
 
-fn signature(shared_secret: &Secret, token_id: u64, steam_id: u64) -> Result<Vec<u8>, SteamError> {
+/// HMAC-SHA256 of the token id written out in decimal, as the Steam app signs it.
+fn signature(shared_secret: &Secret, token_id: u64) -> Result<Vec<u8>, SteamError> {
     let key = Zeroizing::new(
         STANDARD
             .decode(shared_secret.expose())
             .map_err(|_| SteamError::Steam("damaged shared secret".to_owned()))?,
     );
     let mut mac = Hmac::<Sha256>::new_from_slice(&key).expect("HMAC accepts keys of any length");
-    mac.update(&token_id.to_le_bytes());
-    mac.update(&steam_id.to_le_bytes());
+    mac.update(token_id.to_string().as_bytes());
     Ok(mac.finalize().into_bytes().to_vec())
 }
 

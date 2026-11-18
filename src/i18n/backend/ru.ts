@@ -143,6 +143,8 @@ export const backend: Record<BackendMessage, string> = {
     'название должно быть не длиннее {} символов',
   'keep the note under {} characters': 'заметка должна быть короче {} символов',
   "that is this app's own session": 'это сессия самого приложения',
+  'Steam refused to sign that device out':
+    'Steam не дал завершить сеанс этого устройства',
   'unknown trade offer': 'неизвестное предложение обмена',
   'unknown trade partner': 'неизвестный партнёр по обмену',
   "that isn't a Steam trade URL": 'это не трейд-ссылка Steam',
