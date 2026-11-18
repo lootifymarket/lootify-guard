@@ -286,5 +286,10 @@ export const account: typeof en = {
     app: (id) => `应用 ${id}`,
     hours: (hours) => `${hours} 小时`,
     done: '完成',
+    inLibrary: '库中',
+    freeToAdd: '免费游戏',
+    freeHint: '开始游玩时自动添加到账户',
+    free: '免费',
+    cards: '卡牌',
   },
 }

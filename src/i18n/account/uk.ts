@@ -304,5 +304,10 @@ export const account: typeof en = {
     app: (id) => `Застосунок ${id}`,
     hours: (hours) => `${hours} год`,
     done: 'Готово',
+    inLibrary: 'У бібліотеці',
+    freeToAdd: 'Безкоштовні',
+    freeHint: 'додадуться на акаунт, коли він почне грати',
+    free: 'Безкоштовно',
+    cards: 'Картки',
   },
 }

@@ -298,5 +298,10 @@ export const account = {
     app: (id: number) => `App ${id}`,
     hours: (hours: number) => `${hours} h`,
     done: 'Done',
+    inLibrary: 'In the library',
+    freeToAdd: 'Free to play',
+    freeHint: 'added to the account when it starts playing',
+    free: 'Free',
+    cards: 'Cards',
   },
 }

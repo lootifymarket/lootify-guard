@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useState } from 'react'
 import {
   farmingNow,
+  freeGames,
   MAX_GAMES,
   ownedGames,
   playingList,
@@ -10,6 +11,7 @@ import {
   startPlaying,
   stopPlaying,
   type Farm,
+  type FreeGame,
   type OwnedGame,
   type Player,
   type PlayingList,
@@ -44,6 +46,7 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
   const [farm, setFarm] = useState<Farm | null>(null)
   const [owned, setOwned] = useState<OwnedGame[] | undefined>(undefined)
   const [ownedError, setOwnedError] = useState('')
+  const [free, setFree] = useState<FreeGame[]>([])
   const [picking, setPicking] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -72,6 +75,10 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
     void playingList(accountName).then(setDraft)
   }, [accountName])
 
+  useEffect(() => {
+    void freeGames().then(setFree, () => {})
+  }, [])
+
   const ownedFailed = useEffectEvent((err: unknown) =>
     setOwnedError(errorMessage(err)),
   )
@@ -83,7 +90,9 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
     return <p className={styles.muted}>{t.signInFirst}</p>
   }
 
-  const names = new Map(owned?.map((game) => [game.appId, game.name]))
+  const names = new Map(
+    [...free, ...(owned ?? [])].map((game) => [game.appId, game.name]),
+  )
   const running = player !== null && player.state !== 'stopped'
   const status = draft.status?.trim() || null
   const room = MAX_GAMES - (status ? 1 : 0)
@@ -252,6 +261,7 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
       <GamePicker
         open={picking}
         owned={owned}
+        free={free}
         picked={draft.games}
         room={room}
         onClose={() => setPicking(false)}

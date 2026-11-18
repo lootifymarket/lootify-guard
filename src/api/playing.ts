@@ -75,6 +75,19 @@ export const stopPlaying = (accountName: string) =>
 export const ownedGames = (accountName: string) =>
   invoke<OwnedGame[]>('owned_games', { accountName })
 
+/** A free game any account can play; Steam adds it when it's first played. */
+export type FreeGame = {
+  appId: number
+  name: string
+  /** Drops trading cards without anything bought in it. */
+  dropsCards: boolean
+}
+
+let free: Promise<FreeGame[]> | null = null
+
+/** The free games the app knows. They never change, so they're asked for once. */
+export const freeGames = () => (free ??= invoke<FreeGame[]>('free_games'))
+
 export type CardGame = {
   appId: number
   name: string
