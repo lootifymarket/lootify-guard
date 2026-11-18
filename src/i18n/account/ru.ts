@@ -313,6 +313,5 @@ export const account: typeof en = {
     freeToAdd: 'Бесплатные',
     freeHint: 'добавятся на аккаунт, когда он начнёт играть',
     free: 'Бесплатно',
-    cards: 'Карточки',
   },
 }

@@ -1,5 +1,7 @@
 //! Free games any account can play without buying them. Steam adds one to the
-//! account when asked, as the client does when Play is pressed on it.
+//! account when asked, as the client does when Play is pressed on it. They count
+//! for playtime, not for card drops: free games drop cards only for money spent
+//! in them.
 
 use serde::Serialize;
 
@@ -8,17 +10,10 @@ use serde::Serialize;
 pub struct FreeGame {
     pub app_id: u32,
     pub name: &'static str,
-    /// Drops trading cards without anything bought in it. Most free games with
-    /// cards drop them only for money spent in the game.
-    pub drops_cards: bool,
 }
 
 const fn game(app_id: u32, name: &'static str) -> FreeGame {
-    FreeGame {
-        app_id,
-        name,
-        drops_cards: false,
-    }
+    FreeGame { app_id, name }
 }
 
 // Free in the store when the list was made. One that stops being free is just
@@ -49,11 +44,7 @@ const FREE_GAMES: &[FreeGame] = &[
     game(2139460, "Once Human"),
     game(1449850, "Yu-Gi-Oh! Master Duel"),
     game(2923300, "Banana"),
-    FreeGame {
-        app_id: 382490,
-        name: "Relic Hunters Zero: Remix",
-        drops_cards: true,
-    },
+    game(382490, "Relic Hunters Zero: Remix"),
 ];
 
 pub fn free_games() -> &'static [FreeGame] {
@@ -62,14 +53,6 @@ pub fn free_games() -> &'static [FreeGame] {
 
 pub fn is_free(app_id: u32) -> bool {
     FREE_GAMES.iter().any(|game| game.app_id == app_id)
-}
-
-/// The free games that drop cards on their own, for card farming to add first.
-pub fn card_games() -> impl Iterator<Item = u32> {
-    FREE_GAMES
-        .iter()
-        .filter(|game| game.drops_cards)
-        .map(|game| game.app_id)
 }
 
 #[cfg(test)]
@@ -87,11 +70,5 @@ mod tests {
                 game.name
             );
         }
-    }
-
-    #[test]
-    fn card_games_are_among_the_free_ones() {
-        assert!(card_games().all(is_free));
-        assert!(card_games().count() > 0);
     }
 }

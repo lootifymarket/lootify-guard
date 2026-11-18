@@ -302,6 +302,5 @@ export const account = {
     freeToAdd: 'Free to play',
     freeHint: 'added to the account when it starts playing',
     free: 'Free',
-    cards: 'Cards',
   },
 }

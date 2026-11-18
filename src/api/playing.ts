@@ -79,8 +79,6 @@ export const ownedGames = (accountName: string) =>
 export type FreeGame = {
   appId: number
   name: string
-  /** Drops trading cards without anything bought in it. */
-  dropsCards: boolean
 }
 
 let free: Promise<FreeGame[]> | null = null

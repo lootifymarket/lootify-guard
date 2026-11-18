@@ -271,23 +271,6 @@ fn connect(app: &AppHandle, account_name: &str) -> Result<Connection, Ended> {
     })
 }
 
-/// Adds the free games to the account over a connection of its own, closed right
-/// after. Anything the account plays is stopped first, so the two don't overlap.
-pub(crate) fn add_free_games(
-    app: &AppHandle,
-    account_name: &str,
-    apps: &[u32],
-) -> Result<(), String> {
-    app.state::<Players>().stop(account_name);
-    let mut connection = connect(app, account_name).map_err(|ended| match ended {
-        Ended::Failed(reason) | Ended::Dropped(reason) => reason,
-        Ended::Stopped => "stopped".to_owned(),
-    })?;
-    let result = connection.request_free_licenses(apps);
-    connection.close();
-    result.map_err(|err| err.to_string())
-}
-
 /// The free games the account can play without owning them yet.
 #[tauri::command]
 pub fn free_games() -> &'static [FreeGame] {

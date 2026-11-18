@@ -125,14 +125,7 @@ function Picker({
               row(
                 game.appId,
                 game.name,
-                <span className={styles.tags}>
-                  {game.dropsCards && (
-                    <span className={styles.tag} data-tone="cards">
-                      {t.cards}
-                    </span>
-                  )}
-                  <span className={styles.tag}>{t.free}</span>
-                </span>,
+                <span className={styles.tag}>{t.free}</span>,
               ),
             )}
           </>

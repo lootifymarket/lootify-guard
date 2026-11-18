@@ -290,6 +290,5 @@ export const account: typeof en = {
     freeToAdd: '免费游戏',
     freeHint: '开始游玩时自动添加到账户',
     free: '免费',
-    cards: '卡牌',
   },
 }
