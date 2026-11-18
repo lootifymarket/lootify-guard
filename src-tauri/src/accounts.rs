@@ -197,50 +197,53 @@ pub async fn reveal_revocation_code(
     Ok(code.expose().to_owned())
 }
 
-/// Saves the account as a `.maFile` where the user picks. Returns the file name, or
-/// `None` when the picker is closed without saving.
+/// Saves the account as a folder where the user picks: its `.maFile`, and
+/// `account_details.json` with the login, password and revocation code. Returns
+/// the folder's name, or `None` when the picker is closed without saving.
 #[tauri::command]
-pub async fn export_mafile(
+pub async fn export_account(
     window: Window,
     state: State<'_, VaultState>,
     account_name: String,
     password: Option<String>,
 ) -> Result<Option<String>, CommandError> {
-    confirm_owner(&state, password, "export a .maFile").await?;
-    let suggested_name = {
+    confirm_owner(&state, password, "export an account").await?;
+    {
         let unlocked = state.unlocked();
         let vault = unlocked.as_ref().ok_or(CommandError::Locked)?;
-        let contents = Contents::from_bytes(vault.data())?;
-        let account = find(&contents, &account_name)?;
-        // SDA names its files after the Steam ID, so other managers expect that.
-        match account.steam_id {
-            Some(steam_id) => format!("{steam_id}.maFile"),
-            None => format!("{}.maFile", account.account_name),
-        }
-    };
+        find(&Contents::from_bytes(vault.data())?, &account_name)?;
+    }
     let picker = window
         .dialog()
         .file()
         .set_parent(&window)
-        .set_file_name(suggested_name)
-        .add_filter(MAFILE_FILTER.0, MAFILE_FILTER.1);
+        .set_file_name(&account_name);
     let Some(target) = spawn_blocking(move || picker.blocking_save_file()).await? else {
         return Ok(None);
     };
-    let path = target
+    let folder = target
         .into_path()
         .map_err(|err| CommandError::Failed(err.to_string()))?;
 
-    let file = {
+    let (mafile_name, mafile, details) = {
         let unlocked = state.unlocked();
         let vault = unlocked.as_ref().ok_or(CommandError::Locked)?;
         let contents = Contents::from_bytes(vault.data())?;
-        mafile::export(find(&contents, &account_name)?)
+        let account = find(&contents, &account_name)?;
+        (
+            mafile::file_name(account),
+            mafile::export(account),
+            mafile::export_details(account),
+        )
     };
-    let name = file_name(&path);
-    spawn_blocking(move || write_private(&path, &file))
-        .await?
-        .map_err(|err| CommandError::Failed(err.to_string()))?;
+    let name = file_name(&folder);
+    spawn_blocking(move || {
+        create_private_dir(&folder)?;
+        write_private(&folder.join(mafile_name), &mafile)?;
+        write_private(&folder.join("account_details.json"), &details)
+    })
+    .await?
+    .map_err(|err| CommandError::Failed(err.to_string()))?;
     Ok(Some(name))
 }
 
@@ -474,6 +477,15 @@ pub(crate) fn no_such_account() -> CommandError {
 }
 
 // The file holds every secret of the account, so only the user may read it.
+/// A folder only the user can open, for files with secrets in them.
+fn create_private_dir(path: &Path) -> io::Result<()> {
+    let mut builder = fs::DirBuilder::new();
+    builder.recursive(true);
+    #[cfg(unix)]
+    std::os::unix::fs::DirBuilderExt::mode(&mut builder, 0o700);
+    builder.create(path)
+}
+
 pub(crate) fn write_private(path: &Path, contents: &[u8]) -> io::Result<()> {
     let mut options = OpenOptions::new();
     options.write(true).create(true).truncate(true);

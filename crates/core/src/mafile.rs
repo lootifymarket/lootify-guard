@@ -154,6 +154,36 @@ pub fn export(account: &Account) -> Zeroizing<Vec<u8>> {
     Zeroizing::new(serde_json::to_vec(&file).expect("a .maFile has only string keys"))
 }
 
+/// The name SDA gives a `.maFile`: the Steam ID, which other managers expect.
+pub fn file_name(account: &Account) -> String {
+    match account.steam_id {
+        Some(steam_id) => format!("{steam_id}.maFile"),
+        None => format!("{}.maFile", account.account_name),
+    }
+}
+
+#[derive(Serialize)]
+struct AccountDetails<'a> {
+    account_name: &'a str,
+    steam_id: Option<u64>,
+    password: Option<&'a Secret>,
+    revocation_code: Option<&'a Secret>,
+}
+
+/// Writes `account_details.json`, saved next to the `.maFile`: what signing in
+/// needs and the `.maFile` lacks. A field the vault doesn't have is `null`.
+pub fn export_details(account: &Account) -> Zeroizing<Vec<u8>> {
+    let details = AccountDetails {
+        account_name: &account.account_name,
+        steam_id: account.steam_id,
+        password: account.password.as_ref(),
+        revocation_code: account.authenticator.revocation_code.as_ref(),
+    };
+    let mut file = serde_json::to_vec_pretty(&details).expect("the details have only string keys");
+    file.push(b'\n');
+    Zeroizing::new(file)
+}
+
 fn user_steam_id(id: SteamId) -> Result<u64, MaFileError> {
     let id = match id {
         SteamId::Number(id) => id,
@@ -352,6 +382,47 @@ mod tests {
         ] {
             assert!(!file.contains(secret), "{secret}");
         }
+    }
+
+    #[test]
+    fn details_hold_the_login_password_and_revocation_code() {
+        let mut account = parse_json(&sda()).unwrap();
+        account.password = Some("steam-password-value".to_owned().into());
+        account.session = Some(Session {
+            access_token: "access-token-value".to_owned().into(),
+            refresh_token: "refresh-token-value".to_owned().into(),
+        });
+
+        let details: serde_json::Value = serde_json::from_slice(&export_details(&account)).unwrap();
+        assert_eq!(
+            details,
+            serde_json::json!({
+                "account_name": "trader_one",
+                "steam_id": 76561198000000001u64,
+                "password": "steam-password-value",
+                "revocation_code": "R12345",
+            })
+        );
+    }
+
+    #[test]
+    fn details_leave_what_the_vault_lacks_empty() {
+        let file = serde_json::json!({
+            "account_name": "trader_one",
+            "shared_secret": SHARED,
+            "identity_secret": IDENTITY,
+        });
+        let details: serde_json::Value =
+            serde_json::from_slice(&export_details(&parse_json(&file).unwrap())).unwrap();
+        assert_eq!(
+            details,
+            serde_json::json!({
+                "account_name": "trader_one",
+                "steam_id": null,
+                "password": null,
+                "revocation_code": null,
+            })
+        );
     }
 
     #[test]
