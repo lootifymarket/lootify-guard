@@ -90,6 +90,39 @@ export const listBookmarks = () => invoke<Bookmark[]>('list_bookmarks')
 export const bookmarkPage = (tab: string) =>
   invoke<Bookmark[]>('bookmark_page', { tab })
 
+/**
+ * Forgets the sign-ins the tab keeps: an account's, all but Steam's; a profile's
+ * (`profile:<id>`), all of them.
+ */
+export const clearSavedCookies = (tab: string) =>
+  invoke<void>('clear_saved_cookies', { tab })
+
 /** Resolves to every bookmark left. */
 export const removeBookmark = (url: string) =>
   invoke<Bookmark[]>('remove_bookmark', { url })
+
+/** A time zone a tab can show pages, with the language spoken there. */
+export type Region = {
+  /** ISO 3166. */
+  country: string
+  /** IANA, like `Europe/Berlin`. */
+  timeZone: string
+  /** BCP 47, like `de-DE`. */
+  language: string
+}
+
+/** What a tab shows pages as its time zone and language. */
+export type RegionChoice =
+  | { kind: 'matchProxy' }
+  | { kind: 'thisComputer' }
+  | { kind: 'fixed'; timeZone: string }
+
+let regions: Promise<Region[]> | null = null
+
+/** Every region a tab can be set to. They never change, so they're asked for once. */
+export const browserRegions = () =>
+  (regions ??= invoke<Region[]>('browser_regions'))
+
+/** Takes effect the next time the account's tab opens. */
+export const setBrowserRegion = (accountName: string, region: RegionChoice) =>
+  invoke<void>('set_browser_region', { accountName, region })

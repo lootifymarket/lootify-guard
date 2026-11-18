@@ -156,6 +156,11 @@ export const backend: Record<BackendMessage, string> = {
     'невідомий тип проксі, використайте http:// або socks5://',
   'give the group a name': 'дайте групі назву',
   "there's already a group with that name": 'група з такою назвою вже є',
+  'give the profile a name': 'дайте профілю назву',
+  "there's already a profile with that name": 'профіль із такою назвою вже є',
+  'the profile is no longer in the vault':
+    'цього профілю більше немає у сховищі',
+  'unknown time zone': 'невідомий часовий пояс',
   'the group is no longer in the vault': 'групи вже немає у сховищі',
   "the license wasn't added": 'ліцензію не додано',
   'the store has no such app': 'у магазині немає такого застосунку',

@@ -167,6 +167,12 @@ export const backend: Record<BackendMessage, string> = {
     'неизвестный тип прокси, используйте http:// или socks5://',
   'give the group a name': 'дайте группе название',
   "there's already a group with that name": 'группа с таким названием уже есть',
+  'give the profile a name': 'дайте профилю название',
+  "there's already a profile with that name":
+    'профиль с таким названием уже есть',
+  'the profile is no longer in the vault':
+    'этого профиля больше нет в хранилище',
+  'unknown time zone': 'неизвестный часовой пояс',
   'the group is no longer in the vault': 'группы больше нет в хранилище',
 
   // Free games

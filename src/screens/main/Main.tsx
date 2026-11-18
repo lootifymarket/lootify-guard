@@ -5,6 +5,14 @@ import {
   isPrivateTab,
   openPrivateBrowser,
 } from '../../api/browser.ts'
+import {
+  listBrowserProfiles,
+  openProfileBrowser,
+  profileOfTab,
+  profileTab,
+  profileTint,
+  type BrowserProfile,
+} from '../../api/browserProfiles.ts'
 import { errorMessage } from '../../api/vault.ts'
 import { listProxies, type Proxy } from '../../api/proxies.ts'
 import {
@@ -20,6 +28,7 @@ import Accounts from './Accounts.tsx'
 import BrowserTab from './browser/BrowserTab.tsx'
 import TabBar, { type TabInfo } from './browser/TabBar.tsx'
 import Inventory from './inventory/Inventory.tsx'
+import Profiles from './profiles/Profiles.tsx'
 import Proxies from './proxies/Proxies.tsx'
 import Sidebar, { type Section } from './Sidebar.tsx'
 import SteamGuard from './SteamGuard.tsx'
@@ -31,6 +40,9 @@ import { useAccounts } from './useAccounts.ts'
 import { useAutoLock } from './useAutoLock.ts'
 import { useUpdates } from './useUpdates.ts'
 import styles from './Main.module.css'
+
+// How many tabs the new tab menu lists as recent.
+const RECENT_TABS = 5
 
 type Props = {
   sidebarCollapsed: boolean
@@ -59,6 +71,10 @@ export default function Main({
     Record<string, number | null>
   >({})
   const [proxies, setProxies] = useState<Proxy[]>([])
+  const [profiles, setProfiles] = useState<BrowserProfile[]>([])
+  // Tabs opened lately, newest first, for the new tab menu. Kept in memory only:
+  // the names would say which accounts are in the vault.
+  const [recent, setRecent] = useState<string[]>([])
   const updates = useUpdates()
   const [updateOpen, setUpdateOpen] = useState(false)
   // The version this restart installed, said once and then forgotten.
@@ -76,25 +92,29 @@ export default function Main({
     ? tabs.filter(
         (name) =>
           isPrivateTab(name) ||
+          profileOfTab(name) !== null ||
           list.accounts.some((account) => account.accountName === name),
       )
     : tabs
   const browsing =
     activeTab !== null && shownTabs.includes(activeTab) ? activeTab : null
 
-  // Proxies can change on their own screen, so they're read again with the tabs.
+  // Proxies and profiles change on their own screens, so they're read again
+  // with the tabs and the screen.
   useEffect(() => {
     let active = true
-    listProxies().then(
-      (next) => {
-        if (active) setProxies(next)
+    Promise.all([listProxies(), listBrowserProfiles()]).then(
+      ([nextProxies, nextProfiles]) => {
+        if (!active) return
+        setProxies(nextProxies)
+        setProfiles(nextProfiles)
       },
       () => {},
     )
     return () => {
       active = false
     }
-  }, [tabs, tabMenu])
+  }, [tabs, tabMenu, section])
 
   useEffect(() => {
     let active = true
@@ -168,11 +188,23 @@ export default function Main({
     setActiveTab(null)
   }
 
-  function browse(accountName: string) {
-    setTabs((open) =>
-      open.includes(accountName) ? open : [...open, accountName],
+  /** Shows the tab, adding it to the bar if it isn't there yet. */
+  function show(tab: string) {
+    setTabs((open) => (open.includes(tab) ? open : [...open, tab]))
+    setActiveTab(tab)
+    setRecent((last) =>
+      [tab, ...last.filter((each) => each !== tab)].slice(0, RECENT_TABS),
     )
-    setActiveTab(accountName)
+  }
+
+  function browse(accountName: string) {
+    show(accountName)
+  }
+
+  function browseProfile(id: number) {
+    openProfileBrowser(id).then(show, (err: unknown) =>
+      toast(errorMessage(err)),
+    )
   }
 
   function browsePrivate(proxyId: number | null) {
@@ -204,15 +236,29 @@ export default function Main({
       const proxyId = privateProxies[tab] ?? null
       return {
         id: tab,
+        kind: 'private',
         title: words.browser.privateName(Number(tab.split(':')[1])),
         account: null,
         proxy: proxies.find((proxy) => proxy.id === proxyId) ?? null,
+      }
+    }
+    const profileId = profileOfTab(tab)
+    if (profileId !== null) {
+      const profile = profiles.find((each) => each.id === profileId)
+      return {
+        id: tab,
+        kind: 'profile',
+        title: profile?.name ?? words.profiles.title,
+        account: null,
+        proxy: proxies.find((proxy) => proxy.id === profile?.proxyId) ?? null,
+        tint: profileTint(profileId),
       }
     }
     const account =
       list?.accounts.find((each) => each.accountName === tab) ?? null
     return {
       id: tab,
+      kind: 'account',
       title: tab,
       account,
       proxy: account ? proxyOf(account) : null,
@@ -252,6 +298,23 @@ export default function Main({
       return <Tasks accounts={list.accounts} groups={list.groups} />
     }
     if (section === 'proxies') return <Proxies />
+    if (section === 'profiles') {
+      return (
+        <Profiles
+          accounts={list.accounts}
+          onOpen={browseProfile}
+          onOpenAccount={browse}
+          onShowAccount={(accountName) => {
+            select('accounts')
+            setOpenName(accountName)
+          }}
+          onRemoved={(id) => {
+            if (tabs.includes(profileTab(id))) closeTab(profileTab(id))
+          }}
+          onAccountsChanged={reload}
+        />
+      )
+    }
     if (section === 'settings') {
       return (
         <Settings
@@ -322,10 +385,14 @@ export default function Main({
           accounts={list?.accounts ?? []}
           proxyOf={proxyOf}
           proxies={proxies}
+          profiles={profiles}
+          recent={recent}
           tabs={shownTabs.map(tabInfo)}
           active={browsing}
           onSelect={setActiveTab}
           onOpen={browse}
+          onOpenProfile={browseProfile}
+          onNewProfile={() => select('profiles')}
           onOpenPrivate={browsePrivate}
           onClose={closeTab}
           menu={tabMenu}
@@ -335,6 +402,7 @@ export default function Main({
           <BrowserTab
             key={browsing}
             tab={browsing}
+            kind={tabInfo(browsing).kind}
             account={tabInfo(browsing).account}
             proxy={tabInfo(browsing).proxy}
             codesExpireAt={list.codesExpireAt}

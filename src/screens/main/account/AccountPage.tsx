@@ -67,7 +67,13 @@ import styles from './AccountPage.module.css'
 import Private from '../../../components/Private.tsx'
 import { MASK } from '../../../lib/streamer.ts'
 import SteamIdLine from '../SteamIdLine.tsx'
+import {
+  clearSavedCookies,
+  setBrowserRegion,
+  type RegionChoice,
+} from '../../../api/browser.ts'
 import { BROWSER_ICON } from '../browser/icons.ts'
+import RegionPicker from '../browser/RegionPicker.tsx'
 
 type Props = {
   account: Account
@@ -121,6 +127,8 @@ export default function AccountPage({
   const [groupError, setGroupError] = useState('')
   const [checking, setChecking] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [clearing, setClearing] = useState(false)
+  const [browserError, setBrowserError] = useState('')
   // `undefined` until Steam was asked, `null` when the account has no key.
   const [apiKey, setApiKey] = useState<ApiKey | null | undefined>(undefined)
   const [checkingKey, setCheckingKey] = useState(false)
@@ -228,6 +236,30 @@ export default function AccountPage({
     } finally {
       setChecking(false)
       onChanged()
+    }
+  }
+
+  async function changeRegion(region: RegionChoice) {
+    setBrowserError('')
+    try {
+      await setBrowserRegion(name, region)
+    } catch (err) {
+      setBrowserError(errorMessage(err))
+    }
+    onChanged()
+  }
+
+  async function clearSaved() {
+    setClearing(true)
+    setBrowserError('')
+    try {
+      await clearSavedCookies(name)
+      toast(t.browser.cleared)
+      onChanged()
+    } catch (err) {
+      setBrowserError(errorMessage(err))
+    } finally {
+      setClearing(false)
     }
   }
 
@@ -720,6 +752,59 @@ export default function AccountPage({
               {t.security.remove}
             </button>
           </div>
+        </section>
+
+        <section className={styles.section} aria-labelledby="browser-title">
+          <div className={styles.sectionHead}>
+            <h2 id="browser-title" className={styles.sectionTitle}>
+              {t.browser.title}
+            </h2>
+          </div>
+          <dl className={styles.facts}>
+            <div className={styles.fact}>
+              <dt>{words.browser.region}</dt>
+              <dd>
+                <div className={styles.regionPicker}>
+                  <RegionPicker
+                    hideLabel
+                    size="sm"
+                    value={account.browserRegion}
+                    proxyCountry={
+                      proxies.find((proxy) => proxy.id === account.proxyId)
+                        ?.country ?? null
+                    }
+                    onChange={(region) => void changeRegion(region)}
+                  />
+                </div>
+              </dd>
+            </div>
+            <div className={styles.fact}>
+              <dt>{t.browser.signIns}</dt>
+              {account.savedSites > 0 ? (
+                <dd className={styles.reveal}>
+                  {t.browser.sites(account.savedSites)}
+                  <button
+                    type="button"
+                    className={styles.link}
+                    disabled={clearing}
+                    onClick={() => void clearSaved()}
+                  >
+                    {t.browser.clear}
+                  </button>
+                </dd>
+              ) : (
+                <dd className={styles.muted}>{t.browser.nothingSaved}</dd>
+              )}
+            </div>
+          </dl>
+          {browserError && (
+            <p className={styles.error} role="alert">
+              {browserError}
+            </p>
+          )}
+          <p className={styles.muted}>
+            {t.browser.hint} {words.browser.regionHint}
+          </p>
         </section>
 
         <section

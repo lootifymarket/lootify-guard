@@ -70,6 +70,16 @@ export const account = {
       `${balance} · ${pending} pending`,
   },
 
+  browser: {
+    title: 'Browser',
+    signIns: 'Saved sign-ins',
+    sites: (n: number) => `${n} ${n === 1 ? 'site' : 'sites'}`,
+    nothingSaved: 'Nothing yet',
+    clear: 'Clear',
+    cleared: 'Sign-ins cleared',
+    hint: 'The account’s browser tab keeps sign-ins to other sites, like its mailbox, in the encrypted vault. Steam itself is signed in fresh each time.',
+  },
+
   autoConfirm: {
     ruleOn: (label: string) => `${label}: on`,
     ruleOff: (label: string) => `${label}: off`,

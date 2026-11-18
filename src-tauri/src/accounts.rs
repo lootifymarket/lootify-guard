@@ -3,6 +3,8 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use lootify_guard_core::browser::cookie_sites;
+use lootify_guard_core::browser_region::RegionChoice;
 use lootify_guard_core::contents::{
     Account, AutoConfirm, Contents, LastCheck, Profile, Session, StoredWallet,
 };
@@ -56,6 +58,9 @@ pub struct AccountSummary {
     /// As Steam last showed it.
     wallet: Option<StoredWallet>,
     last_check: Option<LastCheck>,
+    /// How many sites the account's browser tab keeps sign-ins for.
+    saved_sites: usize,
+    browser_region: RegionChoice,
 }
 
 #[derive(Default, Serialize)]
@@ -111,6 +116,8 @@ pub fn list_accounts(
                 note: account.note.clone(),
                 wallet: account.wallet.clone(),
                 last_check: account.last_check.clone(),
+                saved_sites: cookie_sites(&account.saved_cookies),
+                browser_region: account.browser_region.clone(),
             })
         })
         .collect::<Result<_, CommandError>>()?;

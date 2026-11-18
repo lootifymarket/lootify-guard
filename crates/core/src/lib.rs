@@ -1,5 +1,7 @@
 pub mod api_key;
 pub mod browser;
+pub mod browser_profiles;
+pub mod browser_region;
 pub mod cards;
 pub mod cm;
 pub mod confirmations;

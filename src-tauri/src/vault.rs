@@ -17,7 +17,7 @@ use zeroize::Zeroizing;
 
 use crate::accounts::confirm_owner;
 use crate::biometrics::{self, BiometricError};
-use crate::browser::Browsers;
+use crate::browser::{self, Browsers};
 
 const UNLOCK_REASON: &str = "unlock your vault";
 const IDLE_CHECK_EVERY: Duration = Duration::from_secs(10);
@@ -289,7 +289,24 @@ pub fn disable_biometrics() -> Result<(), CommandError> {
 }
 
 #[tauri::command]
-pub fn lock_vault(state: State<'_, VaultState>, browsers: State<'_, Browsers>) {
+pub async fn lock_vault(
+    state: State<'_, VaultState>,
+    browsers: State<'_, Browsers>,
+) -> Result<(), CommandError> {
+    lock(&state, &browsers);
+    Ok(())
+}
+
+/// Locks the vault from the tray menu, whose handler runs on the main thread,
+/// which the tabs need free to hand over their cookies.
+pub fn lock_from_menu(app: &AppHandle) {
+    let app = app.clone();
+    thread::spawn(move || lock(&app.state(), &app.state()));
+}
+
+/// Keeps the browser tabs' sign-ins first, as the tabs close with the vault.
+fn lock(state: &VaultState, browsers: &Browsers) {
+    browser::save_cookies(state, browsers);
     *state.unlocked() = None;
     browsers.close_all();
 }

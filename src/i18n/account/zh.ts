@@ -68,6 +68,16 @@ export const account: typeof en = {
     pending: (balance, pending) => `${balance} · ${pending} 待处理`,
   },
 
+  browser: {
+    title: '浏览器',
+    signIns: '已保存的登录',
+    sites: (n) => `${n} 个网站`,
+    nothingSaved: '暂无',
+    clear: '清除',
+    cleared: '已清除登录',
+    hint: '该账户的浏览器标签页会把其他网站（例如它的邮箱）的登录保存在加密保险库中。Steam 每次都会重新登录。',
+  },
+
   autoConfirm: {
     ruleOn: (label) => `${label}：开`,
     ruleOff: (label) => `${label}：关`,
