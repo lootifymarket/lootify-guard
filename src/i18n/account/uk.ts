@@ -300,6 +300,7 @@ export const account: typeof en = {
   },
 
   picker: {
+    tryAgain: 'Спробувати ще раз',
     title: 'Додати ігри',
     picked: (count, room) => `Вибрано · ${count} з ${room}`,
     find: 'Знайти гру',

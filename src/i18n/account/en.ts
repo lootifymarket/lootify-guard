@@ -295,6 +295,7 @@ export const account = {
   },
 
   picker: {
+    tryAgain: 'Try again',
     title: 'Add games',
     picked: (count: number, room: number) => `Picked · ${count} of ${room}`,
     find: 'Find game',

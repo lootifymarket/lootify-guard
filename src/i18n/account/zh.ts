@@ -281,6 +281,7 @@ export const account: typeof en = {
   },
 
   picker: {
+    tryAgain: '重试',
     title: '添加游戏',
     picked: (count, room) => `已选 · ${count}/${room}`,
     find: '查找游戏',

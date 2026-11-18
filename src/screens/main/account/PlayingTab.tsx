@@ -86,7 +86,11 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
     setOwnedError(errorMessage(err)),
   )
   useEffect(() => {
-    if (signedIn) void ownedGames(accountName).then(setOwned, ownedFailed)
+    if (!signedIn) return
+    void ownedGames(accountName).then((games) => {
+      setOwned(games)
+      setOwnedError('')
+    }, ownedFailed)
   }, [accountName, signedIn, ownedVersion])
 
   if (!signedIn) {
@@ -274,6 +278,8 @@ export default function PlayingTab({ accountName, signedIn }: Props) {
       <GamePicker
         open={picking}
         owned={owned}
+        ownedError={ownedError}
+        onRetry={() => setOwnedVersion((version) => version + 1)}
         free={free}
         picked={draft.games}
         room={room}

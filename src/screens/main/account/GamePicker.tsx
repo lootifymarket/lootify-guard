@@ -13,6 +13,9 @@ type Props = {
   open: boolean
   /** `undefined` while Steam is asked. */
   owned: OwnedGame[] | undefined
+  /** Why Steam didn't give the account's games, the last time it was asked. */
+  ownedError: string
+  onRetry: () => void
   /** Free games the account can play even without them. */
   free: FreeGame[]
   picked: number[]
@@ -33,6 +36,8 @@ export default function GamePicker(props: Props) {
 
 function Picker({
   owned,
+  ownedError,
+  onRetry,
   free,
   picked: initial,
   room,
@@ -103,7 +108,16 @@ function Picker({
         {typedShown && row(typed, t.app(typed), null)}
 
         <span className={styles.group}>{t.inLibrary}</span>
-        {owned === undefined && <p className={styles.listNote}>{t.loading}</p>}
+        {ownedError ? (
+          <p className={styles.listNote}>
+            <span className={styles.error}>{ownedError}</span>{' '}
+            <button type="button" className={styles.retry} onClick={onRetry}>
+              {t.tryAgain}
+            </button>
+          </p>
+        ) : (
+          owned === undefined && <p className={styles.listNote}>{t.loading}</p>
+        )}
         {owned?.length === 0 && <p className={styles.listNote}>{t.noGames}</p>}
         {shownOwned.map((game) =>
           row(
