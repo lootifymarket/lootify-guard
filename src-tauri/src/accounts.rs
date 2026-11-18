@@ -4,7 +4,7 @@ use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use lootify_guard_core::contents::{
-    Account, AutoConfirm, Contents, LastCheck, Session, StoredWallet,
+    Account, AutoConfirm, Contents, LastCheck, Profile, Session, StoredWallet,
 };
 use lootify_guard_core::guard;
 use lootify_guard_core::mafile;
@@ -345,12 +345,20 @@ pub async fn refresh_profile(
 ) -> Result<(), CommandError> {
     let (account, proxy) = account_and_proxy(&state, &account_name)?;
     let fetched = spawn_blocking(move || steam::fetch_profile(&account, proxy.as_ref())).await?;
+    store_profile(&state, &account_name, fetched)
+}
 
+/// Keeps what `fetch_profile` brought back, or drops the session it found expired.
+pub(crate) fn store_profile(
+    state: &VaultState,
+    account_name: &str,
+    fetched: Result<(Session, Profile), SteamError>,
+) -> Result<(), CommandError> {
     let mut unlocked = state.unlocked();
     let vault = unlocked.as_mut().ok_or(CommandError::Locked)?;
     let mut contents = Contents::from_bytes(vault.data())?;
     let account = contents
-        .account_mut(&account_name)
+        .account_mut(account_name)
         .ok_or_else(no_such_account)?;
     let result = match fetched {
         Ok((session, profile)) => {

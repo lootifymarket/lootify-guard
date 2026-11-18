@@ -9,6 +9,8 @@ export const account: typeof en = {
   importedFromMaFile: 'Імпортовано з .maFile',
   guardTitle: 'Steam Guard',
   copy: 'Копіювати',
+  refresh: 'Оновити',
+  refreshTitle: 'Знову завантажити зі Steam профіль, гаманець і дані безпеки',
   refreshesIn: (seconds) => `Оновиться за ${seconds} с`,
   sections: 'Розділи',
   tabs: {

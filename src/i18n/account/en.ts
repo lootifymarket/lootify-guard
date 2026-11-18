@@ -3,6 +3,9 @@ export const account = {
   importedFromMaFile: 'Imported from .maFile',
   guardTitle: 'Steam Guard',
   copy: 'Copy',
+  refresh: 'Refresh',
+  refreshTitle:
+    'Load the profile, wallet and security details from Steam again',
   refreshesIn: (seconds: number) => `Refreshes in ${seconds} s`,
   sections: 'Sections',
   tabs: {

@@ -14,6 +14,7 @@ mod inventory;
 mod menu;
 mod playing;
 mod profile;
+mod profiles;
 mod proxies;
 mod security;
 mod settings;
@@ -74,6 +75,7 @@ fn main() {
             }
             vault::watch_idle(app.handle().clone());
             auto_confirm::watch(app.handle().clone());
+            profiles::watch(app.handle().clone());
             updates::watch(app.handle().clone());
             Ok(())
         })

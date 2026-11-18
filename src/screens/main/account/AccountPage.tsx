@@ -86,6 +86,9 @@ type Tab = 'profile' | 'playing' | 'security'
 // Each is named by the tab's key in the dictionary.
 const TABS: Tab[] = ['profile', 'playing', 'security']
 
+const REFRESH_ICON =
+  'M23 4v6h-6M1 20v-6h6M3.5 9a9 9 0 0 1 14.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15'
+
 type OpenDialog =
   | 'signIn'
   | 'reveal'
@@ -117,6 +120,7 @@ export default function AccountPage({
   const [ruleError, setRuleError] = useState('')
   const [groupError, setGroupError] = useState('')
   const [checking, setChecking] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   // `undefined` until Steam was asked, `null` when the account has no key.
   const [apiKey, setApiKey] = useState<ApiKey | null | undefined>(undefined)
   const [checkingKey, setCheckingKey] = useState(false)
@@ -144,6 +148,8 @@ export default function AccountPage({
 
   const checkOnOpen = useEffectEvent(() => {
     if (!account.signedIn) return
+    // Picks up a nickname or avatar changed on Steam since the list last had them.
+    refreshProfile(name).then(onChanged, onChanged)
     void checkKey()
     void loadDevices()
     void loadStanding()
@@ -223,6 +229,20 @@ export default function AccountPage({
       setChecking(false)
       onChanged()
     }
+  }
+
+  /** Reads everything on the page from Steam again. */
+  async function refresh() {
+    setRefreshing(true)
+    await Promise.allSettled([
+      refreshProfile(name),
+      checkKey(),
+      loadDevices(),
+      loadStanding(),
+      loadWallet(),
+    ])
+    setRefreshing(false)
+    onChanged()
   }
 
   async function checkKey() {
@@ -317,6 +337,21 @@ export default function AccountPage({
             </div>
           </div>
           <div className={styles.headSide}>
+            {account.signedIn && (
+              <Button
+                variant="secondary"
+                size="sm"
+                busy={refreshing}
+                disabled={refreshing}
+                title={t.refreshTitle}
+                onClick={() => void refresh()}
+              >
+                {!refreshing && (
+                  <Icon path={REFRESH_ICON} size={15} stroke={1.9} />
+                )}
+                {t.refresh}
+              </Button>
+            )}
             {account.signedIn && (
               <Button variant="secondary" size="sm" onClick={onBrowse}>
                 <Icon path={BROWSER_ICON} size={15} stroke={1.9} />
