@@ -183,6 +183,7 @@ fn main() {
             proxies::remove_proxy,
             proxies::check_proxy,
             browser::open_browser,
+            browser::open_private_browser,
             browser::place_browser,
             browser::hide_browser,
             browser::close_browser,

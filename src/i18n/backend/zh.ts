@@ -225,6 +225,7 @@ export const backend: Record<BackendMessage, string> = {
   stopped: '已停止',
   'the browser tab is closed': '浏览器标签页已关闭',
   "could not start the tab's proxy": '无法启动标签页的代理',
+  'the proxy is no longer there': '该代理已不存在',
   'not a web address': '这不是网址',
   'there are already {} bookmarks, remove one first':
     '已有 {} 个书签，请先删除一个',

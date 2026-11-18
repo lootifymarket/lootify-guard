@@ -8,6 +8,7 @@ use lootify_guard_core::browser::{
 };
 use lootify_guard_core::contents::Contents;
 use lootify_guard_core::forward::Forwarder;
+use lootify_guard_core::proxy::ProxyAddress;
 use lootify_guard_core::steam::{self, SteamError};
 use serde::{Deserialize, Serialize};
 use tauri::async_runtime::spawn_blocking;
@@ -26,7 +27,13 @@ use crate::vault::{CommandError, VaultState};
 // own address past the proxy.
 const NO_WEBRTC: &str = "for (const name of ['RTCPeerConnection', 'webkitRTCPeerConnection', 'RTCDataChannel']) { try { delete window[name] } catch {} try { Object.defineProperty(window, name, { value: undefined }) } catch {} }";
 
-/// The browser tabs that are open, one per account at most.
+// Steam logins are letters, digits and underscores, so no account's tab is named so.
+const PRIVATE_PREFIX: &str = "private:";
+// Where a private tab starts: the first of the sites on the bar.
+const PRIVATE_START: &str = "https://store.steampowered.com/";
+
+/// The browser tabs that are open: one per account at most, named after it, and
+/// private ones signed in to nothing, named `private:1`, `private:2` and on.
 #[derive(Default)]
 pub struct Browsers {
     tabs: Mutex<HashMap<String, Tab>>,
@@ -36,6 +43,8 @@ pub struct Browsers {
 struct Tab {
     webview: Webview,
     page: Arc<Mutex<PageState>>,
+    /// What the tab's traffic goes through, so what it fetches besides goes the same way.
+    proxy: Option<ProxyAddress>,
     /// Unix seconds.
     opened_at: u64,
     // Stops tunnelling once the tab is gone.
@@ -63,20 +72,27 @@ impl Browsers {
         }
     }
 
-    pub(crate) fn close(&self, account_name: &str) {
-        if let Some(tab) = self.tabs().remove(account_name) {
+    pub(crate) fn close(&self, tab: &str) {
+        if let Some(tab) = self.tabs().remove(tab) {
             let _ = tab.webview.close();
         }
     }
 
+    fn next_label(&self) -> String {
+        format!(
+            "browser-{}",
+            self.next_label.fetch_add(1, Ordering::Relaxed)
+        )
+    }
+
     fn with_tab<T>(
         &self,
-        account_name: &str,
+        tab: &str,
         op: impl FnOnce(&Tab) -> Result<T, CommandError>,
     ) -> Result<T, CommandError> {
         let tabs = self.tabs();
         let tab = tabs
-            .get(account_name)
+            .get(tab)
             .ok_or_else(|| CommandError::Failed("the browser tab is closed".to_owned()))?;
         op(tab)
     }
@@ -162,14 +178,8 @@ pub async fn open_browser(
     // A session that checked out has its account's SteamID.
     let steam_id = steam_id.ok_or(SteamError::SessionExpired)?;
 
-    let forwarder = proxy
-        .map(|proxy| Forwarder::start(Some(proxy)))
-        .transpose()
-        .map_err(|_| CommandError::Failed("could not start the tab's proxy".to_owned()))?;
-    let label = format!(
-        "browser-{}",
-        browsers.next_label.fetch_add(1, Ordering::Relaxed)
-    );
+    let forwarder = start_forwarder(proxy.as_ref())?;
+    let label = browsers.next_label();
     let page = Arc::new(Mutex::new(PageState::default()));
     let builder = tab_builder(
         window.app_handle(),
@@ -202,6 +212,7 @@ pub async fn open_browser(
             Tab {
                 webview,
                 page,
+                proxy,
                 opened_at: unix_now(),
                 _forwarder: forwarder,
             },
@@ -211,10 +222,76 @@ pub async fn open_browser(
     show(&browsers, &account_name, rect)
 }
 
+/// Opens a tab signed in to nothing, through the proxy with `proxy_id` or straight
+/// out. It starts hidden; `place_browser` shows it. Returns the tab's name.
+#[tauri::command]
+pub async fn open_private_browser(
+    window: Window,
+    state: State<'_, VaultState>,
+    browsers: State<'_, Browsers>,
+    proxy_id: Option<u32>,
+) -> Result<String, CommandError> {
+    let proxy = match proxy_id {
+        Some(id) => {
+            let unlocked = state.unlocked();
+            let vault = unlocked.as_ref().ok_or(CommandError::Locked)?;
+            let contents = Contents::from_bytes(vault.data())?;
+            let proxy = contents
+                .proxy(id)
+                .ok_or_else(|| CommandError::Failed("the proxy is no longer there".to_owned()))?;
+            Some(proxy.address.clone())
+        }
+        None => None,
+    };
+    let forwarder = start_forwarder(proxy.as_ref())?;
+    // The lowest free number, so tab names, and on Windows their folders, get reused.
+    let name = {
+        let tabs = browsers.tabs();
+        (1..)
+            .map(|n| format!("{PRIVATE_PREFIX}{n}"))
+            .find(|name| !tabs.contains_key(name))
+            .expect("fewer tabs than numbers")
+    };
+    let page = Arc::new(Mutex::new(PageState::default()));
+    let builder = tab_builder(
+        window.app_handle(),
+        &browsers.next_label(),
+        &name.replace(':', "-"),
+        forwarder.as_ref(),
+        page.clone(),
+    )?;
+    let webview = window.add_child(
+        builder,
+        LogicalPosition::new(0.0, 0.0),
+        LogicalSize::new(0.0, 0.0),
+    )?;
+    webview.hide()?;
+    webview.navigate(PRIVATE_START.parse().expect("a valid URL"))?;
+    browsers.tabs().insert(
+        name.clone(),
+        Tab {
+            webview,
+            page,
+            proxy,
+            opened_at: unix_now(),
+            _forwarder: forwarder,
+        },
+    );
+    Ok(name)
+}
+
+fn start_forwarder(proxy: Option<&ProxyAddress>) -> Result<Option<Forwarder>, CommandError> {
+    proxy
+        .map(|proxy| Forwarder::start(Some(proxy.clone())))
+        .transpose()
+        .map_err(|_| CommandError::Failed("could not start the tab's proxy".to_owned()))
+}
+
+/// `folder` names the tab's data folder on Windows.
 fn tab_builder(
     app: &AppHandle,
     label: &str,
-    account_name: &str,
+    folder: &str,
     forwarder: Option<&Forwarder>,
     page: Arc<Mutex<PageState>>,
 ) -> Result<WebviewBuilder<tauri::Wry>, CommandError> {
@@ -259,13 +336,13 @@ fn tab_builder(
     }
     #[cfg(windows)]
     {
-        // WebView2 sets the proxy per data folder, so each account needs its own.
+        // WebView2 sets the proxy per data folder, so each tab needs its own.
         builder = builder
             .data_directory(
                 app.path()
                     .app_local_data_dir()?
                     .join("browser")
-                    .join(account_name),
+                    .join(folder),
             )
             .additional_browser_args(
                 "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection \
@@ -273,13 +350,13 @@ fn tab_builder(
             );
     }
     #[cfg(not(windows))]
-    let _ = account_name;
+    let _ = folder;
     Ok(builder)
 }
 
-fn show(browsers: &Browsers, account_name: &str, rect: Rect) -> Result<(), CommandError> {
+fn show(browsers: &Browsers, shown: &str, rect: Rect) -> Result<(), CommandError> {
     for (name, tab) in browsers.tabs().iter() {
-        if name == account_name {
+        if name == shown {
             tab.webview.set_bounds(rect)?;
             tab.webview.show()?;
         } else {
@@ -294,39 +371,36 @@ fn show(browsers: &Browsers, account_name: &str, rect: Rect) -> Result<(), Comma
 pub async fn place_browser(
     window: Window,
     browsers: State<'_, Browsers>,
-    account_name: String,
+    tab: String,
     bounds: Bounds,
 ) -> Result<(), CommandError> {
-    show(&browsers, &account_name, bounds.in_window(&window))
+    show(&browsers, &tab, bounds.in_window(&window))
 }
 
 /// Hides the tab, for the app's own screens or anything drawn over the page.
 #[tauri::command]
-pub fn hide_browser(
-    browsers: State<'_, Browsers>,
-    account_name: String,
-) -> Result<(), CommandError> {
-    if let Some(tab) = browsers.tabs().get(&account_name) {
+pub fn hide_browser(browsers: State<'_, Browsers>, tab: String) -> Result<(), CommandError> {
+    if let Some(tab) = browsers.tabs().get(&tab) {
         tab.webview.hide()?;
     }
     Ok(())
 }
 
 #[tauri::command]
-pub fn close_browser(browsers: State<'_, Browsers>, account_name: String) {
-    browsers.close(&account_name);
+pub fn close_browser(browsers: State<'_, Browsers>, tab: String) {
+    browsers.close(&tab);
 }
 
 /// Opens the address typed into the tab's address bar.
 #[tauri::command]
 pub fn browser_navigate(
     browsers: State<'_, Browsers>,
-    account_name: String,
+    tab: String,
     address: String,
 ) -> Result<(), CommandError> {
     let url =
         typed_url(&address).ok_or_else(|| CommandError::Failed("not a web address".to_owned()))?;
-    browsers.with_tab(&account_name, |tab| Ok(tab.webview.navigate(url)?))
+    browsers.with_tab(&tab, |tab| Ok(tab.webview.navigate(url)?))
 }
 
 /// The page as it is on screen, as a JPEG, to show in its place while the app
@@ -334,9 +408,9 @@ pub fn browser_navigate(
 #[tauri::command]
 pub async fn browser_snapshot(
     browsers: State<'_, Browsers>,
-    account_name: String,
+    tab: String,
 ) -> Result<Response, CommandError> {
-    let webview = browsers.with_tab(&account_name, |tab| Ok(tab.webview.clone()))?;
+    let webview = browsers.with_tab(&tab, |tab| Ok(tab.webview.clone()))?;
     Ok(Response::new(snapshot(&webview).unwrap_or_default()))
 }
 
@@ -400,11 +474,8 @@ fn snapshot(_: &Webview) -> Option<Vec<u8>> {
 }
 
 #[tauri::command]
-pub fn browser_back(
-    browsers: State<'_, Browsers>,
-    account_name: String,
-) -> Result<(), CommandError> {
-    browsers.with_tab(&account_name, |tab| {
+pub fn browser_back(browsers: State<'_, Browsers>, tab: String) -> Result<(), CommandError> {
+    browsers.with_tab(&tab, |tab| {
         if page_state(&tab.page).history.back() {
             tab.webview.eval("history.back()")?;
         }
@@ -413,11 +484,8 @@ pub fn browser_back(
 }
 
 #[tauri::command]
-pub fn browser_forward(
-    browsers: State<'_, Browsers>,
-    account_name: String,
-) -> Result<(), CommandError> {
-    browsers.with_tab(&account_name, |tab| {
+pub fn browser_forward(browsers: State<'_, Browsers>, tab: String) -> Result<(), CommandError> {
+    browsers.with_tab(&tab, |tab| {
         if page_state(&tab.page).history.forward() {
             tab.webview.eval("history.forward()")?;
         }
@@ -426,11 +494,8 @@ pub fn browser_forward(
 }
 
 #[tauri::command]
-pub fn browser_reload(
-    browsers: State<'_, Browsers>,
-    account_name: String,
-) -> Result<(), CommandError> {
-    browsers.with_tab(&account_name, |tab| Ok(tab.webview.reload()?))
+pub fn browser_reload(browsers: State<'_, Browsers>, tab: String) -> Result<(), CommandError> {
+    browsers.with_tab(&tab, |tab| Ok(tab.webview.reload()?))
 }
 
 #[derive(Serialize)]
@@ -449,11 +514,11 @@ pub struct BrowserState {
 #[tauri::command]
 pub async fn browser_state(
     browsers: State<'_, Browsers>,
-    account_name: String,
+    tab: String,
 ) -> Result<Option<BrowserState>, CommandError> {
     let Some((webview, page, opened_at)) = browsers
         .tabs()
-        .get(&account_name)
+        .get(&tab)
         .map(|tab| (tab.webview.clone(), tab.page.clone(), tab.opened_at))
     else {
         return Ok(None);
@@ -489,23 +554,22 @@ pub fn list_bookmarks(state: State<'_, VaultState>) -> Result<Vec<Bookmark>, Com
     Ok(Contents::from_bytes(vault.data())?.bookmarks)
 }
 
-/// Saves the page the account's tab is on, with its site's icon. Returns every bookmark.
+/// Saves the page the tab is on, with its site's icon. Returns every bookmark.
 #[tauri::command]
 pub async fn bookmark_page(
     state: State<'_, VaultState>,
     browsers: State<'_, Browsers>,
-    account_name: String,
+    tab: String,
 ) -> Result<Vec<Bookmark>, CommandError> {
-    let (url, title) = browsers.with_tab(&account_name, |tab| {
+    let (url, title, proxy) = browsers.with_tab(&tab, |tab| {
         let page = page_state(&tab.page);
         let url = page
             .history
             .current()
             .cloned()
             .ok_or_else(|| CommandError::Failed("the page hasn't loaded yet".to_owned()))?;
-        Ok((url, page.title.clone()))
+        Ok((url, page.title.clone(), tab.proxy.clone()))
     })?;
-    let (_, proxy) = account_and_proxy(&state, &account_name)?;
     let icon = {
         let url = url.clone();
         spawn_blocking(move || site_icon(&url, proxy.as_ref())).await?

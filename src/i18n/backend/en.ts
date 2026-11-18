@@ -206,6 +206,7 @@ export const BACKEND_MESSAGES = [
   // Browser tabs
   'the browser tab is closed',
   "could not start the tab's proxy",
+  'the proxy is no longer there',
   'not a web address',
   'there are already {} bookmarks, remove one first',
   "the page hasn't loaded yet",
