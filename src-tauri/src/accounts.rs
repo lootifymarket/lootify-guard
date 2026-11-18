@@ -197,6 +197,48 @@ pub async fn reveal_revocation_code(
     Ok(code.expose().to_owned())
 }
 
+/// Saves the account as a `.maFile` where the user picks. Returns the file name, or
+/// `None` when the picker is closed without saving.
+#[tauri::command]
+pub async fn export_mafile(
+    window: Window,
+    state: State<'_, VaultState>,
+    account_name: String,
+    password: Option<String>,
+) -> Result<Option<String>, CommandError> {
+    confirm_owner(&state, password, "export a .maFile").await?;
+    let suggested_name = {
+        let unlocked = state.unlocked();
+        let vault = unlocked.as_ref().ok_or(CommandError::Locked)?;
+        let contents = Contents::from_bytes(vault.data())?;
+        mafile::file_name(find(&contents, &account_name)?)
+    };
+    let picker = window
+        .dialog()
+        .file()
+        .set_parent(&window)
+        .set_file_name(suggested_name)
+        .add_filter(MAFILE_FILTER.0, MAFILE_FILTER.1);
+    let Some(target) = spawn_blocking(move || picker.blocking_save_file()).await? else {
+        return Ok(None);
+    };
+    let path = target
+        .into_path()
+        .map_err(|err| CommandError::Failed(err.to_string()))?;
+
+    let file = {
+        let unlocked = state.unlocked();
+        let vault = unlocked.as_ref().ok_or(CommandError::Locked)?;
+        let contents = Contents::from_bytes(vault.data())?;
+        mafile::export(find(&contents, &account_name)?)
+    };
+    let name = file_name(&path);
+    spawn_blocking(move || write_private(&path, &file))
+        .await?
+        .map_err(|err| CommandError::Failed(err.to_string()))?;
+    Ok(Some(name))
+}
+
 /// Saves the account as a folder where the user picks: its `.maFile`, and
 /// `account_details.json` with the login, password and revocation code. Returns
 /// the folder's name, or `None` when the picker is closed without saving.
@@ -207,7 +249,7 @@ pub async fn export_account(
     account_name: String,
     password: Option<String>,
 ) -> Result<Option<String>, CommandError> {
-    confirm_owner(&state, password, "export an account").await?;
+    confirm_owner(&state, password, "export an account with its details").await?;
     {
         let unlocked = state.unlocked();
         let vault = unlocked.as_ref().ok_or(CommandError::Locked)?;

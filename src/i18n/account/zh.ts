@@ -53,7 +53,8 @@ export const account: typeof en = {
     noOtherDevice: '没有其他设备登录。',
     signedOutDevices: (n) => `已登出 ${n} 台设备。`,
     signOutEverywhere: '在所有设备上登出',
-    exportAccount: '导出账户',
+    exportMaFile: '导出 .maFile',
+    exportDetails: '连同详情导出',
     remove: '从 Lootify Guard 移除',
     saved: (file) => `已保存 ${file}`,
     unknown: '未知',
@@ -82,7 +83,13 @@ export const account: typeof en = {
   },
 
   exportFile: {
-    title: '导出账户',
+    title: '导出 .maFile',
+    text: '该文件包含此账户未加密的 Steam 令牌密钥。拿到它的人可以用其中的代码登录并确认交易。请把它放在只有你能访问的地方。',
+    action: '保存文件…',
+  },
+
+  exportDetails: {
+    title: '连同详情导出',
     text: '将保存一个文件夹，内含 .maFile 和 account_details.json（登录名、密码和撤销码）。其中内容均未加密：拿到它的人可以登录、确认交易并移除 Steam 令牌。请把它放在只有你能访问的地方。',
     action: '保存文件夹…',
   },
