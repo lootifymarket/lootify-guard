@@ -24,6 +24,8 @@ export type Account = {
   /** As Steam last showed it. */
   wallet: StoredWallet | null
   lastCheck: LastCheck | null
+  /** How many sites the account's browser tab keeps sign-ins for. */
+  savedSites: number
 }
 
 export type StoredWallet = {

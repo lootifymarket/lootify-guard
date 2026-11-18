@@ -73,6 +73,17 @@ export const account: typeof en = {
     pending: (balance, pending) => `${balance} · ${pending} в ожидании`,
   },
 
+  browser: {
+    title: 'Браузер',
+    signIns: 'Сохранённые входы',
+    sites: (n) =>
+      `${n} ${plural('ru', n, { one: 'сайт', few: 'сайта', other: 'сайтов' })}`,
+    nothingSaved: 'Пока ничего',
+    clear: 'Очистить',
+    cleared: 'Входы очищены',
+    hint: 'Вкладка аккаунта хранит входы на другие сайты, например в его почту, в зашифрованном хранилище. В Steam она каждый раз входит заново.',
+  },
+
   autoConfirm: {
     ruleOn: (label) => `${label}: вкл.`,
     ruleOff: (label) => `${label}: выкл.`,

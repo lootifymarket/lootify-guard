@@ -90,6 +90,10 @@ export const listBookmarks = () => invoke<Bookmark[]>('list_bookmarks')
 export const bookmarkPage = (tab: string) =>
   invoke<Bookmark[]>('bookmark_page', { tab })
 
+/** Forgets the account tab's sign-ins to sites other than Steam. */
+export const clearSavedCookies = (accountName: string) =>
+  invoke<void>('clear_saved_cookies', { accountName })
+
 /** Resolves to every bookmark left. */
 export const removeBookmark = (url: string) =>
   invoke<Bookmark[]>('remove_bookmark', { url })

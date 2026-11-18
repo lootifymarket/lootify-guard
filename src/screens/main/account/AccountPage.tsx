@@ -67,6 +67,7 @@ import styles from './AccountPage.module.css'
 import Private from '../../../components/Private.tsx'
 import { MASK } from '../../../lib/streamer.ts'
 import SteamIdLine from '../SteamIdLine.tsx'
+import { clearSavedCookies } from '../../../api/browser.ts'
 import { BROWSER_ICON } from '../browser/icons.ts'
 
 type Props = {
@@ -121,6 +122,8 @@ export default function AccountPage({
   const [groupError, setGroupError] = useState('')
   const [checking, setChecking] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [clearing, setClearing] = useState(false)
+  const [browserError, setBrowserError] = useState('')
   // `undefined` until Steam was asked, `null` when the account has no key.
   const [apiKey, setApiKey] = useState<ApiKey | null | undefined>(undefined)
   const [checkingKey, setCheckingKey] = useState(false)
@@ -228,6 +231,20 @@ export default function AccountPage({
     } finally {
       setChecking(false)
       onChanged()
+    }
+  }
+
+  async function clearSaved() {
+    setClearing(true)
+    setBrowserError('')
+    try {
+      await clearSavedCookies(name)
+      toast(t.browser.cleared)
+      onChanged()
+    } catch (err) {
+      setBrowserError(errorMessage(err))
+    } finally {
+      setClearing(false)
     }
   }
 
@@ -720,6 +737,40 @@ export default function AccountPage({
               {t.security.remove}
             </button>
           </div>
+        </section>
+
+        <section className={styles.section} aria-labelledby="browser-title">
+          <div className={styles.sectionHead}>
+            <h2 id="browser-title" className={styles.sectionTitle}>
+              {t.browser.title}
+            </h2>
+          </div>
+          <dl className={styles.facts}>
+            <div className={styles.fact}>
+              <dt>{t.browser.signIns}</dt>
+              {account.savedSites > 0 ? (
+                <dd className={styles.reveal}>
+                  {t.browser.sites(account.savedSites)}
+                  <button
+                    type="button"
+                    className={styles.link}
+                    disabled={clearing}
+                    onClick={() => void clearSaved()}
+                  >
+                    {t.browser.clear}
+                  </button>
+                </dd>
+              ) : (
+                <dd className={styles.muted}>{t.browser.nothingSaved}</dd>
+              )}
+            </div>
+          </dl>
+          {browserError && (
+            <p className={styles.error} role="alert">
+              {browserError}
+            </p>
+          )}
+          <p className={styles.muted}>{t.browser.hint}</p>
         </section>
 
         <section
