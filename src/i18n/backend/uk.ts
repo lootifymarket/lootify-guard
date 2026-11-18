@@ -134,6 +134,8 @@ export const backend: Record<BackendMessage, string> = {
   'keep the note under {} characters':
     'нотатка має бути коротшою за {} символів',
   "that is this app's own session": 'це власна сесія застосунку',
+  'Steam refused to sign that device out':
+    'Steam не дав завершити сеанс цього пристрою',
   'unknown trade offer': 'невідома пропозиція обміну',
   'unknown trade partner': 'невідомий партнер з обміну',
   "that isn't a Steam trade URL": 'це не трейд-посилання Steam',

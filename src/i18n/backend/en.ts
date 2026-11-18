@@ -117,6 +117,7 @@ export const BACKEND_MESSAGES = [
   'keep the name under {} characters',
   'keep the note under {} characters',
   "that is this app's own session",
+  'Steam refused to sign that device out',
   'unknown trade offer',
   'unknown trade partner',
   "that isn't a Steam trade URL",

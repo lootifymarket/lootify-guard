@@ -127,6 +127,7 @@ export const backend: Record<BackendMessage, string> = {
   'keep the name under {} characters': '名称请少于 {} 个字符',
   'keep the note under {} characters': '备注请少于 {} 个字符',
   "that is this app's own session": '这是本应用自己的会话',
+  'Steam refused to sign that device out': 'Steam 拒绝让该设备退出登录',
   'unknown trade offer': '未知的交易报价',
   'unknown trade partner': '未知的交易对象',
   "that isn't a Steam trade URL": '这不是 Steam 交易链接',
