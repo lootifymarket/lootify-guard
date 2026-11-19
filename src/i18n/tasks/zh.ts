@@ -84,9 +84,11 @@ export const tasks: typeof en = {
 
   profile: {
     nickname: '昵称',
+    random: '随机',
+    randomHint: '为每个账户生成不同的随机昵称',
     keepAsIs: '保持不变',
     templateNote:
-      '{n} 会替换为账户在分组中的序号：farm {n} 变成 farm 1、farm 2…',
+      '{n} 会替换为账户在分组中的序号：farm {n} 变成 farm 1、farm 2… {random} 会为每个账户生成不同的随机昵称。',
     privacy: {
       profile: '个人资料',
       inventory: '库存',

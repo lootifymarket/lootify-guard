@@ -519,6 +519,44 @@
   user-select: all;
 }
 
+/* The dice sits inside the field, so the field lines up with the ones beside it. */
+.nickname {
+  position: relative;
+  min-width: 0;
+  align-self: start;
+}
+
+input.nicknameInput {
+  padding-right: 46px;
+}
+
+.nicknameRandom {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.nicknameRandom:hover {
+  background: var(--color-option-hover);
+  color: var(--color-text);
+}
+
+.nicknameRandom:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 0;
+}
+
 .profileGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

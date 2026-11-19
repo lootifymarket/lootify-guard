@@ -231,6 +231,7 @@ export const account: typeof en = {
     loading: '正在加载个人资料…',
     saved: '已在 Steam 上更新个人资料',
     nickname: '昵称',
+    randomNickname: '随机昵称',
     url: '个人资料链接',
     notSet: '未设置',
     summary: '简介',

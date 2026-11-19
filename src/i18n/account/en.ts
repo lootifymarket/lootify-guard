@@ -241,6 +241,7 @@ export const account = {
     loading: 'Loading the profile…',
     saved: 'Profile updated on Steam',
     nickname: 'Nickname',
+    randomNickname: 'Random nickname',
     url: 'Profile URL',
     notSet: 'Not set',
     summary: 'Summary',

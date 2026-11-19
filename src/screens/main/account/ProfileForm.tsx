@@ -8,6 +8,7 @@ import {
 import {
   clearNameHistory,
   profileSettings,
+  randomNickname,
   saveProfile,
   VISIBILITY_NAMES,
   type Privacy,
@@ -17,6 +18,7 @@ import {
 } from '../../../api/profile.ts'
 import { errorMessage } from '../../../api/vault.ts'
 import Button from '../../../components/Button.tsx'
+import Icon from '../../../components/Icon.tsx'
 import { useT } from '../../../i18n/index.ts'
 import Dialog from '../../../components/Dialog.tsx'
 import dialogStyles from '../../../components/Dialog.module.css'
@@ -27,6 +29,7 @@ import { useToast } from '../../../lib/toast.ts'
 import styles from './AccountPage.module.css'
 import Private from '../../../components/Private.tsx'
 import { MASK } from '../../../lib/streamer.ts'
+import { DICE_ICON } from '../dice.ts'
 
 // Each is named by the field's key in the dictionary.
 const PRIVACY_FIELDS: (keyof Privacy)[] = ['profile', 'inventory', 'games']
@@ -115,12 +118,25 @@ export default function ProfileForm({
   return (
     <form className={styles.section} onSubmit={(event) => void save(event)}>
       <div className={styles.profileGrid}>
-        <TextField
-          label={t.nickname}
-          className={styles.input}
-          value={draft.personaName}
-          onChange={(event) => edit({ personaName: event.target.value })}
-        />
+        <div className={styles.nickname}>
+          <TextField
+            label={t.nickname}
+            className={`${styles.input} ${styles.nicknameInput}`}
+            value={draft.personaName}
+            onChange={(event) => edit({ personaName: event.target.value })}
+          />
+          <button
+            type="button"
+            className={styles.nicknameRandom}
+            aria-label={t.randomNickname}
+            title={t.randomNickname}
+            onClick={() =>
+              void randomNickname().then((name) => edit({ personaName: name }))
+            }
+          >
+            <Icon path={DICE_ICON} size={16} stroke={1.8} />
+          </button>
+        </div>
         <div className={styles.field}>
           <TextField
             label={t.url}

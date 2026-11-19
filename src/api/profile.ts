@@ -73,6 +73,9 @@ export type ProfileChanges = Partial<Omit<ProfileSettings, 'pastNames'>>
 export const profileSettings = (accountName: string) =>
   invoke<ProfileSettings>('profile_settings', { accountName })
 
+/** A nickname to try; nothing changes on Steam until the profile is saved. */
+export const randomNickname = () => invoke<string>('random_nickname')
+
 export const saveProfile = (accountName: string, changes: ProfileChanges) =>
   invoke<void>('save_profile', { accountName, changes })
 

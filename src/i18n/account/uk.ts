@@ -248,6 +248,7 @@ export const account: typeof en = {
     loading: 'Завантажуємо профіль…',
     saved: 'Профіль оновлено в Steam',
     nickname: 'Нікнейм',
+    randomNickname: 'Випадковий нікнейм',
     url: 'Посилання на профіль',
     notSet: 'Не задано',
     summary: 'Про себе',
