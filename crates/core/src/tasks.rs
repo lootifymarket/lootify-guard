@@ -6,6 +6,7 @@ use crate::events::{self, SaleItem};
 use crate::inventory::{self, Game};
 use crate::licenses::{self, Claim, Claimed, License};
 use crate::moves::{self, Moved, Side};
+use crate::nicknames;
 use crate::profile_settings::{self, Privacy, ProfileChanges, Visibility};
 use crate::proxy::ProxyAddress;
 use crate::standing::{self, Standing, TradeBan};
@@ -39,7 +40,8 @@ pub enum Task {
 /// What to change on each profile; what's left out stays as it is.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProfileTask {
-    /// `{n}` in it becomes the account's place in the task, from 1.
+    /// `{n}` in it becomes the account's place in the task, from 1, and
+    /// `{random}` a random nickname, a new one for each account.
     pub name_template: Option<String>,
     pub privacy: PrivacyChanges,
     /// A JPEG, PNG or GIF for every account.
@@ -68,9 +70,25 @@ impl PrivacyChanges {
     }
 }
 
+const RANDOM: &str = "{random}";
+
 /// The nickname for the account at `number` in the task.
 pub fn persona_name(template: &str, number: usize) -> String {
-    template.trim().replace("{n}", &number.to_string())
+    let mut name = template.trim().replace("{n}", &number.to_string());
+    while name.contains(RANDOM) {
+        name = name.replacen(RANDOM, &nicknames::random(), 1);
+    }
+    name
+}
+
+/// The longest nickname the template can give within a task of `count` accounts.
+pub fn longest_persona_name(template: &str, count: usize) -> usize {
+    template
+        .trim()
+        .replace("{n}", &count.to_string())
+        .replace(RANDOM, &"x".repeat(nicknames::MAX_LEN))
+        .chars()
+        .count()
 }
 
 /// How it went for one account, in a few words for the queue.
@@ -371,6 +389,13 @@ mod tests {
         assert_eq!(persona_name(" farm {n} ", 7), "farm 7");
         assert_eq!(persona_name("{n}-{n}", 12), "12-12");
         assert_eq!(persona_name("storage", 3), "storage");
+    }
+
+    #[test]
+    fn random_nicknames_differ_and_fit() {
+        let first = persona_name("{random}", 1);
+        assert!(!first.contains('{'));
+        assert_eq!(longest_persona_name("{random} {n}", 120), 24);
     }
 
     #[test]
