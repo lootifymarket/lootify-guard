@@ -258,6 +258,8 @@ export const account = {
     pastNames: 'Past nicknames',
     clearHistory: 'Clear nickname history',
     saving: 'Saving…',
+    reset: 'Reset',
+    resetHint: 'Put back what Steam has',
     clearTitle: 'Clear nickname history?',
     clearText:
       'Steam removes the list of past nicknames others see on the profile. This can’t be undone.',

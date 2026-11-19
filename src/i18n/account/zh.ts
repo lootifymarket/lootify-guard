@@ -248,6 +248,8 @@ export const account: typeof en = {
     pastNames: '曾用昵称',
     clearHistory: '清除昵称历史',
     saving: '正在保存…',
+    reset: '重置',
+    resetHint: '恢复为 Steam 上的当前内容',
     clearTitle: '清除昵称历史？',
     clearText:
       'Steam 将删除其他人在个人资料中看到的曾用昵称列表。此操作无法撤销。',

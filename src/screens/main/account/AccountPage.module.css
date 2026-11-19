@@ -261,6 +261,11 @@
   margin-left: auto;
 }
 
+.saveActions {
+  display: flex;
+  gap: 8px;
+}
+
 .check {
   display: flex;
   align-items: flex-start;

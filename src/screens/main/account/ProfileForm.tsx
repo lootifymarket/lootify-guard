@@ -212,9 +212,24 @@ export default function ProfileForm({
         >
           {t.clearHistory}
         </button>
-        <Button type="submit" size="sm" busy={busy} disabled={!dirty || busy}>
-          {busy ? t.saving : words.common.save}
-        </Button>
+        <span className={styles.saveActions}>
+          {dirty && !busy && (
+            <Button
+              variant="secondary"
+              size="sm"
+              title={t.resetHint}
+              onClick={() => {
+                setDraft(saved)
+                setError('')
+              }}
+            >
+              {t.reset}
+            </Button>
+          )}
+          <Button type="submit" size="sm" busy={busy} disabled={!dirty || busy}>
+            {busy ? t.saving : words.common.save}
+          </Button>
+        </span>
       </div>
       <Dialog
         open={clearing}
