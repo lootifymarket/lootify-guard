@@ -17,6 +17,7 @@ mod playing;
 mod profile;
 mod profiles;
 mod proxies;
+mod replace_guard;
 mod security;
 mod settings;
 mod sign_ins;
@@ -61,6 +62,7 @@ fn main() {
             app.manage(settings);
             app.manage(auto_confirm::AutoConfirmLog::default());
             app.manage(add_account::AddAccountState::default());
+            app.manage(replace_guard::ReplaceGuardState::default());
             app.manage(inventory::InventoryCache::default());
             app.manage(inventory::IconCache::default());
             app.manage(tasks::Tasks::default());
@@ -120,6 +122,10 @@ fn main() {
             auto_confirm::set_auto_confirm_rule,
             auto_confirm::set_auto_confirm_paused,
             auto_confirm::auto_confirm_log,
+            replace_guard::replace_guard_begin,
+            replace_guard::replace_guard_start,
+            replace_guard::replace_guard_confirm,
+            replace_guard::replace_guard_cancel,
             security::check_api_key,
             security::trust_api_key,
             security::revoke_api_key,

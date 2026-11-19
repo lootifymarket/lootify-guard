@@ -15,6 +15,8 @@ export const backend: Record<BackendMessage, string> = {
     'откройте ссылку из письма от Steam и попробуйте снова',
   'the account already has Steam Guard on another device':
     'на аккаунте уже есть Steam Guard на другом устройстве',
+  'wrong revocation code, {} tries left':
+    'неверный код восстановления, осталось попыток: {}',
   'the Steam session has ended, sign in again':
     'сессия Steam закончилась, войдите снова',
   'not a link from a Steam sign-in QR code':
@@ -77,6 +79,11 @@ export const backend: Record<BackendMessage, string> = {
   'nothing to confirm': 'подтверждать нечего',
   'this sign-in has ended, start adding the account again':
     'этот вход закончился, начните добавлять аккаунт заново',
+  'this replacement has ended, start it again':
+    'эта замена закончилась, начните её заново',
+  "the old Steam Guard is off the account, but the new one isn't on yet: {}":
+    'старый Steam Guard снят с аккаунта, а новый ещё не включён: {}',
+  'no revocation code': 'нет кода восстановления',
   'this sign-in request has expired': 'этот запрос на вход истёк',
   'this sign-in was already answered': 'на этот вход уже ответили',
   'unknown sign-in request': 'неизвестный запрос на вход',
