@@ -16,13 +16,26 @@
 }
 
 .notes {
+  gap: 16px;
   background: var(--color-panel);
   border: 1px solid var(--color-divider);
 }
 
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .label {
+  margin: 0;
   color: var(--color-text-muted);
   font-size: 12px;
+  font-weight: 500;
+}
+
+.lead {
+  font-weight: 600;
 }
 
 .list,
