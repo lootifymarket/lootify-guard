@@ -144,6 +144,11 @@
   letter-spacing: 0.22em;
 }
 
+.noGuard {
+  font-size: 16px;
+  font-weight: 500;
+}
+
 .refresh {
   color: var(--color-text-faint);
   font-size: 12px;
