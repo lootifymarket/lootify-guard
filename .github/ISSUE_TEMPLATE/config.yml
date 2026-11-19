@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security problem
+    url: https://github.com/lootifymarket/lootify-guard/security/advisories/new
+    about: Report it privately, never in an issue.
+  - name: Lootify Market
+    url: https://lootify.market
+    about: Questions about the marketplace itself.

@@ -1,0 +1,65 @@
+name: Bug report
+description: Something in Lootify Guard doesn't work as it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never paste secrets here.** No `.maFile`, passwords, revocation codes, tokens, cookies or `steamLoginSecure`, and none in screenshots: turn on streamer mode or cover them. Anyone can read issues.
+
+        Found a security problem? Don't open an issue, [report it privately](https://github.com/lootifymarket/lootify-guard/security/advisories/new).
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: It’s at the bottom of the sidebar and in Settings.
+      placeholder: 0.3.2
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: System
+      options:
+        - macOS, Apple Silicon
+        - macOS, Intel
+        - Windows 11
+        - Windows 10
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: And what you expected instead. Copy any error text as it appears.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to make it happen
+      placeholder: |
+        1. Open an account
+        2. Press Replace Steam Guard
+        3. …
+  - type: dropdown
+    id: proxy
+    attributes:
+      label: Does the account use a proxy?
+      options:
+        - 'No'
+        - HTTP
+        - SOCKS5
+        - Not about an account
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: Optional. Check them for secrets first.
+  - type: checkboxes
+    id: no-secrets
+    attributes:
+      label: Before sending
+      options:
+        - label: There are no secrets in this report or its screenshots.
+          required: true
