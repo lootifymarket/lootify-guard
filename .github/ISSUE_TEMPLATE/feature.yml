@@ -1,0 +1,22 @@
+name: Idea
+description: Something Lootify Guard could do, or do better.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you're trying to do
+      description: The task or the trouble, in your own words, before any solution.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How the app could help
+      description: What you'd like it to do. Other apps that already do it are welcome too.
+  - type: input
+    id: accounts
+    attributes:
+      label: How many accounts do you run in it?
+      description: Optional. It helps to see how a feature has to scale.
+      placeholder: 1, 20, 300…
