@@ -6,10 +6,10 @@ import { words } from '../../../i18n/index.ts'
  * A group filter as a dropdown keeps it: '' for every account, 'none' for the
  * ones in no group, or a group's id as text.
  */
-export function inGroup(groupId: number | null, filter: string) {
+export function inGroup(groupIds: number[], filter: string) {
   if (filter === '') return true
-  if (filter === 'none') return groupId === null
-  return groupId === Number(filter)
+  if (filter === 'none') return groupIds.length === 0
+  return groupIds.includes(Number(filter))
 }
 
 export function groupOptions(groups: Group[]): DropdownOption[] {

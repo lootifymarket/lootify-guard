@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core'
 import type { RegionChoice } from './browser.ts'
 import { fromBackend } from '../i18n/backend/index.ts'
 import type { AutoConfirm } from './autoConfirm.ts'
+import type { GroupColor } from './groups.ts'
 
 export const CODE_PERIOD_SECS = 30
 
@@ -16,7 +17,8 @@ export type Account = {
   /** A data URL, or null before the profile was fetched. */
   avatar: string | null
   proxyId: number | null
-  groupId: number | null
+  /** The groups it's in, in the order it joined them. */
+  groupIds: number[]
   autoConfirm: AutoConfirm
   /** Whether the account has a game connection up or coming up. */
   playing: boolean
@@ -51,6 +53,7 @@ export type LastCheck = {
 export type Group = {
   id: number
   name: string
+  color: GroupColor
   /** How many accounts are in it. */
   count: number
 }
