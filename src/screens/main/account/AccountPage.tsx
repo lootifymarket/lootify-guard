@@ -29,9 +29,11 @@ import {
 } from '../../../api/profile.ts'
 import {
   checkApiKey,
+  checkGuard,
   checkStanding,
   listDevices,
   type ApiKey,
+  type GuardStatus,
   type Device,
   type Standing,
 } from '../../../api/security.ts'
@@ -126,6 +128,8 @@ export default function AccountPage({
   const t = words.account
   const [tab, setTab] = useState<Tab>('profile')
   const [dialog, setDialog] = useState<OpenDialog>(null)
+  // Whether Steam showed Guard on the account when Replace Steam Guard began.
+  const [guardOn, setGuardOn] = useState(true)
   const [revocationCode, setRevocationCode] = useState<string | null>(null)
   const [biometric, setBiometric] = useState<BiometricMethod | null>(null)
   const [proxies, setProxies] = useState<Proxy[]>([])
@@ -139,6 +143,10 @@ export default function AccountPage({
   const [apiKey, setApiKey] = useState<ApiKey | null | undefined>(undefined)
   const [checkingKey, setCheckingKey] = useState(false)
   const [keyError, setKeyError] = useState('')
+  // `undefined` until Steam was asked.
+  const [guard, setGuard] = useState<GuardStatus | undefined>(undefined)
+  const [checkingGuard, setCheckingGuard] = useState(false)
+  const [guardError, setGuardError] = useState('')
   const [devices, setDevices] = useState<Device[] | undefined>(undefined)
   const [devicesShown, setDevicesShown] = useState(false)
   const [devicesError, setDevicesError] = useState('')
@@ -151,6 +159,8 @@ export default function AccountPage({
   const { copy, label } = useCopy()
   const toast = useToast()
   const secondsLeft = useCodeSecondsLeft(codesExpireAt)
+  // The secrets here no longer give Steam's codes, so nothing built on them is shown.
+  const guardGone = guard === 'off' || guard === 'elsewhere'
   const name = account.accountName
 
   useEffect(() => {
@@ -164,6 +174,7 @@ export default function AccountPage({
     if (!account.signedIn) return
     // Picks up a nickname or avatar changed on Steam since the list last had them.
     refreshProfile(name).then(onChanged, onChanged)
+    void loadGuard()
     void checkKey()
     void loadDevices()
     void loadStanding()
@@ -264,6 +275,7 @@ export default function AccountPage({
     setRefreshing(true)
     await Promise.allSettled([
       refreshProfile(name),
+      loadGuard(),
       checkKey(),
       loadDevices(),
       loadStanding(),
@@ -271,6 +283,19 @@ export default function AccountPage({
     ])
     setRefreshing(false)
     onChanged()
+  }
+
+  async function loadGuard() {
+    setCheckingGuard(true)
+    setGuardError('')
+    try {
+      setGuard(await checkGuard(name))
+    } catch (err) {
+      setGuardError(errorMessage(err))
+      onChanged()
+    } finally {
+      setCheckingGuard(false)
+    }
   }
 
   async function checkKey() {
@@ -335,7 +360,8 @@ export default function AccountPage({
   }
 
   async function beginReplace(password: string | null) {
-    await replaceGuardBegin(name, password)
+    const { guardOn } = await replaceGuardBegin(name, password)
+    setGuardOn(guardOn)
     setDialog('replace')
   }
 
@@ -396,31 +422,51 @@ export default function AccountPage({
                 {words.browser.openInBrowser}
               </Button>
             )}
-            <div className={styles.guard} aria-label={t.guardTitle}>
-              <div className={styles.guardRow}>
-                <span className={styles.code}>
-                  <Private mask={MASK.code}>{account.code}</Private>
+            {guardGone ? (
+              <div className={styles.guard} aria-label={t.guardTitle}>
+                <div className={styles.guardRow}>
+                  <span className={styles.noGuard}>
+                    {guard === 'off' ? t.noGuard : t.guardElsewhere}
+                  </span>
+                  <Button size="sm" onClick={() => setDialog('replaceOwner')}>
+                    {guard === 'off'
+                      ? t.security.addGuard
+                      : t.security.replaceGuard}
+                  </Button>
+                </div>
+                <span className={styles.refresh}>
+                  {guard === 'off'
+                    ? t.security.guardOffHint
+                    : t.security.guardElsewhereHint}
                 </span>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => copy(name, account.code)}
-                >
-                  {label(name, t.copy)}
-                </Button>
               </div>
-              <span className={layout.bar}>
-                <span
-                  className={layout.barFill}
-                  style={{
-                    width: `${(secondsLeft / CODE_PERIOD_SECS) * 100}%`,
-                  }}
-                />
-              </span>
-              <span className={styles.refresh}>
-                {t.guardTitle} · {t.refreshesIn(secondsLeft)}
-              </span>
-            </div>
+            ) : (
+              <div className={styles.guard} aria-label={t.guardTitle}>
+                <div className={styles.guardRow}>
+                  <span className={styles.code}>
+                    <Private mask={MASK.code}>{account.code}</Private>
+                  </span>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => copy(name, account.code)}
+                  >
+                    {label(name, t.copy)}
+                  </Button>
+                </div>
+                <span className={layout.bar}>
+                  <span
+                    className={layout.barFill}
+                    style={{
+                      width: `${(secondsLeft / CODE_PERIOD_SECS) * 100}%`,
+                    }}
+                  />
+                </span>
+                <span className={styles.refresh}>
+                  {t.guardTitle} · {t.refreshesIn(secondsLeft)}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -515,13 +561,40 @@ export default function AccountPage({
               </dd>
             </div>
             <div className={styles.fact}>
-              <dt>{t.security.webApiKey}</dt>
+              <dt>{t.security.steamGuard}</dt>
               {account.signedIn ? (
+                <dd className={styles.reveal}>
+                  {guard === undefined && !guardError ? (
+                    <Skeleton width={90} height={12} />
+                  ) : (
+                    <GuardState guard={guard} />
+                  )}
+                  <button
+                    type="button"
+                    className={styles.link}
+                    disabled={checkingGuard}
+                    onClick={() => void loadGuard()}
+                  >
+                    {checkingGuard ? t.security.checking : t.security.check}
+                  </button>
+                </dd>
+              ) : (
+                <dd className={styles.muted}>{t.security.signInToCheck}</dd>
+              )}
+            </div>
+            <div className={styles.fact}>
+              <dt>{t.security.webApiKey}</dt>
+              {account.signedIn && guard === 'off' ? (
+                // Steam shows no key page to an account without Steam Guard.
+                <dd className={styles.muted}>{t.security.needsGuard}</dd>
+              ) : account.signedIn ? (
                 <dd className={styles.reveal}>
                   {apiKey === undefined && !keyError ? (
                     <Skeleton width={110} height={12} />
                   ) : (
-                    <ApiKeyState apiKey={apiKey} />
+                    <span title={keyError || undefined}>
+                      <ApiKeyState apiKey={keyError ? undefined : apiKey} />
+                    </span>
                   )}
                   <button
                     type="button"
@@ -645,35 +718,39 @@ export default function AccountPage({
                 )}
               </dd>
             </div>
-            <div className={styles.fact}>
-              <dt>{t.security.revocationCode}</dt>
-              {account.hasRevocationCode ? (
-                <dd className={styles.reveal}>
-                  <span className={styles.revocationCode}>
-                    {revocationCode ?? 'R•••••'}
-                  </span>
-                  <button
-                    type="button"
-                    className={styles.link}
-                    onClick={() =>
-                      revocationCode
-                        ? setRevocationCode(null)
-                        : setDialog('reveal')
-                    }
-                  >
-                    {revocationCode ? t.security.hide : t.security.show}
-                  </button>
+            {!guardGone && (
+              <div className={styles.fact}>
+                <dt>{t.security.revocationCode}</dt>
+                {account.hasRevocationCode ? (
+                  <dd className={styles.reveal}>
+                    <span className={styles.revocationCode}>
+                      {revocationCode ?? 'R•••••'}
+                    </span>
+                    <button
+                      type="button"
+                      className={styles.link}
+                      onClick={() =>
+                        revocationCode
+                          ? setRevocationCode(null)
+                          : setDialog('reveal')
+                      }
+                    >
+                      {revocationCode ? t.security.hide : t.security.show}
+                    </button>
+                  </dd>
+                ) : (
+                  <dd className={styles.muted}>{t.security.notInMaFile}</dd>
+                )}
+              </div>
+            )}
+            {!guardGone && (
+              <div className={styles.fact}>
+                <dt>{t.security.deviceId}</dt>
+                <dd className={account.deviceId ? styles.mono : styles.muted}>
+                  {account.deviceId || t.security.notInMaFile}
                 </dd>
-              ) : (
-                <dd className={styles.muted}>{t.security.notInMaFile}</dd>
-              )}
-            </div>
-            <div className={styles.fact}>
-              <dt>{t.security.deviceId}</dt>
-              <dd className={account.deviceId ? styles.mono : styles.muted}>
-                {account.deviceId || t.security.notInMaFile}
-              </dd>
-            </div>
+              </div>
+            )}
           </dl>
           {proxyMissing && (
             <p className={styles.error} role="alert">
@@ -700,9 +777,9 @@ export default function AccountPage({
               {devicesError}
             </p>
           )}
-          {keyError && (
+          {guardError && (
             <p className={styles.error} role="alert">
-              {keyError}
+              {guardError}
             </p>
           )}
           {sessionError && (
@@ -726,23 +803,29 @@ export default function AccountPage({
                 className={styles.action}
                 onClick={() => setDialog('replaceOwner')}
               >
-                {t.security.replaceGuard}
+                {guard === 'off'
+                  ? t.security.addGuard
+                  : t.security.replaceGuard}
               </button>
             )}
-            <button
-              type="button"
-              className={styles.action}
-              onClick={() => setDialog('export')}
-            >
-              {t.security.exportMaFile}
-            </button>
-            <button
-              type="button"
-              className={styles.action}
-              onClick={() => setDialog('exportDetails')}
-            >
-              {t.security.exportDetails}
-            </button>
+            {!guardGone && (
+              <button
+                type="button"
+                className={styles.action}
+                onClick={() => setDialog('export')}
+              >
+                {t.security.exportMaFile}
+              </button>
+            )}
+            {!guardGone && (
+              <button
+                type="button"
+                className={styles.action}
+                onClick={() => setDialog('exportDetails')}
+              >
+                {t.security.exportDetails}
+              </button>
+            )}
             <button
               type="button"
               className={`${styles.action} ${styles.danger}`}
@@ -886,8 +969,12 @@ export default function AccountPage({
       />
       <ConfirmOwner
         open={dialog === 'replaceOwner'}
-        title={t.replaceGuard.title}
-        text={t.replaceGuard.confirmText}
+        title={guard === 'off' ? t.replaceGuard.addTitle : t.replaceGuard.title}
+        text={
+          guard === 'off'
+            ? t.replaceGuard.addConfirmText
+            : t.replaceGuard.confirmText
+        }
         action={t.replaceGuard.continue}
         biometric={biometric}
         onConfirm={beginReplace}
@@ -897,8 +984,13 @@ export default function AccountPage({
       <ReplaceGuard
         open={dialog === 'replace'}
         hasRevocationCode={account.hasRevocationCode}
+        guardOn={guardOn}
         onClose={closeReplace}
-        onReplaced={onChanged}
+        onReplaced={() => {
+          onChanged()
+          // The key page reads differently once the account has Steam Guard.
+          void loadGuard().then(checkKey)
+        }}
         onSignOut={() => setDialog('signOut')}
       />
       <SignIn
@@ -942,6 +1034,19 @@ export default function AccountPage({
         onRemoved={onRemoved}
       />
     </>
+  )
+}
+
+function GuardState({ guard }: { guard: GuardStatus | undefined }) {
+  const t = useT().account.security
+  if (guard === undefined) {
+    return <span className={styles.muted}>{t.unknown}</span>
+  }
+  if (guard === 'here') return <span>{t.guardHere}</span>
+  return (
+    <span className={styles.dangerText}>
+      {guard === 'off' ? t.guardOff : t.guardElsewhere}
+    </span>
   )
 }
 

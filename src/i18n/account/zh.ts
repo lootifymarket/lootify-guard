@@ -4,6 +4,8 @@ export const account: typeof en = {
   back: '← 账户',
   importedFromMaFile: '从 .maFile 导入',
   guardTitle: 'Steam 令牌',
+  noGuard: '没有 Steam 令牌',
+  guardElsewhere: 'Steam 令牌在其他设备上',
   copy: '复制',
   refresh: '刷新',
   refreshTitle: '重新从 Steam 加载资料、钱包和安全信息',
@@ -30,6 +32,14 @@ export const account: typeof en = {
     checking: '正在检查…',
     signIn: '登录',
     sessionAccepted: 'Steam 已接受该会话。',
+    steamGuard: 'Steam 令牌',
+    guardHere: '已启用',
+    guardElsewhere: '在其他设备上',
+    guardOff: 'Steam 中未启用',
+    guardElsewhereHint:
+      'Steam 上此账户绑定的是另一个令牌，因此这里的验证码无效。',
+    guardOffHint: 'Steam 显示此账户没有 Steam 令牌，因此交易会被暂挂。',
+    needsGuard: '需要 Steam 令牌',
     webApiKey: 'Web API 密钥',
     signInToCheck: '登录后检查',
     activeSessions: '活跃会话',
@@ -56,6 +66,7 @@ export const account: typeof en = {
     signedOutDevices: (n) => `已登出 ${n} 台设备。`,
     signOutEverywhere: '在所有设备上登出',
     replaceGuard: '更换 Steam 令牌',
+    addGuard: '添加 Steam 令牌',
     exportMaFile: '导出 .maFile',
     exportDetails: '连同详情导出',
     remove: '从 Lootify Guard 移除',
@@ -148,12 +159,18 @@ export const account: typeof en = {
   },
   replaceGuard: {
     title: '更换 Steam 令牌',
+    addTitle: '添加 Steam 令牌',
+    addConfirmText:
+      'Steam 将为此账户生成新的令牌，并保存在此应用中。请先确认是你本人。',
     confirmText:
       'Steam 将为此账户生成新的令牌密钥。其他所有副本（.maFile、SDA 或手机）都将无法再生成有效的验证码。请先确认是你本人。',
     continue: '继续',
     methods:
       'Steam 会通过短信发送到账户绑定的手机进行确认。如果账户没有绑定手机，请使用撤销码：它会先移除旧令牌，然后 Steam 通过邮件确认新令牌。',
     smsOnly: 'Steam 会通过短信发送到账户绑定的手机进行确认。',
+    noGuard:
+      'Steam 显示此账户没有 Steam 令牌，因此将在这里添加一个新令牌。Steam 会发送验证码进行确认。',
+    addGuard: '添加 Steam 令牌',
     tradeHold: '之后 Steam 会暂时冻结交易和市场上架。',
     sendSms: '发送短信',
     useRevocationCode: '使用撤销码',
@@ -171,6 +188,8 @@ export const account: typeof en = {
     newRevocationCode:
       '这是新的撤销码，旧的已失效。请在这台电脑之外保存一份副本。',
     noRevocationCode: 'Steam 没有提供新的撤销码。',
+    notOnYet:
+      'Steam 接受了验证码，但新的 Steam 令牌未显示为已启用。请再次运行“更换 Steam 令牌”来添加。',
     copyCode: '复制撤销码',
     signOutHint:
       '持有旧副本的人可能仍处于登录状态。请登出其他所有设备并修改密码。',

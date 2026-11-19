@@ -7,6 +7,15 @@ export type ApiKey = {
   trusted: boolean
 }
 
+/**
+ * `here`: Steam has the Guard from the vault. `elsewhere`: Steam has another one,
+ * so the codes here don't work. `off`: the account has no Steam Guard at all.
+ */
+export type GuardStatus = 'here' | 'elsewhere' | 'off'
+
+export const checkGuard = (accountName: string) =>
+  invoke<GuardStatus>('check_guard', { accountName })
+
 /** Resolves to `null` when the account has no Web API key. */
 export const checkApiKey = (accountName: string) =>
   invoke<ApiKey | null>('check_api_key', { accountName })
