@@ -40,6 +40,7 @@ fn main() {
                 tray::show_window(app);
             }
         }))
+        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_autostart::init(
@@ -77,6 +78,7 @@ fn main() {
                 tray::hide_window(app.handle());
             }
             vault::watch_idle(app.handle().clone());
+            tray::watch_accounts(app.handle().clone());
             auto_confirm::watch(app.handle().clone());
             profiles::watch(app.handle().clone());
             browser::watch_cookies(app.handle().clone());
