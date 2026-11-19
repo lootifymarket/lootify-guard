@@ -62,6 +62,11 @@ import ConfirmOwner from './ConfirmOwner.tsx'
 import RemoveAccount from './RemoveAccount.tsx'
 import SignIn from './SignIn.tsx'
 import SignOutEverywhere from './SignOutEverywhere.tsx'
+import ReplaceGuard from './ReplaceGuard.tsx'
+import {
+  replaceGuardBegin,
+  replaceGuardCancel,
+} from '../../../api/replaceGuard.ts'
 import StandingFacts from './StandingFacts.tsx'
 import styles from './AccountPage.module.css'
 import Private from '../../../components/Private.tsx'
@@ -103,6 +108,8 @@ type OpenDialog =
   | 'remove'
   | 'rules'
   | 'signOut'
+  | 'replaceOwner'
+  | 'replace'
   | null
 
 export default function AccountPage({
@@ -336,6 +343,16 @@ export default function AccountPage({
     const saved = await exportAccount(name, password)
     setDialog(null)
     if (saved) toast(t.security.saved(saved))
+  }
+
+  async function beginReplace(password: string | null) {
+    await replaceGuardBegin(name, password)
+    setDialog('replace')
+  }
+
+  function closeReplace() {
+    void replaceGuardCancel()
+    setDialog(null)
   }
 
   return (
@@ -730,6 +747,15 @@ export default function AccountPage({
                 {t.security.signOutEverywhere}
               </button>
             )}
+            {account.signedIn && (
+              <button
+                type="button"
+                className={styles.action}
+                onClick={() => setDialog('replaceOwner')}
+              >
+                {t.security.replaceGuard}
+              </button>
+            )}
             <button
               type="button"
               className={styles.action}
@@ -884,6 +910,23 @@ export default function AccountPage({
         onConfirm={exportDetails}
         onBiometricsOutdated={() => setBiometric(null)}
         onClose={() => setDialog(null)}
+      />
+      <ConfirmOwner
+        open={dialog === 'replaceOwner'}
+        title={t.replaceGuard.title}
+        text={t.replaceGuard.confirmText}
+        action={t.replaceGuard.continue}
+        biometric={biometric}
+        onConfirm={beginReplace}
+        onBiometricsOutdated={() => setBiometric(null)}
+        onClose={() => setDialog(null)}
+      />
+      <ReplaceGuard
+        open={dialog === 'replace'}
+        hasRevocationCode={account.hasRevocationCode}
+        onClose={closeReplace}
+        onReplaced={onChanged}
+        onSignOut={() => setDialog('signOut')}
       />
       <SignIn
         open={dialog === 'signIn'}

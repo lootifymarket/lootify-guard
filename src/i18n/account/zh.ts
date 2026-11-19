@@ -55,6 +55,7 @@ export const account: typeof en = {
     noOtherDevice: '没有其他设备登录。',
     signedOutDevices: (n) => `已登出 ${n} 台设备。`,
     signOutEverywhere: '在所有设备上登出',
+    replaceGuard: '更换 Steam 令牌',
     exportMaFile: '导出 .maFile',
     exportDetails: '连同详情导出',
     remove: '从 Lootify Guard 移除',
@@ -144,6 +145,37 @@ export const account: typeof en = {
     others: 'Steam 将结束除此应用外的所有会话。这些设备需要重新登录：',
     signOut: '在所有设备上登出',
     signingOut: '正在登出…',
+  },
+  replaceGuard: {
+    title: '更换 Steam 令牌',
+    confirmText:
+      'Steam 将为此账户生成新的令牌密钥。其他所有副本（.maFile、SDA 或手机）都将无法再生成有效的验证码。请先确认是你本人。',
+    continue: '继续',
+    methods:
+      'Steam 会通过短信发送到账户绑定的手机进行确认。如果账户没有绑定手机，请使用撤销码：它会先移除旧令牌，然后 Steam 通过邮件确认新令牌。',
+    smsOnly: 'Steam 会通过短信发送到账户绑定的手机进行确认。',
+    tradeHold: '之后 Steam 会暂时冻结交易和市场上架。',
+    sendSms: '发送短信',
+    useRevocationCode: '使用撤销码',
+    askingSteam: '正在请求 Steam…',
+    smsText: (phone) =>
+      `Steam 已向${phone}发送短信。输入后，旧的 Steam 令牌将在所有地方失效。`,
+    emailText: 'Steam 已向账户邮箱发送验证码。输入后即可启用新的 Steam 令牌。',
+    phoneEnding: (digits) => `尾号为 ${digits} 的手机`,
+    accountPhone: '该账户的手机号',
+    guardIsOff: '旧的 Steam 令牌已移除。请在此完成操作，否则账户将没有令牌。',
+    code: '验证码',
+    checking: '正在检查…',
+    confirm: '确认',
+    replaced: '新的 Steam 令牌已启用。旧副本的验证码已失效。',
+    newRevocationCode:
+      '这是新的撤销码，旧的已失效。请在这台电脑之外保存一份副本。',
+    noRevocationCode: 'Steam 没有提供新的撤销码。',
+    copyCode: '复制撤销码',
+    signOutHint:
+      '持有旧副本的人可能仍处于登录状态。请登出其他所有设备并修改密码。',
+    signOutEverywhere: '在所有设备上登出',
+    done: '完成',
   },
 
   signIn: {

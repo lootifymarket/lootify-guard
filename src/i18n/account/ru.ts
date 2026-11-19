@@ -60,6 +60,7 @@ export const account: typeof en = {
     noOtherDevice: 'Других устройств в аккаунте не было.',
     signedOutDevices: (n) => `Выход выполнен на ${n} ${devices(n)}.`,
     signOutEverywhere: 'Выйти везде',
+    replaceGuard: 'Заменить Steam Guard',
     exportMaFile: 'Экспорт .maFile',
     exportDetails: 'Экспорт с данными',
     remove: 'Удалить из Lootify Guard',
@@ -154,6 +155,40 @@ export const account: typeof en = {
       'Steam завершит все сессии, кроме этого приложения. Эти устройства попросят войти снова:',
     signOut: 'Выйти везде',
     signingOut: 'Выходим…',
+  },
+  replaceGuard: {
+    title: 'Заменить Steam Guard',
+    confirmText:
+      'Steam сделает новые секреты Guard для этого аккаунта. Все другие копии — .maFile, SDA или телефон — перестанут давать рабочие коды. Сначала подтвердите, что это вы.',
+    continue: 'Продолжить',
+    methods:
+      'Steam подтвердит через SMS на телефон аккаунта. Если телефона нет, используйте код восстановления: он снимет старый Guard, а новый Steam подтвердит по почте.',
+    smsOnly: 'Steam подтвердит через SMS на телефон аккаунта.',
+    tradeHold: 'После этого Steam на время задержит трейды и лоты на маркете.',
+    sendSms: 'Отправить SMS',
+    useRevocationCode: 'Код восстановления',
+    askingSteam: 'Спрашиваем Steam…',
+    smsText: (phone) =>
+      `Steam отправил SMS на ${phone}. Как только вы его введёте, старый Steam Guard перестанет работать везде.`,
+    emailText:
+      'Steam отправил код на почту аккаунта. Введите его, чтобы включить новый Steam Guard.',
+    phoneEnding: (digits) => `номер, который заканчивается на ${digits}`,
+    accountPhone: 'номер телефона аккаунта',
+    guardIsOff:
+      'Старый Steam Guard уже снят. Закончите здесь, иначе аккаунт останется без него.',
+    code: 'Код',
+    checking: 'Проверяем…',
+    confirm: 'Подтвердить',
+    replaced:
+      'Новый Steam Guard включён. Коды из старых копий больше не работают.',
+    newRevocationCode:
+      'Новый код восстановления. Старый больше не работает. Сохраните копию не на этом компьютере.',
+    noRevocationCode: 'Steam не выдал новый код восстановления.',
+    copyCode: 'Скопировать код',
+    signOutHint:
+      'У того, у кого была старая копия, может остаться вход. Выйдите на всех других устройствах и смените пароль.',
+    signOutEverywhere: 'Выйти везде',
+    done: 'Готово',
   },
 
   signIn: {

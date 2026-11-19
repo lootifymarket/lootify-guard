@@ -13,6 +13,7 @@ export const backend: Record<BackendMessage, string> = {
     '请打开 Steam 发送的邮件中的链接，然后重试',
   'the account already has Steam Guard on another device':
     '该账户已在其他设备上启用 Steam 令牌',
+  'wrong revocation code, {} tries left': '撤销码错误，还剩 {} 次机会',
   'the Steam session has ended, sign in again': 'Steam 会话已结束，请重新登录',
   'not a link from a Steam sign-in QR code': '这不是 Steam 登录二维码中的链接',
   "couldn't reach Steam, check the connection": '无法连接 Steam，请检查网络',
@@ -68,6 +69,10 @@ export const backend: Record<BackendMessage, string> = {
   'nothing to confirm': '没有需要确认的内容',
   'this sign-in has ended, start adding the account again':
     '此次登录已结束，请重新开始添加账户',
+  'this replacement has ended, start it again': '此次更换已结束，请重新开始',
+  "the old Steam Guard is off the account, but the new one isn't on yet: {}":
+    '旧的 Steam 令牌已从账户移除，但新的尚未启用：{}',
+  'no revocation code': '没有撤销码',
   'this sign-in request has expired': '此登录请求已过期',
   'this sign-in was already answered': '此登录请求已处理',
   'unknown sign-in request': '未知的登录请求',

@@ -5,7 +5,7 @@ use std::error::Error;
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use serde::Serialize;
-use steamguard::accountlinker::{AccountLinkConfirmType, TransferError};
+use steamguard::accountlinker::{AccountLinkConfirmType, RemoveAuthenticatorError, TransferError};
 use steamguard::protobufs::steammessages_auth_steamclient::EAuthSessionGuardType;
 use steamguard::token::Tokens;
 use steamguard::transport::{TransportError, WebApiTransport};
@@ -124,6 +124,31 @@ pub enum ConfirmBy {
     Email,
 }
 
+/// Gives an account already in the vault a new authenticator. Steam makes new
+/// secrets, and the old ones stop working wherever they are: a .maFile, SDA, a phone.
+/// Blocks on the network; every request goes through `proxy`.
+pub fn begin_replace(
+    account: &Account,
+    proxy: Option<&ProxyAddress>,
+) -> Result<NewGuard, SteamError> {
+    let (Some(session), Some(steam_id)) = (&account.session, account.steam_id) else {
+        return Err(SteamError::SessionExpired);
+    };
+    let client = steam::client(proxy)?;
+    // The stored access token may have run out, and every call here needs a live one.
+    let access_token = steam::refresh_access_token(&client, session, steam_id)?;
+    let tokens = Tokens::new(
+        access_token.expose().to_owned(),
+        session.refresh_token.expose().to_owned(),
+    );
+    Ok(NewGuard {
+        linker: AccountLinker::new(WebApiTransport::new(client), tokens),
+        steam_id,
+        guard_on_phone: false,
+        pending: None,
+    })
+}
+
 /// A signed-in account that gets an authenticator on this device.
 pub struct NewGuard {
     linker: AccountLinker<WebApiTransport>,
@@ -165,6 +190,14 @@ impl NewGuard {
         self.linker.transfer_start().map_err(transfer_error)?;
         self.pending = Some(Pending::Move);
         Ok(ConfirmBy::Sms { phone_hint: None })
+    }
+
+    /// Takes the account's authenticator off with its revocation code. Until `add`
+    /// is confirmed, the account has no Steam Guard at all.
+    pub fn remove(&mut self, revocation_code: &str) -> Result<(), SteamError> {
+        self.linker
+            .remove_authenticator(Some(&revocation_code.to_owned()))
+            .map_err(remove_error)
     }
 
     /// Confirms with the code Steam sent. Returns the account to keep: Guard on it
@@ -287,6 +320,25 @@ fn transfer_error(err: TransferError) -> SteamError {
     }
 }
 
+fn remove_error(err: RemoveAuthenticatorError) -> SteamError {
+    match err {
+        RemoveAuthenticatorError::IncorrectRevocationCode { attempts_remaining } => {
+            SteamError::WrongRevocationCode(attempts_remaining)
+        }
+        RemoveAuthenticatorError::MissingRevocationCode => {
+            SteamError::Steam("no revocation code".to_owned())
+        }
+        RemoveAuthenticatorError::TransportError(TransportError::Unauthorized) => {
+            SteamError::SessionExpired
+        }
+        RemoveAuthenticatorError::TransportError(err) => unknown(&err),
+        RemoveAuthenticatorError::UnknownEResult(result) => {
+            SteamError::Steam(format!("{result:?}"))
+        }
+        RemoveAuthenticatorError::Unknown(err) => unknown(&*err),
+    }
+}
+
 /// steamguard wraps network failures in context, so the whole chain is searched.
 fn unknown(err: &(dyn Error + 'static)) -> SteamError {
     let network = std::iter::successors(Some(err), |&err| err.source()).any(|err| {
@@ -326,6 +378,20 @@ mod tests {
         assert!(matches!(
             code_for(&[k_EAuthSessionGuardType_DeviceConfirmation]),
             Err(SteamError::UnsupportedConfirmation)
+        ));
+    }
+
+    #[test]
+    fn a_wrong_revocation_code_says_how_many_tries_are_left() {
+        let err = remove_error(RemoveAuthenticatorError::IncorrectRevocationCode {
+            attempts_remaining: 4,
+        });
+        assert_eq!(err.to_string(), "wrong revocation code, 4 tries left");
+        assert!(matches!(
+            remove_error(RemoveAuthenticatorError::TransportError(
+                TransportError::Unauthorized
+            )),
+            SteamError::SessionExpired
         ));
     }
 
