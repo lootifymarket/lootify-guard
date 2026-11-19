@@ -98,7 +98,7 @@ pub fn parse(file: &[u8]) -> Result<Account, MaFileError> {
         profile: None,
         proxy: None,
         auto_confirm: AutoConfirm::default(),
-        group: None,
+        groups: Vec::new(),
         trusted_api_key: None,
         device_names: BTreeMap::new(),
         client_token: None,

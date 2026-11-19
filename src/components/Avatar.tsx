@@ -4,7 +4,7 @@ type Props = {
   name: string
   /** The Steam avatar, or null to show the initials instead. */
   src: string | null
-  size: 'sm' | 'lg'
+  size: 'xs' | 'sm' | 'lg'
 }
 
 export default function Avatar({ name, src, size }: Props) {

@@ -21,7 +21,7 @@ import {
   proxyTitle,
   type Proxy,
 } from '../../../api/proxies.ts'
-import { setAccountGroup } from '../../../api/groups.ts'
+import GroupPills from '../groups/GroupPills.tsx'
 import {
   formatMoney,
   walletBalance,
@@ -131,7 +131,6 @@ export default function AccountPage({
   const [proxies, setProxies] = useState<Proxy[]>([])
   const [proxyError, setProxyError] = useState('')
   const [ruleError, setRuleError] = useState('')
-  const [groupError, setGroupError] = useState('')
   const [checking, setChecking] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [clearing, setClearing] = useState(false)
@@ -202,16 +201,6 @@ export default function AccountPage({
       await setAccountProxy(name, value === '' ? null : Number(value))
     } catch (err) {
       setProxyError(errorMessage(err))
-    }
-    onChanged()
-  }
-
-  async function changeGroup(value: string) {
-    setGroupError('')
-    try {
-      await setAccountGroup([name], value === '' ? null : Number(value))
-    } catch (err) {
-      setGroupError(errorMessage(err))
     }
     onChanged()
   }
@@ -628,25 +617,14 @@ export default function AccountPage({
             </div>
             <div className={styles.fact}>
               <dt>{t.security.group}</dt>
-              <dd>
-                <div className={styles.proxyPicker}>
-                  <Dropdown
-                    label={t.security.group}
-                    hideLabel
-                    size="sm"
-                    value={
-                      account.groupId === null ? '' : String(account.groupId)
-                    }
-                    options={[
-                      { value: '', label: t.security.noGroup },
-                      ...groups.map((group) => ({
-                        value: String(group.id),
-                        label: group.name,
-                      })),
-                    ]}
-                    onChange={(value) => void changeGroup(value)}
-                  />
-                </div>
+              <dd className={styles.groups}>
+                <GroupPills
+                  accountName={name}
+                  groupIds={account.groupIds}
+                  groups={groups}
+                  onChanged={onChanged}
+                  emptyLabel={t.security.noGroup}
+                />
               </dd>
             </div>
             <div className={styles.fact}>
@@ -705,11 +683,6 @@ export default function AccountPage({
           {proxyError && (
             <p className={styles.error} role="alert">
               {proxyError}
-            </p>
-          )}
-          {groupError && (
-            <p className={styles.error} role="alert">
-              {groupError}
             </p>
           )}
           {walletError && (

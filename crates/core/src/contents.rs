@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::fmt;
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use zeroize::Zeroizing;
 
 use crate::browser::{Bookmark, SavedCookie};
@@ -43,6 +43,25 @@ pub struct Contents {
 pub struct Group {
     pub id: u32,
     pub name: String,
+    /// What its pills are tinted with.
+    #[serde(default)]
+    pub color: GroupColor,
+}
+
+/// The few tints a group can have, so every one reads well on the dark page.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum GroupColor {
+    #[default]
+    Gray,
+    Red,
+    Orange,
+    Yellow,
+    Green,
+    Teal,
+    Blue,
+    Purple,
+    Pink,
 }
 
 // Group names show in narrow chips and menus.
@@ -74,9 +93,9 @@ pub struct Account {
     pub proxy: Option<u32>,
     #[serde(default)]
     pub auto_confirm: AutoConfirm,
-    /// The id of the group the account is in.
-    #[serde(default)]
-    pub group: Option<u32>,
+    /// The ids of the groups the account is in, in the order it joined them.
+    #[serde(default, alias = "group", deserialize_with = "group_ids")]
+    pub groups: Vec<u32>,
     /// The fingerprint of a Web API key the user said is theirs, so it isn't flagged
     /// again. A different key on the account is flagged as usual.
     #[serde(default)]
@@ -107,6 +126,20 @@ pub struct Account {
     /// The time zone and language its browser tab shows pages.
     #[serde(default)]
     pub browser_region: RegionChoice,
+}
+
+/// Vaults from before an account could be in several groups keep one id, or none.
+fn group_ids<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Vec<u32>, D::Error> {
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Ids {
+        Many(Vec<u32>),
+        One(Option<u32>),
+    }
+    Ok(match Ids::deserialize(deserializer)? {
+        Ids::Many(ids) => ids,
+        Ids::One(id) => id.into_iter().collect(),
+    })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -312,55 +345,65 @@ impl Contents {
     }
 
     /// Makes a group and returns its id.
-    pub fn add_group(&mut self, name: &str) -> Result<u32, GroupError> {
+    pub fn add_group(&mut self, name: &str, color: GroupColor) -> Result<u32, GroupError> {
         let name = self.group_name(name, None)?;
         self.last_group_id += 1;
         self.groups.push(Group {
             id: self.last_group_id,
             name,
+            color,
         });
         Ok(self.last_group_id)
     }
 
-    pub fn rename_group(&mut self, id: u32, name: &str) -> Result<(), GroupError> {
+    pub fn update_group(
+        &mut self,
+        id: u32,
+        name: &str,
+        color: GroupColor,
+    ) -> Result<(), GroupError> {
         let name = self.group_name(name, Some(id))?;
-        self.groups
+        let group = self
+            .groups
             .iter_mut()
             .find(|group| group.id == id)
-            .ok_or(GroupError::Missing)?
-            .name = name;
+            .ok_or(GroupError::Missing)?;
+        group.name = name;
+        group.color = color;
         Ok(())
     }
 
-    /// Removes the group; its accounts stay, in no group.
+    /// Removes the group; its accounts stay, in their other groups.
     pub fn remove_group(&mut self, id: u32) -> bool {
         let count = self.groups.len();
         self.groups.retain(|group| group.id != id);
         for account in &mut self.accounts {
-            if account.group == Some(id) {
-                account.group = None;
-            }
+            account.groups.retain(|&group| group != id);
         }
         self.groups.len() < count
     }
 
-    /// Puts the accounts in the group, or in none. Logins not in the vault are skipped.
-    pub fn set_group(
-        &mut self,
-        account_names: &[String],
-        group: Option<u32>,
-    ) -> Result<(), GroupError> {
-        if let Some(id) = group
-            && !self.groups.iter().any(|group| group.id == id)
-        {
+    /// Adds the accounts to the group, keeping their other groups. Logins not in
+    /// the vault are skipped.
+    pub fn add_to_group(&mut self, account_names: &[String], id: u32) -> Result<(), GroupError> {
+        if !self.groups.iter().any(|group| group.id == id) {
             return Err(GroupError::Missing);
         }
         for account in &mut self.accounts {
-            if account_names.contains(&account.account_name) {
-                account.group = group;
+            if account_names.contains(&account.account_name) && !account.groups.contains(&id) {
+                account.groups.push(id);
             }
         }
         Ok(())
+    }
+
+    /// Takes the accounts out of the group, leaving their other groups.
+    pub fn remove_from_group(&mut self, account_names: &[String], id: u32) {
+        for account in &mut self.accounts {
+            if account_names.contains(&account.account_name) {
+                account.groups.retain(|&group| group != id);
+            }
+        }
     }
 
     /// The name as it will be kept, checked against every other group's.
@@ -442,7 +485,7 @@ mod tests {
             profile: None,
             proxy: None,
             auto_confirm: AutoConfirm::default(),
-            group: None,
+            groups: Vec::new(),
             trusted_api_key: None,
             device_names: BTreeMap::new(),
             client_token: None,
@@ -561,36 +604,64 @@ mod tests {
     #[test]
     fn group_names_are_unique_and_tidy() {
         let mut contents = Contents::default();
-        let farm = contents.add_group("  Farm ").unwrap();
+        let farm = contents.add_group("  Farm ", GroupColor::Gray).unwrap();
         assert_eq!(contents.groups[0].name, "Farm");
-        assert_eq!(contents.add_group("farm"), Err(GroupError::Taken));
-        assert_eq!(contents.add_group(" "), Err(GroupError::EmptyName));
         assert_eq!(
-            contents.add_group(&"x".repeat(41)),
+            contents.add_group("farm", GroupColor::Gray),
+            Err(GroupError::Taken)
+        );
+        assert_eq!(
+            contents.add_group(" ", GroupColor::Gray),
+            Err(GroupError::EmptyName)
+        );
+        assert_eq!(
+            contents.add_group(&"x".repeat(41), GroupColor::Gray),
             Err(GroupError::LongName)
         );
         // A group may keep its own name in another case.
-        assert_eq!(contents.rename_group(farm, "FARM"), Ok(()));
-        assert_eq!(contents.rename_group(99, "Other"), Err(GroupError::Missing));
+        assert_eq!(
+            contents.update_group(farm, "FARM", GroupColor::Teal),
+            Ok(())
+        );
+        assert_eq!(contents.groups[0].color, GroupColor::Teal);
+        assert_eq!(
+            contents.update_group(99, "Other", GroupColor::Gray),
+            Err(GroupError::Missing)
+        );
     }
 
     #[test]
-    fn removing_a_group_frees_its_accounts_and_its_id_is_not_reused() {
+    fn removing_a_group_leaves_the_others_and_its_id_is_not_reused() {
         let mut contents = Contents::default();
         contents.add_account(account());
-        let farm = contents.add_group("Farm").unwrap();
-        contents
-            .set_group(&["trader_one".to_owned()], Some(farm))
-            .unwrap();
-        assert_eq!(contents.accounts[0].group, Some(farm));
+        let farm = contents.add_group("Farm", GroupColor::Gray).unwrap();
+        let storage = contents.add_group("Storage", GroupColor::Gray).unwrap();
+        let trader = ["trader_one".to_owned()];
+        contents.add_to_group(&trader, farm).unwrap();
+        contents.add_to_group(&trader, storage).unwrap();
+        assert_eq!(contents.accounts[0].groups, [farm, storage]);
 
         assert!(contents.remove_group(farm));
-        assert_eq!(contents.accounts[0].group, None);
-        assert_ne!(contents.add_group("Farm").unwrap(), farm);
+        assert_eq!(contents.accounts[0].groups, [storage]);
+        assert_ne!(contents.add_group("Farm", GroupColor::Gray).unwrap(), farm);
         assert_eq!(
-            contents.set_group(&["trader_one".to_owned()], Some(farm)),
+            contents.add_to_group(&trader, farm),
             Err(GroupError::Missing)
         );
+    }
+
+    #[test]
+    fn an_account_from_an_older_vault_keeps_its_one_group() {
+        let mut json = serde_json::to_value(account()).unwrap();
+        let fields = json.as_object_mut().unwrap();
+        fields.remove("groups");
+        fields.insert("group".to_owned(), 3.into());
+        let account: Account = serde_json::from_value(json.clone()).unwrap();
+        assert_eq!(account.groups, [3]);
+
+        json["group"] = serde_json::Value::Null;
+        let account: Account = serde_json::from_value(json).unwrap();
+        assert!(account.groups.is_empty());
     }
 
     #[test]

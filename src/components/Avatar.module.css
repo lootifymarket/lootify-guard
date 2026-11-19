@@ -10,6 +10,12 @@
   object-fit: cover;
 }
 
+.xs {
+  width: 24px;
+  height: 24px;
+  font-size: 9px;
+}
+
 .sm {
   width: 32px;
   height: 32px;
