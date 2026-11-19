@@ -173,6 +173,10 @@
   text-align: right;
 }
 
+.groups > span {
+  justify-content: flex-end;
+}
+
 .reveal {
   display: flex;
   align-items: center;
@@ -182,6 +186,26 @@
 .revocationCode {
   font-family: var(--font-mono);
   letter-spacing: 0.12em;
+}
+
+.newCode {
+  padding: 24px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-line-strong);
+  border-radius: 12px;
+  font-family: var(--font-mono);
+  font-size: 32px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-align: center;
+  user-select: all;
+}
+
+.codeInput {
+  font-family: var(--font-mono);
+  font-size: 24px;
+  letter-spacing: 0.4em;
+  text-align: center;
 }
 
 .link {
@@ -235,6 +259,11 @@
 
 .formActions > :last-child {
   margin-left: auto;
+}
+
+.saveActions {
+  display: flex;
+  gap: 8px;
 }
 
 .check {
@@ -493,6 +522,44 @@
   overflow: hidden;
   text-overflow: ellipsis;
   user-select: all;
+}
+
+/* The dice sits inside the field, so the field lines up with the ones beside it. */
+.nickname {
+  position: relative;
+  min-width: 0;
+  align-self: start;
+}
+
+input.nicknameInput {
+  padding-right: 46px;
+}
+
+.nicknameRandom {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.nicknameRandom:hover {
+  background: var(--color-option-hover);
+  color: var(--color-text);
+}
+
+.nicknameRandom:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 0;
 }
 
 .profileGrid {

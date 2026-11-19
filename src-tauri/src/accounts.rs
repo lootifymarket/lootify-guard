@@ -50,7 +50,7 @@ pub struct AccountSummary {
     /// A data URL, so the page can show it without fetching anything itself.
     avatar: Option<String>,
     proxy_id: Option<u32>,
-    group_id: Option<u32>,
+    group_ids: Vec<u32>,
     auto_confirm: AutoConfirm,
     /// Whether the account has a game connection up or coming up.
     playing: bool,
@@ -110,7 +110,7 @@ pub fn list_accounts(
                     .and_then(|profile| profile.avatar.as_ref())
                     .map(|avatar| format!("data:image/jpeg;base64,{avatar}")),
                 proxy_id: account.proxy,
-                group_id: account.group,
+                group_ids: account.groups.clone(),
                 auto_confirm: account.auto_confirm,
                 playing: players.is_playing(&account.account_name),
                 note: account.note.clone(),

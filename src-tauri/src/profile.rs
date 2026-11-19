@@ -1,6 +1,7 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use lootify_guard_core::contents::{Account, Contents, Profile, StoredWallet};
+use lootify_guard_core::nicknames;
 use lootify_guard_core::profile::{self, Wallet};
 use lootify_guard_core::profile_settings::{self, MAX_AVATAR_LEN, ProfileChanges, ProfileSettings};
 use lootify_guard_core::steam;
@@ -85,6 +86,12 @@ pub async fn profile_settings(
     let (session, settings) = settle(&state, &account_name, result)?;
     store_session(&state, &account_name, Some(session))?;
     Ok(settings)
+}
+
+/// A nickname to try; nothing is saved until the profile is.
+#[tauri::command]
+pub fn random_nickname() -> String {
+    nicknames::random()
 }
 
 /// Saves the profile in Steam. A new nickname is kept in the vault too, so the

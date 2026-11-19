@@ -16,7 +16,7 @@ use lootify_guard_core::moves::{self, Side};
 use lootify_guard_core::profile_settings::{AvatarImage, MAX_AVATAR_LEN};
 use lootify_guard_core::steam::SteamError;
 use lootify_guard_core::tasks::{
-    self, MAX_PERSONA_NAME, Outcome, PrivacyChanges, ProfileTask, Task, persona_name,
+    self, MAX_PERSONA_NAME, Outcome, PrivacyChanges, ProfileTask, Task, longest_persona_name,
 };
 use lootify_guard_core::vault::VaultError;
 use serde::{Deserialize, Serialize};
@@ -365,9 +365,8 @@ fn profile_task(
     if name_template.is_none() && privacy == PrivacyChanges::default() && avatar.is_none() {
         return fail("pick something to change");
     }
-    // `{n}` is longest for the last account.
     if let Some(template) = &name_template
-        && persona_name(template, count).chars().count() > MAX_PERSONA_NAME
+        && longest_persona_name(template, count) > MAX_PERSONA_NAME
     {
         return fail("the nickname would be over 32 characters");
     }

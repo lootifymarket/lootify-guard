@@ -17,6 +17,7 @@ mod playing;
 mod profile;
 mod profiles;
 mod proxies;
+mod replace_guard;
 mod security;
 mod settings;
 mod sign_ins;
@@ -39,6 +40,7 @@ fn main() {
                 tray::show_window(app);
             }
         }))
+        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_autostart::init(
@@ -61,6 +63,7 @@ fn main() {
             app.manage(settings);
             app.manage(auto_confirm::AutoConfirmLog::default());
             app.manage(add_account::AddAccountState::default());
+            app.manage(replace_guard::ReplaceGuardState::default());
             app.manage(inventory::InventoryCache::default());
             app.manage(inventory::IconCache::default());
             app.manage(tasks::Tasks::default());
@@ -75,6 +78,7 @@ fn main() {
                 tray::hide_window(app.handle());
             }
             vault::watch_idle(app.handle().clone());
+            tray::watch_accounts(app.handle().clone());
             auto_confirm::watch(app.handle().clone());
             profiles::watch(app.handle().clone());
             browser::watch_cookies(app.handle().clone());
@@ -112,14 +116,19 @@ fn main() {
             add_account::save_new_revocation_code,
             add_account::add_account_cancel,
             groups::create_group,
-            groups::rename_group,
+            groups::update_group,
             groups::remove_group,
-            groups::set_account_group,
+            groups::add_to_group,
+            groups::remove_from_group,
             confirmations::list_confirmations,
             confirmations::respond_to_confirmations,
             auto_confirm::set_auto_confirm_rule,
             auto_confirm::set_auto_confirm_paused,
             auto_confirm::auto_confirm_log,
+            replace_guard::replace_guard_begin,
+            replace_guard::replace_guard_start,
+            replace_guard::replace_guard_confirm,
+            replace_guard::replace_guard_cancel,
             security::check_api_key,
             security::trust_api_key,
             security::revoke_api_key,
@@ -135,6 +144,7 @@ fn main() {
             profile::new_trade_url,
             profile::wallet_balance,
             profile::profile_settings,
+            profile::random_nickname,
             profile::save_profile,
             profile::clear_name_history,
             profile::change_avatar,

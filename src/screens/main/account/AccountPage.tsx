@@ -21,7 +21,7 @@ import {
   proxyTitle,
   type Proxy,
 } from '../../../api/proxies.ts'
-import { setAccountGroup } from '../../../api/groups.ts'
+import GroupPills from '../groups/GroupPills.tsx'
 import {
   formatMoney,
   walletBalance,
@@ -62,6 +62,11 @@ import ConfirmOwner from './ConfirmOwner.tsx'
 import RemoveAccount from './RemoveAccount.tsx'
 import SignIn from './SignIn.tsx'
 import SignOutEverywhere from './SignOutEverywhere.tsx'
+import ReplaceGuard from './ReplaceGuard.tsx'
+import {
+  replaceGuardBegin,
+  replaceGuardCancel,
+} from '../../../api/replaceGuard.ts'
 import StandingFacts from './StandingFacts.tsx'
 import styles from './AccountPage.module.css'
 import Private from '../../../components/Private.tsx'
@@ -103,6 +108,8 @@ type OpenDialog =
   | 'remove'
   | 'rules'
   | 'signOut'
+  | 'replaceOwner'
+  | 'replace'
   | null
 
 export default function AccountPage({
@@ -124,7 +131,6 @@ export default function AccountPage({
   const [proxies, setProxies] = useState<Proxy[]>([])
   const [proxyError, setProxyError] = useState('')
   const [ruleError, setRuleError] = useState('')
-  const [groupError, setGroupError] = useState('')
   const [checking, setChecking] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [clearing, setClearing] = useState(false)
@@ -195,16 +201,6 @@ export default function AccountPage({
       await setAccountProxy(name, value === '' ? null : Number(value))
     } catch (err) {
       setProxyError(errorMessage(err))
-    }
-    onChanged()
-  }
-
-  async function changeGroup(value: string) {
-    setGroupError('')
-    try {
-      await setAccountGroup([name], value === '' ? null : Number(value))
-    } catch (err) {
-      setGroupError(errorMessage(err))
     }
     onChanged()
   }
@@ -336,6 +332,16 @@ export default function AccountPage({
     const saved = await exportAccount(name, password)
     setDialog(null)
     if (saved) toast(t.security.saved(saved))
+  }
+
+  async function beginReplace(password: string | null) {
+    await replaceGuardBegin(name, password)
+    setDialog('replace')
+  }
+
+  function closeReplace() {
+    void replaceGuardCancel()
+    setDialog(null)
   }
 
   return (
@@ -611,25 +617,14 @@ export default function AccountPage({
             </div>
             <div className={styles.fact}>
               <dt>{t.security.group}</dt>
-              <dd>
-                <div className={styles.proxyPicker}>
-                  <Dropdown
-                    label={t.security.group}
-                    hideLabel
-                    size="sm"
-                    value={
-                      account.groupId === null ? '' : String(account.groupId)
-                    }
-                    options={[
-                      { value: '', label: t.security.noGroup },
-                      ...groups.map((group) => ({
-                        value: String(group.id),
-                        label: group.name,
-                      })),
-                    ]}
-                    onChange={(value) => void changeGroup(value)}
-                  />
-                </div>
+              <dd className={styles.groups}>
+                <GroupPills
+                  accountName={name}
+                  groupIds={account.groupIds}
+                  groups={groups}
+                  onChanged={onChanged}
+                  emptyLabel={t.security.noGroup}
+                />
               </dd>
             </div>
             <div className={styles.fact}>
@@ -690,11 +685,6 @@ export default function AccountPage({
               {proxyError}
             </p>
           )}
-          {groupError && (
-            <p className={styles.error} role="alert">
-              {groupError}
-            </p>
-          )}
           {walletError && (
             <p className={styles.error} role="alert">
               {walletError}
@@ -728,6 +718,15 @@ export default function AccountPage({
                 onClick={() => setDialog('signOut')}
               >
                 {t.security.signOutEverywhere}
+              </button>
+            )}
+            {account.signedIn && (
+              <button
+                type="button"
+                className={styles.action}
+                onClick={() => setDialog('replaceOwner')}
+              >
+                {t.security.replaceGuard}
               </button>
             )}
             <button
@@ -884,6 +883,23 @@ export default function AccountPage({
         onConfirm={exportDetails}
         onBiometricsOutdated={() => setBiometric(null)}
         onClose={() => setDialog(null)}
+      />
+      <ConfirmOwner
+        open={dialog === 'replaceOwner'}
+        title={t.replaceGuard.title}
+        text={t.replaceGuard.confirmText}
+        action={t.replaceGuard.continue}
+        biometric={biometric}
+        onConfirm={beginReplace}
+        onBiometricsOutdated={() => setBiometric(null)}
+        onClose={() => setDialog(null)}
+      />
+      <ReplaceGuard
+        open={dialog === 'replace'}
+        hasRevocationCode={account.hasRevocationCode}
+        onClose={closeReplace}
+        onReplaced={onChanged}
+        onSignOut={() => setDialog('signOut')}
       />
       <SignIn
         open={dialog === 'signIn'}

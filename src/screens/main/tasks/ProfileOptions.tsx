@@ -2,8 +2,10 @@ import { useRef } from 'react'
 import { VISIBILITY_NAMES, type Visibility } from '../../../api/profile.ts'
 import Button from '../../../components/Button.tsx'
 import Dropdown from '../../../components/Dropdown.tsx'
+import Icon from '../../../components/Icon.tsx'
 import TextField from '../../../components/TextField.tsx'
 import { useT } from '../../../i18n/index.ts'
+import { DICE_ICON } from '../dice.ts'
 import styles from './Tasks.module.css'
 
 export type PrivacyKey = 'profile' | 'inventory' | 'games'
@@ -49,16 +51,27 @@ export default function ProfileOptions({ choice, onChange }: Props) {
   return (
     <div className={styles.options}>
       <div className={styles.optionGroup}>
-        <TextField
-          label={t.nickname}
-          placeholder={t.keepAsIs}
-          className={styles.input}
-          maxLength={40}
-          value={choice.nameTemplate}
-          onChange={(event) =>
-            onChange({ ...choice, nameTemplate: event.target.value })
-          }
-        />
+        <div className={styles.nickname}>
+          <TextField
+            label={t.nickname}
+            placeholder={t.keepAsIs}
+            className={styles.input}
+            maxLength={40}
+            value={choice.nameTemplate}
+            onChange={(event) =>
+              onChange({ ...choice, nameTemplate: event.target.value })
+            }
+          />
+          <Button
+            variant="secondary"
+            size="sm"
+            title={t.randomHint}
+            onClick={() => onChange({ ...choice, nameTemplate: '{random}' })}
+          >
+            <Icon path={DICE_ICON} size={14} stroke={1.9} />
+            {t.random}
+          </Button>
+        </div>
         <p className={styles.note}>{t.templateNote}</p>
       </div>
 

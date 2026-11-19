@@ -44,7 +44,7 @@ export const account: typeof en = {
     proxy: 'Проксі',
     noProxy: 'Без проксі',
     deletedProxy: 'Видалений проксі',
-    group: 'Група',
+    group: 'Групи',
     note: 'Нотатка',
     notePlaceholder: 'Бачите лише ви',
     noteSaved: 'Нотатку збережено',
@@ -59,6 +59,7 @@ export const account: typeof en = {
     noOtherDevice: 'Інших пристроїв в акаунті не було.',
     signedOutDevices: (n) => `Вихід виконано на ${n} ${devices(n)}.`,
     signOutEverywhere: 'Вийти всюди',
+    replaceGuard: 'Замінити Steam Guard',
     exportMaFile: 'Експорт .maFile',
     exportDetails: 'Експорт з даними',
     remove: 'Видалити з Lootify Guard',
@@ -153,6 +154,41 @@ export const account: typeof en = {
     signOut: 'Вийти всюди',
     signingOut: 'Виходимо…',
   },
+  replaceGuard: {
+    title: 'Замінити Steam Guard',
+    confirmText:
+      'Steam створить нові секрети Guard для цього акаунта. Усі інші копії — .maFile, SDA чи телефон — перестануть давати робочі коди. Спершу підтвердьте, що це ви.',
+    continue: 'Продовжити',
+    methods:
+      'Steam підтвердить через SMS на телефон акаунта. Якщо телефону немає, скористайтеся кодом відновлення: він зніме старий Guard, а новий Steam підтвердить поштою.',
+    smsOnly: 'Steam підтвердить через SMS на телефон акаунта.',
+    tradeHold:
+      'Після цього Steam на деякий час затримає трейди й лоти на маркеті.',
+    sendSms: 'Надіслати SMS',
+    useRevocationCode: 'Код відновлення',
+    askingSteam: 'Питаємо Steam…',
+    smsText: (phone) =>
+      `Steam надіслав SMS на ${phone}. Щойно ви його введете, старий Steam Guard перестане працювати всюди.`,
+    emailText:
+      'Steam надіслав код на пошту акаунта. Введіть його, щоб увімкнути новий Steam Guard.',
+    phoneEnding: (digits) => `номер, що закінчується на ${digits}`,
+    accountPhone: 'номер телефона акаунта',
+    guardIsOff:
+      'Старий Steam Guard уже знято. Завершіть тут, інакше акаунт залишиться без нього.',
+    code: 'Код',
+    checking: 'Перевіряємо…',
+    confirm: 'Підтвердити',
+    replaced:
+      'Новий Steam Guard увімкнено. Коди зі старих копій більше не працюють.',
+    newRevocationCode:
+      'Новий код відновлення. Старий більше не працює. Збережіть копію не на цьому комп’ютері.',
+    noRevocationCode: 'Steam не видав новий код відновлення.',
+    copyCode: 'Скопіювати код',
+    signOutHint:
+      'У того, хто мав стару копію, може залишитися вхід. Вийдіть на всіх інших пристроях і змініть пароль.',
+    signOutEverywhere: 'Вийти всюди',
+    done: 'Готово',
+  },
 
   signIn: {
     title: 'Вхід у Steam',
@@ -212,6 +248,7 @@ export const account: typeof en = {
     loading: 'Завантажуємо профіль…',
     saved: 'Профіль оновлено в Steam',
     nickname: 'Нікнейм',
+    randomNickname: 'Випадковий нікнейм',
     url: 'Посилання на профіль',
     notSet: 'Не задано',
     summary: 'Про себе',
@@ -228,6 +265,8 @@ export const account: typeof en = {
     pastNames: 'Попередні нікнейми',
     clearHistory: 'Очистити історію нікнеймів',
     saving: 'Зберігаємо…',
+    reset: 'Скинути',
+    resetHint: 'Повернути те, що зараз у Steam',
     clearTitle: 'Очистити історію нікнеймів?',
     clearText:
       'Steam видалить список попередніх нікнеймів, який інші бачать у профілі. Цього не скасувати.',

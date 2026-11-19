@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from 'react'
 import Icon from './Icon.tsx'
+import { placeBy, type Placement } from './placement.ts'
 import styles from './Dropdown.module.css'
 
 export type DropdownOption = {
@@ -29,36 +30,6 @@ type Props = {
 
 const CHEVRON = 'M6 9l6 6 6-6'
 const CHECK = 'M20 6L9 17l-5-5'
-// Between the trigger and the list, and between the list and the window's edge.
-const GAP = 6
-const EDGE = 12
-const MAX_LIST = 300
-// Less room than this below the trigger, and more above, opens the list upwards.
-const ENOUGH_BELOW = 160
-
-/** Where the list goes, in the window: fixed, so a dialog's edge can't cut it off. */
-type Placement = {
-  right: number
-  minWidth: number
-  top?: number
-  bottom?: number
-  maxHeight: number
-}
-
-function placeBy(trigger: HTMLElement): Placement {
-  const rect = trigger.getBoundingClientRect()
-  const below = window.innerHeight - rect.bottom - GAP - EDGE
-  const above = rect.top - GAP - EDGE
-  const up = below < ENOUGH_BELOW && above > below
-  return {
-    right: window.innerWidth - rect.right,
-    minWidth: rect.width,
-    maxHeight: Math.min(MAX_LIST, up ? above : below),
-    ...(up
-      ? { bottom: window.innerHeight - rect.top + GAP }
-      : { top: rect.bottom + GAP }),
-  }
-}
 
 export default function Dropdown({
   label,

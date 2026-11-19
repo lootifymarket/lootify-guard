@@ -65,6 +65,8 @@ pub enum SteamError {
     ConfirmEmail,
     #[error("the account already has Steam Guard on another device")]
     GuardElsewhere,
+    #[error("wrong revocation code, {0} tries left")]
+    WrongRevocationCode(u32),
     #[error("the Steam session has ended, sign in again")]
     SessionExpired,
     #[error("not a link from a Steam sign-in QR code")]
@@ -498,7 +500,7 @@ fn link_details(
         .ok_or_else(|| SteamError::Steam("no profile in the answer".to_owned()))
 }
 
-fn refresh_access_token(
+pub(crate) fn refresh_access_token(
     client: &Client,
     session: &Session,
     steam_id: u64,

@@ -75,13 +75,15 @@ export default function Tasks({ accounts, groups }: Props) {
   const [error, setError] = useState('')
   const [started, setStarted] = useState(0)
 
-  const loose = accounts.filter((account) => account.groupId === null)
+  const loose = accounts.filter((account) => account.groupIds.length === 0)
   const targets: { id: Target; name: string; accounts: Account[] }[] = [
     { id: 'all', name: t.allAccounts, accounts },
     ...groups.map((group) => ({
       id: group.id,
       name: group.name,
-      accounts: accounts.filter((account) => account.groupId === group.id),
+      accounts: accounts.filter((account) =>
+        account.groupIds.includes(group.id),
+      ),
     })),
     ...(groups.length > 0 && loose.length > 0
       ? [{ id: 'none' as const, name: t.noGroup, accounts: loose }]

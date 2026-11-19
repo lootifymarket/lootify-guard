@@ -39,7 +39,7 @@ export const account = {
     proxy: 'Proxy',
     noProxy: 'No proxy',
     deletedProxy: 'Deleted proxy',
-    group: 'Group',
+    group: 'Groups',
     note: 'Note',
     notePlaceholder: 'Only you see it',
     noteSaved: 'Note saved',
@@ -55,6 +55,7 @@ export const account = {
     signedOutDevices: (n: number) =>
       `Signed out ${n} ${n === 1 ? 'device' : 'devices'}.`,
     signOutEverywhere: 'Sign out everywhere',
+    replaceGuard: 'Replace Steam Guard',
     exportMaFile: 'Export .maFile',
     exportDetails: 'Export with details',
     remove: 'Remove from Lootify Guard',
@@ -150,6 +151,40 @@ export const account = {
     signOut: 'Sign out everywhere',
     signingOut: 'Signing out…',
   },
+  replaceGuard: {
+    title: 'Replace Steam Guard',
+    confirmText:
+      'Steam makes new Guard secrets for this account. Every other copy, like a .maFile, SDA or a phone, stops giving working codes. Confirm it’s you first.',
+    continue: 'Continue',
+    methods:
+      'Steam confirms by SMS to the account’s phone. With no phone on the account, use the revocation code: it takes the old Guard off, then Steam confirms the new one by email.',
+    smsOnly: 'Steam confirms by SMS to the account’s phone.',
+    tradeHold: 'Steam holds trades and market listings for a while after.',
+    sendSms: 'Send SMS',
+    useRevocationCode: 'Use the revocation code',
+    askingSteam: 'Asking Steam…',
+    smsText: (phone: string) =>
+      `Steam sent an SMS to ${phone}. Once you enter it, the old Steam Guard stops working everywhere.`,
+    emailText:
+      'Steam sent a code to the account’s email. Enter it to turn on the new Steam Guard.',
+    phoneEnding: (digits: string) => `the phone ending in ${digits}`,
+    accountPhone: 'the account’s phone number',
+    guardIsOff:
+      'The old Steam Guard is already off. Finish here, or the account stays without one.',
+    code: 'Code',
+    checking: 'Checking…',
+    confirm: 'Confirm',
+    replaced:
+      'The new Steam Guard is on. Codes from old copies no longer work.',
+    newRevocationCode:
+      'The new revocation code. The old one no longer works. Keep a copy outside this computer.',
+    noRevocationCode: 'Steam gave no new revocation code.',
+    copyCode: 'Copy code',
+    signOutHint:
+      'Whoever had the old copy may still be signed in. Sign out every other device and change the password.',
+    signOutEverywhere: 'Sign out everywhere',
+    done: 'Done',
+  },
 
   signIn: {
     title: 'Sign in to Steam',
@@ -206,6 +241,7 @@ export const account = {
     loading: 'Loading the profile…',
     saved: 'Profile updated on Steam',
     nickname: 'Nickname',
+    randomNickname: 'Random nickname',
     url: 'Profile URL',
     notSet: 'Not set',
     summary: 'Summary',
@@ -222,6 +258,8 @@ export const account = {
     pastNames: 'Past nicknames',
     clearHistory: 'Clear nickname history',
     saving: 'Saving…',
+    reset: 'Reset',
+    resetHint: 'Put back what Steam has',
     clearTitle: 'Clear nickname history?',
     clearText:
       'Steam removes the list of past nicknames others see on the profile. This can’t be undone.',

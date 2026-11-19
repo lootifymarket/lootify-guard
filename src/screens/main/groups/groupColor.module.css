@@ -1,0 +1,64 @@
+/* A group's tint, set with `data-color` next to this class: the text and dot
+   color, a faint fill and an edge. Pills, swatches and tab dots all read these. */
+.tint {
+  --group-fg: var(--color-text-secondary);
+  --group-bg: var(--color-selected);
+  --group-border: var(--color-border);
+}
+
+.tint[data-color='red'] {
+  --group-fg: #ff8a8c;
+  --group-bg: rgb(229 37 42 / 0.12);
+  --group-border: rgb(229 37 42 / 0.35);
+}
+
+.tint[data-color='orange'] {
+  --group-fg: #ffb17a;
+  --group-bg: rgb(249 115 22 / 0.12);
+  --group-border: rgb(249 115 22 / 0.35);
+}
+
+.tint[data-color='yellow'] {
+  --group-fg: #e3c76b;
+  --group-bg: rgb(227 179 65 / 0.12);
+  --group-border: rgb(227 179 65 / 0.35);
+}
+
+.tint[data-color='green'] {
+  --group-fg: #7ee2a0;
+  --group-bg: rgb(63 185 80 / 0.12);
+  --group-border: rgb(63 185 80 / 0.35);
+}
+
+.tint[data-color='teal'] {
+  --group-fg: #6fdcd0;
+  --group-bg: rgb(20 184 166 / 0.12);
+  --group-border: rgb(20 184 166 / 0.35);
+}
+
+.tint[data-color='blue'] {
+  --group-fg: #8ab4ff;
+  --group-bg: rgb(59 130 246 / 0.12);
+  --group-border: rgb(59 130 246 / 0.35);
+}
+
+.tint[data-color='purple'] {
+  --group-fg: #c4a5ff;
+  --group-bg: rgb(139 92 246 / 0.12);
+  --group-border: rgb(139 92 246 / 0.35);
+}
+
+.tint[data-color='pink'] {
+  --group-fg: #ff9acb;
+  --group-bg: rgb(236 72 153 / 0.12);
+  --group-border: rgb(236 72 153 / 0.35);
+}
+
+.dot {
+  display: block;
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  background: var(--group-fg);
+}

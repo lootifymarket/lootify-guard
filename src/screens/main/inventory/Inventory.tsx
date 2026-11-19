@@ -122,8 +122,9 @@ export default function Inventory({ accounts, groups, onChanged }: Props) {
     if (!filter.startsWith('group:')) return account === filter
     const groupId = Number(filter.slice('group:'.length))
     return (
-      signedIn.find((known) => known.accountName === account)?.groupId ===
-      groupId
+      signedIn
+        .find((known) => known.accountName === account)
+        ?.groupIds.includes(groupId) ?? false
     )
   }
 
