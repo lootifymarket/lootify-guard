@@ -10,6 +10,8 @@ export const backend: Record<BackendMessage, string> = {
     'неправильний код, перевірте його й спробуйте ще раз',
   'Steam wants a phone number on the account first':
     'Steam спершу просить додати до акаунта номер телефону',
+  'Steam moves Guard by SMS, and the account has no phone number: use the revocation code instead':
+    'Steam переносить Guard через SMS, а до акаунта не прив’язано номер: скористайтеся кодом відновлення',
   'open the link in the email Steam sent, then try again':
     'відкрийте посилання з листа від Steam і спробуйте ще раз',
   'the account already has Steam Guard on another device':
@@ -76,6 +78,11 @@ export const backend: Record<BackendMessage, string> = {
   'nothing to confirm': 'нічого підтверджувати',
   'this sign-in has ended, start adding the account again':
     'цей вхід завершився, почніть додавати акаунт заново',
+  "the account's Steam Guard is already off, add a new one":
+    'Steam Guard акаунта вже знято, додайте новий',
+  'this .maFile is for another account': 'цей .maFile від іншого акаунта',
+  'this .maFile is from an older Steam Guard, Steam no longer takes its codes':
+    'цей .maFile від попереднього Steam Guard, Steam більше не приймає його коди',
   'this replacement has ended, start it again':
     'ця заміна завершилася, почніть її заново',
   "the old Steam Guard is off the account, but the new one isn't on yet: {}":

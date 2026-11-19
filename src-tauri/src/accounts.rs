@@ -26,7 +26,7 @@ use crate::vault::{CommandError, VaultState};
 
 // Real .maFiles are a couple of kilobytes; this only stops a wrong pick from being read whole.
 const MAX_MAFILE_LEN: u64 = 64 * 1024;
-const MAFILE_FILTER: (&str, &[&str]) = ("Steam Guard files", &["maFile"]);
+pub(crate) const MAFILE_FILTER: (&str, &[&str]) = ("Steam Guard files", &["maFile"]);
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -553,7 +553,7 @@ pub(crate) fn write_private(path: &Path, contents: &[u8]) -> io::Result<()> {
     file.sync_all()
 }
 
-fn read_mafile(path: &Path) -> Result<Account, String> {
+pub(crate) fn read_mafile(path: &Path) -> Result<Account, String> {
     if fs::metadata(path).map_err(|err| err.to_string())?.len() > MAX_MAFILE_LEN {
         return Err("the file is too large to be a .maFile".to_owned());
     }

@@ -9,6 +9,8 @@ export const backend: Record<BackendMessage, string> = {
   'wrong code, check it and try again': '验证码错误，请检查后重试',
   'Steam wants a phone number on the account first':
     'Steam 要求账户先绑定手机号码',
+  'Steam moves Guard by SMS, and the account has no phone number: use the revocation code instead':
+    'Steam 通过短信转移令牌，但该账户没有绑定手机号码：请改用撤销码',
   'open the link in the email Steam sent, then try again':
     '请打开 Steam 发送的邮件中的链接，然后重试',
   'the account already has Steam Guard on another device':
@@ -69,6 +71,11 @@ export const backend: Record<BackendMessage, string> = {
   'nothing to confirm': '没有需要确认的内容',
   'this sign-in has ended, start adding the account again':
     '此次登录已结束，请重新开始添加账户',
+  "the account's Steam Guard is already off, add a new one":
+    '该账户的 Steam 令牌已移除，请添加新的令牌',
+  'this .maFile is for another account': '此 .maFile 属于其他账户',
+  'this .maFile is from an older Steam Guard, Steam no longer takes its codes':
+    '此 .maFile 来自旧的 Steam 令牌，Steam 已不再接受它的代码',
   'this replacement has ended, start it again': '此次更换已结束，请重新开始',
   "the old Steam Guard is off the account, but the new one isn't on yet: {}":
     '旧的 Steam 令牌已从账户移除，但新的尚未启用：{}',
