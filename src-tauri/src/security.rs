@@ -1,5 +1,6 @@
 use lootify_guard_core::api_key;
 use lootify_guard_core::contents::Contents;
+use lootify_guard_core::guard_status::{self, GuardStatus};
 use lootify_guard_core::sessions::{self, Device};
 use lootify_guard_core::standing::{self, Standing};
 use serde::Serialize;
@@ -15,6 +16,19 @@ pub struct ApiKeyView {
     domain: String,
     /// The user said this very key is theirs.
     trusted: bool,
+}
+
+/// Whether Steam has the account's Guard from the vault, another one, or none.
+#[tauri::command]
+pub async fn check_guard(
+    state: State<'_, VaultState>,
+    account_name: String,
+) -> Result<GuardStatus, CommandError> {
+    let (account, proxy) = account_and_proxy(&state, &account_name)?;
+    let result = spawn_blocking(move || guard_status::check(&account, proxy.as_ref())).await?;
+    let (session, status) = settle(&state, &account_name, result)?;
+    store_session(&state, &account_name, Some(session))?;
+    Ok(status)
 }
 
 /// The account's Web API key, or `None` when it has none.

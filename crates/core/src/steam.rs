@@ -362,7 +362,7 @@ pub(crate) fn web_api_post(
     web_api_body(response)
 }
 
-fn web_api_body(response: Response) -> Result<Vec<u8>, SteamError> {
+pub(crate) fn web_api_body(response: Response) -> Result<Vec<u8>, SteamError> {
     if matches!(
         response.status(),
         StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN
