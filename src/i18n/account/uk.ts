@@ -44,7 +44,7 @@ export const account: typeof en = {
     proxy: 'Проксі',
     noProxy: 'Без проксі',
     deletedProxy: 'Видалений проксі',
-    group: 'Група',
+    group: 'Групи',
     note: 'Нотатка',
     notePlaceholder: 'Бачите лише ви',
     noteSaved: 'Нотатку збережено',

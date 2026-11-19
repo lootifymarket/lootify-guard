@@ -18,7 +18,9 @@ import { useT } from '../../i18n/index.ts'
 import { MASK, useStreamerMode } from '../../lib/streamer.ts'
 import { useCopy } from '../../lib/useCopy.ts'
 import { fromAccounts } from './fromAccounts.ts'
-import GroupDialog from './groups/GroupDialog.tsx'
+import GroupDialog, { type GroupsView } from './groups/GroupDialog.tsx'
+import tint from './groups/groupColor.module.css'
+import GroupPills from './groups/GroupPills.tsx'
 import ImportMaFiles from './ImportMaFiles.tsx'
 import { matchesQuery, useCodeSecondsLeft } from './useAccounts.ts'
 import layout from './layout.module.css'
@@ -36,6 +38,7 @@ const SKELETON_ROWS = 6
 
 const EYE =
   'M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'
+const LAYERS = 'M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'
 const EYE_OFF =
   'M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4M6.6 6.6A17 17 0 0 0 2 12s3.6 7 10 7a9.6 9.6 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2'
 
@@ -71,8 +74,7 @@ export default function Accounts({
   // Logins are the only identifier every account has; Steam IDs can be missing.
   const [selectedName, setSelectedName] = useState<string | null>(null)
   const [filter, setFilter] = useState<Filter>('all')
-  // `null` makes a new group; a group edits it.
-  const [editing, setEditing] = useState<{ group: Group | null } | null>(null)
+  const [managing, setManaging] = useState<GroupsView | null>(null)
   const [waiting, setWaiting] = useState<number | null>(null)
   // Balances asked of Steam since the screen opened, so a total can be shown.
   const [walletsRead, setWalletsRead] = useState(false)
@@ -178,8 +180,9 @@ export default function Accounts({
   const proxyNames = new Map(
     proxies.map((proxy) => [proxy.id, proxyTitle(proxy)]),
   )
-  const loose = accounts.filter((account) => account.groupId === null).length
-  const current = groups.find((group) => group.id === filter)
+  const loose = accounts.filter(
+    (account) => account.groupIds.length === 0,
+  ).length
   const issues = accounts.filter(needsLook)
   const playing = accounts.filter((account) => account.playing)
 
@@ -188,16 +191,17 @@ export default function Accounts({
       if (filter === 'all') return true
       if (filter === 'playing') return account.playing
       if (filter === 'issues') return needsLook(account)
-      if (filter === 'none') return account.groupId === null
-      return account.groupId === filter
+      if (filter === 'none') return account.groupIds.length === 0
+      return account.groupIds.includes(filter)
     })
     .filter(
       (account) =>
         matchesQuery(account, query) ||
-        (account.groupId !== null &&
-          (grouped.get(account.groupId) ?? '')
+        account.groupIds.some((id) =>
+          (grouped.get(id) ?? '')
             .toLowerCase()
-            .includes(query.trim().toLowerCase())),
+            .includes(query.trim().toLowerCase()),
+        ),
     )
   // The details follow the filter, so they never show an account the list hides.
   const selected =
@@ -205,15 +209,17 @@ export default function Accounts({
     shown[0] ??
     accounts[0]
 
-  const tabs: { id: Filter; label: string }[] = [
-    { id: 'all', label: t.allCount(accounts.length) },
+  const tabs: { id: Filter; label: string; count?: number; group?: Group }[] = [
+    { id: 'all', label: t.all, count: accounts.length },
     { id: 'playing', label: t.playingTab },
     { id: 'issues', label: t.issuesTab },
-    ...groups.map((group) => ({ id: group.id, label: group.name })),
+    ...groups.map((group) => ({ id: group.id, label: group.name, group })),
     ...(groups.length > 0 && loose > 0
       ? [{ id: 'none' as const, label: t.noGroup }]
       : []),
   ]
+  const newGroupWith = (accountName: string) =>
+    setManaging({ view: 'new', preset: [accountName] })
 
   return (
     <>
@@ -265,14 +271,12 @@ export default function Accounts({
       </div>
 
       <GroupDialog
-        open={editing !== null}
+        start={managing}
         accounts={accounts}
         groups={groups}
-        group={editing?.group ?? null}
-        onClose={() => setEditing(null)}
-        onSaved={(removed) => {
-          setEditing(null)
-          if (removed) setFilter('all')
+        onClose={() => setManaging(null)}
+        onChanged={(removed) => {
+          if (removed === filter) setFilter('all')
           onChanged()
         }}
       />
@@ -290,26 +294,26 @@ export default function Accounts({
                   className={styles.tab}
                   onClick={() => setFilter(tab.id)}
                 >
+                  {tab.group && (
+                    <span className={tint.tint} data-color={tab.group.color}>
+                      <span className={tint.dot} />
+                    </span>
+                  )}
                   {tab.label}
+                  {tab.count !== undefined && (
+                    <span className={styles.tabCount}>{tab.count}</span>
+                  )}
                 </button>
               ))}
             </div>
             <span className={styles.groupLinks}>
-              {current && (
-                <button
-                  type="button"
-                  className={styles.groupLink}
-                  onClick={() => setEditing({ group: current })}
-                >
-                  {t.editGroup(current.name)}
-                </button>
-              )}
               <button
                 type="button"
                 className={styles.groupLink}
-                onClick={() => setEditing({ group: null })}
+                onClick={() => setManaging({ view: 'list' })}
               >
-                {t.newGroup}
+                <Icon path={LAYERS} size={14} stroke={1.8} />
+                {t.manageGroups}
               </button>
             </span>
           </div>
@@ -331,11 +335,9 @@ export default function Accounts({
                   <Row
                     key={account.accountName}
                     account={account}
-                    group={
-                      account.groupId === null
-                        ? null
-                        : (grouped.get(account.groupId) ?? null)
-                    }
+                    groups={groups}
+                    onChanged={onChanged}
+                    onNewGroup={() => newGroupWith(account.accountName)}
                     selected={account === selected}
                     onSelect={() => setSelectedName(account.accountName)}
                     onOpen={() => onOpen(account.accountName)}
@@ -352,11 +354,9 @@ export default function Accounts({
         <Details
           key={selected.accountName}
           account={selected}
-          group={
-            selected.groupId === null
-              ? null
-              : (grouped.get(selected.groupId) ?? null)
-          }
+          groups={groups}
+          onChanged={onChanged}
+          onNewGroup={() => newGroupWith(selected.accountName)}
           proxy={
             selected.proxyId === null
               ? null
@@ -428,13 +428,17 @@ function note(account: Account) {
 
 function Row({
   account,
-  group,
+  groups,
+  onChanged,
+  onNewGroup,
   selected,
   onSelect,
   onOpen,
 }: {
   account: Account
-  group: string | null
+  groups: Group[]
+  onChanged: () => void
+  onNewGroup: () => void
   selected: boolean
   onSelect: () => void
   onOpen: () => void
@@ -459,8 +463,14 @@ function Row({
           )}
         </span>
       </span>
-      <span role="cell" className={`${styles.muted} ${styles.ellipsis}`}>
-        {group ?? '—'}
+      <span role="cell">
+        <GroupPills
+          accountName={account.accountName}
+          groupIds={account.groupIds}
+          groups={groups}
+          onChanged={onChanged}
+          onNewGroup={onNewGroup}
+        />
       </span>
       <span role="cell">
         <Status account={account} />
@@ -498,14 +508,18 @@ function Row({
 
 function Details({
   account,
-  group,
+  groups,
+  onChanged,
+  onNewGroup,
   proxy,
   codesExpireAt,
   onOpen,
   onBrowse,
 }: {
   account: Account
-  group: string | null
+  groups: Group[]
+  onChanged: () => void
+  onNewGroup: () => void
   proxy: string | null
   codesExpireAt: number
   onOpen: () => void
@@ -585,7 +599,16 @@ function Details({
         </div>
         <div className={styles.fact}>
           <dt>{t.columns.group}</dt>
-          <dd className={styles.ellipsis}>{group ?? t.noGroup}</dd>
+          <dd className={styles.groupsFact}>
+            <GroupPills
+              accountName={account.accountName}
+              groupIds={account.groupIds}
+              groups={groups}
+              onChanged={onChanged}
+              onNewGroup={onNewGroup}
+              emptyLabel={t.noGroup}
+            />
+          </dd>
         </div>
       </dl>
       <div className={styles.detailsActions}>

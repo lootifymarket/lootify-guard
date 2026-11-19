@@ -36,7 +36,7 @@ export default function AutoConfirmRules({
   const t = useT().guard.rulesDialog
   const [groupFilter, setGroupFilter] = useState('')
   const shown = accounts.filter((account) =>
-    inGroup(account.groupId, groupFilter),
+    inGroup(account.groupIds, groupFilter),
   )
   return (
     <Dialog open={open} title={t.title} wide onClose={onClose}>

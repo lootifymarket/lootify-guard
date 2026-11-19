@@ -39,7 +39,7 @@ export const account = {
     proxy: 'Proxy',
     noProxy: 'No proxy',
     deletedProxy: 'Deleted proxy',
-    group: 'Group',
+    group: 'Groups',
     note: 'Note',
     notePlaceholder: 'Only you see it',
     noteSaved: 'Note saved',
