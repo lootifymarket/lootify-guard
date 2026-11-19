@@ -7,13 +7,17 @@ import type { ConfirmBy } from './addAccount.ts'
  */
 export type ReplaceMethod = 'sms' | 'revocationCode'
 
-export type Replaced = { revocationCode: string | null }
+/** `guardOn` is false when Steam shows no authenticator on the account. */
+export type Begun = { guardOn: boolean }
+
+/** `guardOn` is false when Steam took the code but didn't turn the new one on. */
+export type Replaced = { revocationCode: string | null; guardOn: boolean }
 
 /** `password` is `null` when the user picked biometrics. */
 export const replaceGuardBegin = (
   accountName: string,
   password: string | null,
-) => invoke<void>('replace_guard_begin', { accountName, password })
+) => invoke<Begun>('replace_guard_begin', { accountName, password })
 
 export const replaceGuardStart = (method: ReplaceMethod) =>
   invoke<ConfirmBy>('replace_guard_start', { method })
