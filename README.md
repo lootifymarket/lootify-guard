@@ -55,15 +55,6 @@ npm run tauri build   # build an installer
 
 The Rust code is in `crates/core` (Steam, the vault, everything that doesn't need a window) and `src-tauri` (the app around it). The interface is React in `src`.
 
-## Releasing
-
-1. Raise the version on `dev`: `npm run release:version 0.2.0`, and merge it.
-2. Open a PR from `dev` into `main`. What it says becomes the release notes.
-3. Merge it. GitHub Actions builds both platforms into a draft release.
-4. Check the draft and publish it. Publishing makes the `v0.2.0` tag, and installed apps pick the new version up from `latest.json`.
-
-The workflow signs updates with the `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` secrets. The matching public key is in `src-tauri/tauri.conf.json`. Losing the private key means installed apps can't be updated anymore.
-
 ## License
 
 [GPL-3.0](LICENSE). You can use, change and share it, and anything built from it has to stay open under the same license.
