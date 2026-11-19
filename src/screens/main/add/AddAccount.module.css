@@ -59,8 +59,19 @@
   display: flex;
   align-items: center;
   gap: 16px;
+  width: 100%;
   padding: 18px 4px;
+  border: 0;
   border-bottom: 1px solid var(--color-line);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.method:disabled {
+  cursor: default;
 }
 
 .ring {
@@ -87,7 +98,7 @@
   font-weight: 500;
 }
 
-.method[aria-disabled='true'] .methodName {
+.method:disabled .methodName {
   color: var(--color-text-faint);
 }
 

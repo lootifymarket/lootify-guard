@@ -9,6 +9,7 @@ import {
   addAccountCancel,
   addAccountConfirm,
   addAccountGuard,
+  addAccountImportMaFile,
   addAccountSignIn,
   addAccountSignInCode,
   saveNewRevocationCode,
@@ -105,6 +106,11 @@ export default function AddAccount({ onCancel, onAdded, onDone }: Props) {
           onPhone={stage.onPhone}
           onBack={restart}
           onSent={(method, by) => setAsking({ for: 'guard', method, by })}
+          onImported={(accountName) => {
+            toast(t.guardAdded)
+            onAdded()
+            onDone(accountName)
+          }}
         />
       )}
       {stage.step === 2 && (
@@ -252,30 +258,54 @@ function SignIn({
   )
 }
 
-const METHODS: GuardMethod[] = ['new', 'move']
+type Choice = GuardMethod | 'maFile'
+
+// Guard on a phone can't get a new one next to it, only be moved, taken off or imported.
+const ON_PHONE: Choice[] = ['move', 'revocationCode', 'maFile']
 
 function Guard({
   accountName,
   onPhone,
   onBack,
   onSent,
+  onImported,
 }: {
   accountName: string
   onPhone: boolean
   onBack: () => void
   onSent: (method: GuardMethod, by: ConfirmBy) => void
+  onImported: (accountName: string) => void
 }) {
   const common = useT().common
   const t = useT().addAccount
-  const method: GuardMethod = onPhone ? 'move' : 'new'
+  const choices: Choice[] = onPhone ? ON_PHONE : ['new']
+  const [choice, setChoice] = useState(choices[0])
+  const [noPhone, setNoPhone] = useState(false)
+  const [revocationCode, setRevocationCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const needsCode = choice === 'revocationCode' && !revocationCode
 
   async function send() {
     setBusy(true)
     setError('')
     try {
-      onSent(method, await addAccountGuard(method))
+      if (choice === 'maFile') {
+        const name = await addAccountImportMaFile()
+        if (name) onImported(name)
+      } else {
+        const started = await addAccountGuard(
+          choice,
+          choice === 'revocationCode' ? revocationCode : null,
+        )
+        if (started.outcome === 'sent') {
+          onSent(choice, started.confirmBy)
+        } else {
+          // Not an error to show: moving just isn't open to this account.
+          setNoPhone(true)
+          setChoice('revocationCode')
+        }
+      }
     } catch (err) {
       setError(errorMessage(err))
     }
@@ -289,28 +319,48 @@ function Guard({
         {onPhone ? t.guardOnPhone(accountName) : t.noAuthenticator(accountName)}
       </p>
       <div className={styles.methods} role="radiogroup" aria-label={t.method}>
-        {METHODS.map((id) => {
+        {choices.map((id) => {
           const item = t.methods[id]
-          const available = id === method
+          const closed = id === 'move' && noPhone
           return (
-            <div
+            <button
               key={id}
+              type="button"
               role="radio"
-              aria-checked={available}
-              aria-disabled={!available}
+              aria-checked={id === choice}
+              disabled={closed}
               className={styles.method}
+              onClick={() => {
+                if (busy) return
+                setChoice(id)
+                setError('')
+              }}
             >
               <span className={styles.ring} aria-hidden="true" />
               <span className={styles.methodWords}>
                 <span className={styles.methodName}>{item.name}</span>
                 <span className={styles.methodText}>
-                  {available ? item.text : item.unavailable}
+                  {closed ? t.methods.move.noPhone : item.text}
                 </span>
               </span>
-            </div>
+            </button>
           )
         })}
       </div>
+      {choice === 'revocationCode' && (
+        <TextField
+          label={t.revocationCodeLabel}
+          autoComplete="off"
+          autoCapitalize="characters"
+          spellCheck={false}
+          value={revocationCode}
+          onChange={(event) =>
+            setRevocationCode(
+              event.target.value.replace(/\s/g, '').toUpperCase(),
+            )
+          }
+        />
+      )}
       <p className={styles.note}>{t.tradeHold}</p>
       {error && (
         <p className={styles.error} role="alert">
@@ -321,8 +371,16 @@ function Guard({
         <Button variant="secondary" onClick={onBack}>
           {common.back}
         </Button>
-        <Button busy={busy} disabled={busy} onClick={() => void send()}>
-          {busy ? t.askingSteam : common.continue}
+        <Button
+          busy={busy}
+          disabled={busy || needsCode}
+          onClick={() => void send()}
+        >
+          {busy
+            ? t.askingSteam
+            : choice === 'maFile'
+              ? t.chooseMaFile
+              : common.continue}
         </Button>
       </div>
     </div>

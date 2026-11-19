@@ -112,6 +112,7 @@ fn main() {
             add_account::add_account_sign_in,
             add_account::add_account_sign_in_code,
             add_account::add_account_guard,
+            add_account::add_account_import_mafile,
             add_account::add_account_confirm,
             add_account::save_new_revocation_code,
             add_account::add_account_cancel,

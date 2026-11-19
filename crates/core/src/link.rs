@@ -6,14 +6,16 @@ use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use serde::Serialize;
 use steamguard::accountlinker::{AccountLinkConfirmType, RemoveAuthenticatorError, TransferError};
-use steamguard::protobufs::service_twofactor::CTwoFactor_FinalizeAddAuthenticator_Request;
+use steamguard::protobufs::service_twofactor::{
+    CTwoFactor_FinalizeAddAuthenticator_Request, CTwoFactor_Status_Response,
+};
 use steamguard::protobufs::steammessages_auth_steamclient::EAuthSessionGuardType;
 use steamguard::steamapi::{EResult, TwoFactorClient};
 use steamguard::token::Tokens;
 use steamguard::transport::{TransportError, WebApiTransport};
 use steamguard::{AccountLinkError, AccountLinker, ExposeSecret, SteamGuardAccount, UserLogin};
 
-use crate::contents::{Account, Authenticator, AutoConfirm, Secret};
+use crate::contents::{Account, Authenticator, AutoConfirm, Secret, Session};
 use crate::games::PlayingList;
 use crate::proxy::ProxyAddress;
 use crate::steam::{
@@ -194,16 +196,35 @@ impl NewGuard {
 
     /// Whether Steam has an authenticator on the account right now.
     pub fn guard_is_on(&self) -> Result<bool, SteamError> {
+        Ok(self.status()?.state() != 0)
+    }
+
+    /// The token GID of the authenticator Steam has on the account now, when it says.
+    pub fn guard_token_gid(&self) -> Result<Option<String>, SteamError> {
+        let status = self.status()?;
+        Ok(
+            Some(status.token_gid().to_owned())
+                .filter(|gid| status.state() != 0 && !gid.is_empty()),
+        )
+    }
+
+    fn status(&self) -> Result<CTwoFactor_Status_Response, SteamError> {
         let mut account = SteamGuardAccount::new();
         account.steam_id = self.steam_id;
-        let status = self
-            .linker
-            .query_status(&account)
-            .map_err(|err| match err {
-                TransportError::Unauthorized => SteamError::SessionExpired,
-                err => unknown(&err),
-            })?;
-        Ok(status.state() != 0)
+        self.linker.query_status(&account).map_err(|err| match err {
+            TransportError::Unauthorized => SteamError::SessionExpired,
+            err => unknown(&err),
+        })
+    }
+
+    /// The account this sign-in is for, by its SteamID.
+    pub fn steam_id(&self) -> u64 {
+        self.steam_id
+    }
+
+    /// The session this sign-in got, to keep with the account.
+    pub fn session(&self) -> Session {
+        session_of(self.linker.tokens())
     }
 
     /// Asks Steam to move Guard here from the phone; it sends an SMS to confirm with.
@@ -349,8 +370,11 @@ fn link_error(err: AccountLinkError) -> SteamError {
 fn transfer_error(err: TransferError) -> SteamError {
     match err {
         TransferError::BadSmsCode => SteamError::WrongCode,
-        // Seen when the account has no phone number, which moving needs.
-        TransferError::GenericFailure => SteamError::NeedsPhone,
+        // Steam moves Guard only by SMS, and Guard in the app doesn't need a number.
+        // GenericFailure has been seen for the same thing.
+        TransferError::GenericFailure | TransferError::UnknownEResult(EResult::NoVerifiedPhone) => {
+            SteamError::MoveNeedsPhone
+        }
         TransferError::UnknownEResult(result) => SteamError::Steam(format!("{result:?}")),
         TransferError::Transport(err) => unknown(&err),
         TransferError::Unknown(err) => unknown(&*err),

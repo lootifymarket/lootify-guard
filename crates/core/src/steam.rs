@@ -61,6 +61,10 @@ pub enum SteamError {
     WrongCode,
     #[error("Steam wants a phone number on the account first")]
     NeedsPhone,
+    #[error(
+        "Steam moves Guard by SMS, and the account has no phone number: use the revocation code instead"
+    )]
+    MoveNeedsPhone,
     #[error("open the link in the email Steam sent, then try again")]
     ConfirmEmail,
     #[error("the account already has Steam Guard on another device")]
