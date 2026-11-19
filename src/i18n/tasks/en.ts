@@ -86,9 +86,11 @@ export const tasks = {
 
   profile: {
     nickname: 'Nickname',
+    random: 'Random',
+    randomHint: 'A different random nickname for every account',
     keepAsIs: 'Keep as is',
     templateNote:
-      '{n} becomes the account’s place in the group: farm {n} gives farm 1, farm 2…',
+      '{n} becomes the account’s place in the group: farm {n} gives farm 1, farm 2… {random} gives each account its own random nickname.',
     privacy: {
       profile: 'Profile',
       inventory: 'Inventory',

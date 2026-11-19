@@ -231,6 +231,7 @@ export const account: typeof en = {
     loading: '正在加载个人资料…',
     saved: '已在 Steam 上更新个人资料',
     nickname: '昵称',
+    randomNickname: '随机昵称',
     url: '个人资料链接',
     notSet: '未设置',
     summary: '简介',
@@ -247,6 +248,8 @@ export const account: typeof en = {
     pastNames: '曾用昵称',
     clearHistory: '清除昵称历史',
     saving: '正在保存…',
+    reset: '重置',
+    resetHint: '恢复为 Steam 上的当前内容',
     clearTitle: '清除昵称历史？',
     clearText:
       'Steam 将删除其他人在个人资料中看到的曾用昵称列表。此操作无法撤销。',

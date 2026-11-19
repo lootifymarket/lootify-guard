@@ -144,6 +144,7 @@ fn main() {
             profile::new_trade_url,
             profile::wallet_balance,
             profile::profile_settings,
+            profile::random_nickname,
             profile::save_profile,
             profile::clear_name_history,
             profile::change_avatar,

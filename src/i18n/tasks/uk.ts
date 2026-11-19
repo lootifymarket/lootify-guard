@@ -91,9 +91,11 @@ export const tasks: typeof en = {
 
   profile: {
     nickname: 'Нікнейм',
+    random: 'Випадковий',
+    randomHint: 'Власний випадковий нікнейм для кожного акаунта',
     keepAsIs: 'Залишити як є',
     templateNote:
-      '{n} замінюється номером акаунта в групі: з farm {n} вийде farm 1, farm 2…',
+      '{n} замінюється номером акаунта в групі: з farm {n} вийде farm 1, farm 2… {random} дає кожному акаунту власний випадковий нікнейм.',
     privacy: {
       profile: 'Профіль',
       inventory: 'Інвентар',

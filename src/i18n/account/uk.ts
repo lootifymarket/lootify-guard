@@ -248,6 +248,7 @@ export const account: typeof en = {
     loading: 'Завантажуємо профіль…',
     saved: 'Профіль оновлено в Steam',
     nickname: 'Нікнейм',
+    randomNickname: 'Випадковий нікнейм',
     url: 'Посилання на профіль',
     notSet: 'Не задано',
     summary: 'Про себе',
@@ -264,6 +265,8 @@ export const account: typeof en = {
     pastNames: 'Попередні нікнейми',
     clearHistory: 'Очистити історію нікнеймів',
     saving: 'Зберігаємо…',
+    reset: 'Скинути',
+    resetHint: 'Повернути те, що зараз у Steam',
     clearTitle: 'Очистити історію нікнеймів?',
     clearText:
       'Steam видалить список попередніх нікнеймів, який інші бачать у профілі. Цього не скасувати.',

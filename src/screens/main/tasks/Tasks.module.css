@@ -162,6 +162,17 @@
   gap: 14px;
 }
 
+.nickname {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.nickname > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
 .optionGroup {
   display: flex;
   flex-direction: column;
