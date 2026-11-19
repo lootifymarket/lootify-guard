@@ -11,6 +11,7 @@ pub mod forward;
 pub mod free_games;
 pub mod games;
 pub mod guard;
+pub mod guard_status;
 pub mod idle;
 pub mod inventory;
 pub mod licenses;

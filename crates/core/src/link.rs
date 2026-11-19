@@ -6,12 +6,12 @@ use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use serde::Serialize;
 use steamguard::accountlinker::{AccountLinkConfirmType, RemoveAuthenticatorError, TransferError};
+use steamguard::protobufs::service_twofactor::CTwoFactor_FinalizeAddAuthenticator_Request;
 use steamguard::protobufs::steammessages_auth_steamclient::EAuthSessionGuardType;
+use steamguard::steamapi::{EResult, TwoFactorClient};
 use steamguard::token::Tokens;
 use steamguard::transport::{TransportError, WebApiTransport};
-use steamguard::{
-    AccountLinkError, AccountLinker, ExposeSecret, FinalizeLinkError, SteamGuardAccount, UserLogin,
-};
+use steamguard::{AccountLinkError, AccountLinker, ExposeSecret, SteamGuardAccount, UserLogin};
 
 use crate::contents::{Account, Authenticator, AutoConfirm, Secret};
 use crate::games::PlayingList;
@@ -24,6 +24,8 @@ use crate::steam::{
 // SDA gives up after this many.
 const MAX_FINALIZE_ROUNDS: usize = 30;
 const CODE_PERIOD_SECS: u64 = 30;
+// What Steam's finalize answer says when the code from the SMS or email is wrong.
+const STATUS_WRONG_ACTIVATION_CODE: i32 = 89;
 
 /// What Steam asks for before it gives a session to an account that isn't in the vault.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -106,6 +108,7 @@ impl NewSignIn {
         Ok(NewGuard {
             steam_id: steam_id_of(&tokens)?,
             guard_on_phone: self.code == Some(SignInCode::Phone),
+            client: TwoFactorClient::new(self.transport.clone()),
             linker: AccountLinker::new(self.transport, tokens),
             pending: None,
         })
@@ -141,8 +144,10 @@ pub fn begin_replace(
         access_token.expose().to_owned(),
         session.refresh_token.expose().to_owned(),
     );
+    let transport = WebApiTransport::new(client);
     Ok(NewGuard {
-        linker: AccountLinker::new(WebApiTransport::new(client), tokens),
+        client: TwoFactorClient::new(transport.clone()),
+        linker: AccountLinker::new(transport, tokens),
         steam_id,
         guard_on_phone: false,
         pending: None,
@@ -152,6 +157,8 @@ pub fn begin_replace(
 /// A signed-in account that gets an authenticator on this device.
 pub struct NewGuard {
     linker: AccountLinker<WebApiTransport>,
+    /// The same connection, for the calls whose answers the linker doesn't read in full.
+    client: TwoFactorClient<WebApiTransport>,
     steam_id: u64,
     /// Steam Guard is already on a phone, so it can only be moved here.
     pub guard_on_phone: bool,
@@ -185,6 +192,20 @@ impl NewGuard {
         Ok(by)
     }
 
+    /// Whether Steam has an authenticator on the account right now.
+    pub fn guard_is_on(&self) -> Result<bool, SteamError> {
+        let mut account = SteamGuardAccount::new();
+        account.steam_id = self.steam_id;
+        let status = self
+            .linker
+            .query_status(&account)
+            .map_err(|err| match err {
+                TransportError::Unauthorized => SteamError::SessionExpired,
+                err => unknown(&err),
+            })?;
+        Ok(status.state() != 0)
+    }
+
     /// Asks Steam to move Guard here from the phone; it sends an SMS to confirm with.
     pub fn start_move(&mut self) -> Result<ConfirmBy, SteamError> {
         self.linker.transfer_start().map_err(transfer_error)?;
@@ -211,7 +232,7 @@ impl NewGuard {
                 account,
                 server_time,
             }) => {
-                finalize(&mut self.linker, account, *server_time, code)?;
+                finalize(&self.linker, &self.client, account, *server_time, code)?;
                 (**account).clone()
             }
         };
@@ -220,21 +241,49 @@ impl NewGuard {
     }
 }
 
+/// steamguard's own finalize reads only the result code, and Steam answers a wrong
+/// email or SMS code with an OK one, so the answer itself is read here.
 fn finalize(
-    linker: &mut AccountLinker<WebApiTransport>,
-    account: &mut SteamGuardAccount,
+    linker: &AccountLinker<WebApiTransport>,
+    client: &TwoFactorClient<WebApiTransport>,
+    account: &SteamGuardAccount,
     mut server_time: u64,
     code: &str,
 ) -> Result<(), SteamError> {
     for _ in 0..MAX_FINALIZE_ROUNDS {
-        match linker.finalize(server_time, account, code.to_owned()) {
-            Ok(()) => return Ok(()),
-            // Each round needs a code from a later window than the one before.
-            Err(FinalizeLinkError::WantMore { server_time: next }) => {
-                server_time = next.max(server_time + CODE_PERIOD_SECS);
-            }
-            Err(err) => return Err(finalize_error(err)),
+        let mut request = CTwoFactor_FinalizeAddAuthenticator_Request::new();
+        request.set_steamid(account.steam_id);
+        request.set_authenticator_code(account.generate_code(server_time));
+        request.set_authenticator_time(server_time);
+        request.set_activation_code(code.to_owned());
+        request.set_validate_sms_code(true);
+        let response = client
+            .finalize_authenticator(request, linker.tokens().access_token())
+            .map_err(|err| match err {
+                TransportError::Unauthorized => SteamError::SessionExpired,
+                err => unknown(&err),
+            })?;
+        match response.result() {
+            EResult::OK => {}
+            EResult::TwoFactorActivationCodeMismatch => return Err(SteamError::WrongCode),
+            result => return Err(SteamError::Steam(format!("{result:?}"))),
         }
+        let answer = response.into_response_data();
+        if answer.status() == STATUS_WRONG_ACTIVATION_CODE {
+            return Err(SteamError::WrongCode);
+        }
+        if answer.want_more() {
+            // Each round needs a code from a later window than the one before.
+            server_time = answer.server_time().max(server_time + CODE_PERIOD_SECS);
+            continue;
+        }
+        if !answer.success() {
+            return Err(SteamError::Steam(format!(
+                "Steam didn't turn the new authenticator on (status {})",
+                answer.status()
+            )));
+        }
+        return Ok(());
     }
     Err(SteamError::Steam(
         "Steam didn't accept the new authenticator's codes".to_owned(),
@@ -294,18 +343,6 @@ fn link_error(err: AccountLinkError) -> SteamError {
         }
         AccountLinkError::UnknownEResult(result) => SteamError::Steam(format!("{result:?}")),
         AccountLinkError::Unknown(err) => unknown(&*err),
-    }
-}
-
-fn finalize_error(err: FinalizeLinkError) -> SteamError {
-    match err {
-        FinalizeLinkError::BadSmsCode => SteamError::WrongCode,
-        FinalizeLinkError::UnknownEResult(result) => SteamError::Steam(format!("{result:?}")),
-        FinalizeLinkError::TransportError(err) => unknown(&err),
-        FinalizeLinkError::Unknown(err) => unknown(&*err),
-        FinalizeLinkError::WantMore { .. } => {
-            SteamError::Steam("Steam wants more codes".to_owned())
-        }
     }
 }
 

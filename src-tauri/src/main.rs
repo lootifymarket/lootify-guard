@@ -130,6 +130,7 @@ fn main() {
             replace_guard::replace_guard_confirm,
             replace_guard::replace_guard_cancel,
             security::check_api_key,
+            security::check_guard,
             security::trust_api_key,
             security::revoke_api_key,
             security::list_devices,

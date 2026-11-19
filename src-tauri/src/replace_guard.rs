@@ -2,6 +2,7 @@ use std::sync::{Mutex, MutexGuard, PoisonError};
 
 use lootify_guard_core::contents::Contents;
 use lootify_guard_core::link::{self, ConfirmBy, NewGuard};
+use lootify_guard_core::steam::SteamError;
 use serde::{Deserialize, Serialize};
 use tauri::State;
 use tauri::async_runtime::spawn_blocking;
@@ -33,8 +34,17 @@ pub enum ReplaceMethod {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct Begun {
+    /// Steam shows no authenticator on the account, so a new one is just added.
+    guard_on: bool,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Replaced {
     revocation_code: Option<String>,
+    /// Steam may accept the code and still not turn the authenticator on.
+    guard_on: bool,
 }
 
 impl ReplaceGuardState {
@@ -58,25 +68,30 @@ impl ReplaceGuardState {
     }
 }
 
-/// Checks that it's the owner, since the old Guard can be taken off from here, and
-/// gets a live session for the account.
+/// Checks that it's the owner, since the old Guard can be taken off from here, gets a
+/// live session for the account, and asks Steam whether Guard is on it at all.
 #[tauri::command]
 pub async fn replace_guard_begin(
     state: State<'_, VaultState>,
     flow: State<'_, ReplaceGuardState>,
     account_name: String,
     password: Option<String>,
-) -> Result<(), CommandError> {
+) -> Result<Begun, CommandError> {
     confirm_owner(&state, password, "replace Steam Guard").await?;
     let (account, proxy) = account_and_proxy(&state, &account_name)?;
-    let result = spawn_blocking(move || link::begin_replace(&account, proxy.as_ref())).await?;
-    let guard = settle(&state, &account_name, result)?;
+    let result = spawn_blocking(move || {
+        let guard = link::begin_replace(&account, proxy.as_ref())?;
+        let on = guard.guard_is_on()?;
+        Ok::<_, SteamError>((guard, on))
+    })
+    .await?;
+    let (guard, guard_on) = settle(&state, &account_name, result)?;
     flow.put(Replacing {
         account_name,
         guard,
-        removed: false,
+        removed: !guard_on,
     });
-    Ok(())
+    Ok(Begun { guard_on })
 }
 
 /// Asks Steam for the new authenticator. Either way Steam sends a code that
@@ -145,11 +160,16 @@ pub async fn replace_guard_confirm(
 ) -> Result<Replaced, CommandError> {
     let mut current = flow.take(&state)?;
     let (current, result) = spawn_blocking(move || {
-        let result = current.guard.confirm(code.trim());
+        let result = current.guard.confirm(code.trim()).map(|new| {
+            // The secrets are saved either way: if the check can't be made, Steam
+            // took the code, so they're the ones it knows.
+            let on = current.guard.guard_is_on().unwrap_or(true);
+            (new, on)
+        });
         (current, result)
     })
     .await?;
-    let new = match result {
+    let (new, guard_on) = match result {
         Ok(new) => new,
         Err(err) => {
             flow.put(current);
@@ -171,6 +191,7 @@ pub async fn replace_guard_confirm(
             .revocation_code
             .as_ref()
             .map(|code| code.expose().to_owned()),
+        guard_on,
     };
     vault.save_data(contents.to_bytes())?;
     Ok(replaced)

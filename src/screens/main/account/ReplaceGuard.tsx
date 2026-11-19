@@ -18,6 +18,8 @@ import styles from './AccountPage.module.css'
 type Props = {
   open: boolean
   hasRevocationCode: boolean
+  /** Steam shows an authenticator on the account; without one a new one is just added. */
+  guardOn: boolean
   onClose: () => void
   /** The vault holds the new secrets now. */
   onReplaced: () => void
@@ -39,7 +41,7 @@ export default function ReplaceGuard({ open, onClose, ...rest }: Props) {
   return (
     <Dialog
       open={open}
-      title={t.title}
+      title={rest.guardOn ? t.title : t.addTitle}
       onClose={onClose}
       initialFocus={codeField}
     >
@@ -50,6 +52,7 @@ export default function ReplaceGuard({ open, onClose, ...rest }: Props) {
 
 function Flow({
   hasRevocationCode,
+  guardOn,
   codeField,
   onClose,
   onReplaced,
@@ -61,6 +64,7 @@ function Flow({
     return (
       <How
         hasRevocationCode={hasRevocationCode}
+        guardOn={guardOn}
         onCancel={onClose}
         onSent={(method, by) => setStep({ name: 'code', method, by })}
       />
@@ -87,10 +91,12 @@ function Flow({
 
 function How({
   hasRevocationCode,
+  guardOn,
   onCancel,
   onSent,
 }: {
   hasRevocationCode: boolean
+  guardOn: boolean
   onCancel: () => void
   onSent: (method: ReplaceMethod, by: ConfirmBy) => void
 }) {
@@ -113,7 +119,7 @@ function How({
   return (
     <>
       <p className={dialogStyles.text}>
-        {hasRevocationCode ? t.methods : t.smsOnly}
+        {!guardOn ? t.noGuard : hasRevocationCode ? t.methods : t.smsOnly}
       </p>
       <p className={styles.muted}>{t.tradeHold}</p>
       {error && (
@@ -122,7 +128,7 @@ function How({
         </p>
       )}
       <div className={styles.formActions}>
-        {hasRevocationCode && (
+        {guardOn && hasRevocationCode && (
           <Button
             variant="secondary"
             size="sm"
@@ -143,7 +149,7 @@ function How({
             disabled={busy !== null}
             onClick={() => void start('sms')}
           >
-            {busy === 'sms' ? t.askingSteam : t.sendSms}
+            {busy === 'sms' ? t.askingSteam : guardOn ? t.sendSms : t.addGuard}
           </Button>
         </div>
       </div>
@@ -234,7 +240,11 @@ function Done({
 
   return (
     <>
-      <p className={dialogStyles.text}>{t.replaced}</p>
+      {replaced.guardOn ? (
+        <p className={dialogStyles.text}>{t.replaced}</p>
+      ) : (
+        <p className={styles.ruleWarning}>{t.notOnYet}</p>
+      )}
       {code ? (
         <>
           <span className={styles.newCode}>{code}</span>

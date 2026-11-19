@@ -2,6 +2,8 @@ export const account = {
   back: '← Accounts',
   importedFromMaFile: 'Imported from .maFile',
   guardTitle: 'Steam Guard',
+  noGuard: 'No Steam Guard',
+  guardElsewhere: 'Steam Guard is on another device',
   copy: 'Copy',
   refresh: 'Refresh',
   refreshTitle:
@@ -29,6 +31,15 @@ export const account = {
     checking: 'Checking…',
     signIn: 'Sign in',
     sessionAccepted: 'Steam accepted the session.',
+    steamGuard: 'Steam Guard',
+    guardHere: 'On',
+    guardElsewhere: 'On another device',
+    guardOff: 'Off in Steam',
+    guardElsewhereHint:
+      'Steam has a different one on this account, so codes from here don’t work.',
+    guardOffHint:
+      'Steam shows no Steam Guard on this account, so trades are held.',
+    needsGuard: 'Needs Steam Guard',
     webApiKey: 'Web API key',
     signInToCheck: 'Sign in to check',
     activeSessions: 'Active sessions',
@@ -56,6 +67,7 @@ export const account = {
       `Signed out ${n} ${n === 1 ? 'device' : 'devices'}.`,
     signOutEverywhere: 'Sign out everywhere',
     replaceGuard: 'Replace Steam Guard',
+    addGuard: 'Add Steam Guard',
     exportMaFile: 'Export .maFile',
     exportDetails: 'Export with details',
     remove: 'Remove from Lootify Guard',
@@ -153,12 +165,18 @@ export const account = {
   },
   replaceGuard: {
     title: 'Replace Steam Guard',
+    addTitle: 'Add Steam Guard',
+    addConfirmText:
+      'Steam makes a new Steam Guard for this account, kept in this app. Confirm it’s you first.',
     confirmText:
       'Steam makes new Guard secrets for this account. Every other copy, like a .maFile, SDA or a phone, stops giving working codes. Confirm it’s you first.',
     continue: 'Continue',
     methods:
       'Steam confirms by SMS to the account’s phone. With no phone on the account, use the revocation code: it takes the old Guard off, then Steam confirms the new one by email.',
     smsOnly: 'Steam confirms by SMS to the account’s phone.',
+    noGuard:
+      'Steam shows no Steam Guard on this account, so a new one is added here. Steam sends a code to confirm it.',
+    addGuard: 'Add Steam Guard',
     tradeHold: 'Steam holds trades and market listings for a while after.',
     sendSms: 'Send SMS',
     useRevocationCode: 'Use the revocation code',
@@ -179,6 +197,8 @@ export const account = {
     newRevocationCode:
       'The new revocation code. The old one no longer works. Keep a copy outside this computer.',
     noRevocationCode: 'Steam gave no new revocation code.',
+    notOnYet:
+      'Steam took the code, but doesn’t show the new Steam Guard as on. Run Replace Steam Guard again to add it.',
     copyCode: 'Copy code',
     signOutHint:
       'Whoever had the old copy may still be signed in. Sign out every other device and change the password.',

@@ -8,6 +8,8 @@ export const account: typeof en = {
   back: '← Акаунти',
   importedFromMaFile: 'Імпортовано з .maFile',
   guardTitle: 'Steam Guard',
+  noGuard: 'Немає Steam Guard',
+  guardElsewhere: 'Steam Guard на іншому пристрої',
   copy: 'Копіювати',
   refresh: 'Оновити',
   refreshTitle: 'Знову завантажити зі Steam профіль, гаманець і дані безпеки',
@@ -34,6 +36,15 @@ export const account: typeof en = {
     checking: 'Перевіряємо…',
     signIn: 'Увійти',
     sessionAccepted: 'Steam прийняв сесію.',
+    steamGuard: 'Steam Guard',
+    guardHere: 'Увімкнено',
+    guardElsewhere: 'На іншому пристрої',
+    guardOff: 'Вимкнено в Steam',
+    guardElsewhereHint:
+      'У Steam на цьому акаунті інший Steam Guard, тож коди звідси не працюють.',
+    guardOffHint:
+      'Steam не бачить Steam Guard на цьому акаунті, тож трейди затримуються.',
+    needsGuard: 'Потрібен Steam Guard',
     webApiKey: 'Ключ Web API',
     signInToCheck: 'Увійдіть, щоб перевірити',
     activeSessions: 'Активні сесії',
@@ -60,6 +71,7 @@ export const account: typeof en = {
     signedOutDevices: (n) => `Вихід виконано на ${n} ${devices(n)}.`,
     signOutEverywhere: 'Вийти всюди',
     replaceGuard: 'Замінити Steam Guard',
+    addGuard: 'Додати Steam Guard',
     exportMaFile: 'Експорт .maFile',
     exportDetails: 'Експорт з даними',
     remove: 'Видалити з Lootify Guard',
@@ -156,12 +168,18 @@ export const account: typeof en = {
   },
   replaceGuard: {
     title: 'Замінити Steam Guard',
+    addTitle: 'Додати Steam Guard',
+    addConfirmText:
+      'Steam створить новий Steam Guard для цього акаунта, він зберігатиметься в цьому застосунку. Спершу підтвердьте, що це ви.',
     confirmText:
       'Steam створить нові секрети Guard для цього акаунта. Усі інші копії — .maFile, SDA чи телефон — перестануть давати робочі коди. Спершу підтвердьте, що це ви.',
     continue: 'Продовжити',
     methods:
       'Steam підтвердить через SMS на телефон акаунта. Якщо телефону немає, скористайтеся кодом відновлення: він зніме старий Guard, а новий Steam підтвердить поштою.',
     smsOnly: 'Steam підтвердить через SMS на телефон акаунта.',
+    noGuard:
+      'Steam не бачить Steam Guard на цьому акаунті, тож новий додасться тут. Steam надішле код, щоб його підтвердити.',
+    addGuard: 'Додати Steam Guard',
     tradeHold:
       'Після цього Steam на деякий час затримає трейди й лоти на маркеті.',
     sendSms: 'Надіслати SMS',
@@ -183,6 +201,8 @@ export const account: typeof en = {
     newRevocationCode:
       'Новий код відновлення. Старий більше не працює. Збережіть копію не на цьому комп’ютері.',
     noRevocationCode: 'Steam не видав новий код відновлення.',
+    notOnYet:
+      'Steam прийняв код, але не показує новий Steam Guard увімкненим. Запустіть «Замінити Steam Guard» ще раз, щоб його додати.',
     copyCode: 'Скопіювати код',
     signOutHint:
       'У того, хто мав стару копію, може залишитися вхід. Вийдіть на всіх інших пристроях і змініть пароль.',
