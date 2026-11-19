@@ -22,8 +22,12 @@ export default function Dialog({
 }: Props) {
   const dialog = useRef<HTMLDialogElement>(null)
   const titleId = useId()
+  // The close event also comes after `open` turns false, by which time another
+  // dialog may be opening. Only a close the user made is reported.
+  const shown = useRef(open)
 
   useEffect(() => {
+    shown.current = open
     const element = dialog.current
     if (!element) return
     if (open && !element.open) {
@@ -42,7 +46,9 @@ export default function Dialog({
       tabIndex={-1}
       className={wide ? `${styles.dialog} ${styles.wide}` : styles.dialog}
       aria-labelledby={titleId}
-      onClose={onClose}
+      onClose={() => {
+        if (shown.current) onClose()
+      }}
     >
       <h2 id={titleId} className={styles.title}>
         {title}
