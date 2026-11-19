@@ -42,19 +42,49 @@ export const setAutoUpdate = (on: boolean) =>
 export const dismissInstalledUpdate = () =>
   invoke<void>('dismiss_installed_update')
 
+/** One point of release notes; `lead` is its bold opening, like a short title. */
+export type ReleasePoint = { lead: string | null; text: string }
+
+/** A part of release notes under its heading, or `null` before any heading. */
+export type ReleaseSection = { title: string | null; points: ReleasePoint[] }
+
 /**
- * The points of release notes: their list items when there are any, else
- * their paragraphs. Headings and other markdown are left out.
+ * Release notes as their headed parts. Each part's points are its list items
+ * when it has any, else its paragraphs. Other markdown is left out.
  */
-export function releasePoints(notes: string | null): string[] {
-  const lines = (notes ?? '')
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line && !line.startsWith('#'))
-  const items = lines
-    .filter((line) => /^[-*] /.test(line))
-    .map((line) => line.slice(2))
-  return (items.length > 0 ? items : lines).map((line) =>
-    line.replace(/\*\*|`/g, ''),
-  )
+export function releaseSections(notes: string | null): ReleaseSection[] {
+  const parts: { title: string | null; lines: string[] }[] = []
+  for (const raw of (notes ?? '').split('\n')) {
+    const line = raw.trim()
+    const heading = /^#+\s+(.*)$/.exec(line)
+    if (heading) parts.push({ title: plain(heading[1]), lines: [] })
+    // The attribution line under every release isn't news.
+    else if (line && !line.startsWith('🤖')) {
+      if (parts.length === 0) parts.push({ title: null, lines: [] })
+      parts[parts.length - 1].lines.push(line)
+    }
+  }
+  return parts
+    .map(({ title, lines }) => {
+      const items = lines
+        .filter((line) => /^[-*] /.test(line))
+        .map((line) => line.slice(2))
+      return {
+        title,
+        points: (items.length > 0 ? items : lines).map(point),
+      }
+    })
+    .filter((section) => section.points.length > 0)
+}
+
+function point(line: string): ReleasePoint {
+  const bold = /^\*\*(.+?)\*\*\s*(.*)$/.exec(line)
+  return bold
+    ? { lead: plain(bold[1]), text: plain(bold[2]) }
+    : { lead: null, text: plain(line) }
+}
+
+/** Drops emphasis and code marks, and keeps only the text of links. */
+function plain(text: string) {
+  return text.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/\*\*|`/g, '')
 }
