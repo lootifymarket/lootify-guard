@@ -9,9 +9,12 @@ use crate::moves::{self, Moved, Side};
 use crate::nicknames;
 use crate::profile_settings::{self, Privacy, ProfileChanges, Visibility};
 use crate::proxy::ProxyAddress;
+use crate::random;
 use crate::standing::{self, Standing, TradeBan};
 use crate::steam::{self, SteamError};
+use crate::steam_groups::{self, GroupLink};
 use crate::trades::{self, Asset, OfferState, TradeOffer};
+use crate::wishlist;
 
 /// Steam cuts nicknames off past this many characters.
 pub const MAX_PERSONA_NAME: usize = 32;
@@ -34,6 +37,16 @@ pub enum Task {
     Events {
         queues: u8,
         claim_item: bool,
+    },
+    /// Joins a few of the groups each run: from `per_run.0` to `per_run.1`.
+    JoinGroups {
+        groups: Vec<GroupLink>,
+        per_run: (usize, usize),
+    },
+    /// Adds a few of the apps to the wishlist each run, as many as for groups.
+    Wishlist {
+        apps: Vec<u32>,
+        per_run: (usize, usize),
     },
 }
 
@@ -132,6 +145,18 @@ pub fn run(
                 parts.push(sale_item_note(item, now));
             }
             Ok(Outcome::Done(capitalize(&parts.join(", "))))
+        }
+        Task::JoinGroups { groups, per_run } => {
+            let count = random::between(per_run.0, per_run.1);
+            let (session, done) = steam_groups::join(account, proxy, groups, count)?;
+            account.session = Some(session);
+            Ok(joined_outcome(&done, groups.len()))
+        }
+        Task::Wishlist { apps, per_run } => {
+            let count = random::between(per_run.0, per_run.1);
+            let (session, done) = wishlist::add(account, proxy, apps, count)?;
+            account.session = Some(session);
+            Ok(wished_outcome(&done))
         }
         Task::FreeGames(licenses) => {
             let (session, claims) = licenses::claim(account, proxy, licenses)?;
@@ -269,6 +294,26 @@ fn profile(
     account.session = Some(session);
     account.profile = Some(profile);
     Ok(Outcome::Done(format!("Changed {}", changed.join(", "))))
+}
+
+fn joined_outcome(done: &steam_groups::Joined, listed: usize) -> Outcome {
+    if !done.joined.is_empty() {
+        Outcome::Done(format!("Joined {}", done.joined.join(", ")))
+    } else if done.missing == listed {
+        Outcome::Warning("none of the links lead to a group".to_owned())
+    } else {
+        Outcome::Done("Already in every group it can join".to_owned())
+    }
+}
+
+fn wished_outcome(done: &wishlist::Wished) -> Outcome {
+    if done.added > 0 {
+        Outcome::Done(format!("Added to the wishlist: {}", done.added))
+    } else if done.nothing_left {
+        Outcome::Done("Every game is owned or on the wishlist already".to_owned())
+    } else {
+        Outcome::Warning("the store didn't take any of the games".to_owned())
+    }
 }
 
 fn sale_item_note(item: SaleItem, now: u64) -> String {

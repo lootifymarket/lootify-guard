@@ -2,13 +2,13 @@
 //! that differ in their words, their order and their look, not just in a name.
 
 use std::collections::HashSet;
-use std::hash::{BuildHasher, Hasher, RandomState};
 
 use serde::{Deserialize, Serialize};
 
 use crate::description_pools::{
     ARTS, BULLETS, DIVIDERS, KAOMOJI, QUOTE_MARKS, Words, english, russian,
 };
+use crate::random::{self, shuffled};
 
 /// A part of a generated description. Dividers go between the others.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -96,7 +96,7 @@ pub fn for_accounts(
     source: &DescriptionSource,
     count: usize,
 ) -> Result<Vec<String>, DescriptionError> {
-    many(source, count, &mut random_below)
+    many(source, count, &mut random::below)
 }
 
 fn many(
@@ -383,21 +383,8 @@ fn cased(text: &str, case: Case) -> String {
     }
 }
 
-fn shuffled<T: Copy>(items: &[T], pick: &mut impl FnMut(usize) -> usize) -> Vec<T> {
-    let mut items = items.to_vec();
-    for last in (1..items.len()).rev() {
-        items.swap(last, pick(last + 1));
-    }
-    items
-}
-
 fn is_cyrillic(c: char) -> bool {
     matches!(c, '\u{0400}'..='\u{04FF}')
-}
-
-/// A number under `below`.
-fn random_below(below: usize) -> usize {
-    (RandomState::new().build_hasher().finish() % below as u64) as usize
 }
 
 #[cfg(test)]
