@@ -6,6 +6,8 @@ pub mod cards;
 pub mod cm;
 pub mod confirmations;
 pub mod contents;
+mod description_pools;
+pub mod descriptions;
 pub mod events;
 pub mod forward;
 pub mod free_games;
