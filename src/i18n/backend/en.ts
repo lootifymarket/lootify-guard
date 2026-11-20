@@ -187,7 +187,7 @@ export const BACKEND_MESSAGES = [
   'Every game is owned or on the wishlist already',
   "the store didn't take any of the games",
   'unreadable store data',
-  "Steam didn't let it join",
+  "Steam didn't add it to {}",
   'description',
   'pick at least one piece besides dividers',
   'add at least one line',

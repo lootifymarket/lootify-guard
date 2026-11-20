@@ -209,7 +209,7 @@ export const backend: Record<BackendMessage, string> = {
     '所有游戏都已拥有或在愿望单中',
   "the store didn't take any of the games": '商店未接受任何游戏',
   'unreadable store data': '无法读取商店数据',
-  "Steam didn't let it join": 'Steam 不允许加入',
+  "Steam didn't add it to {}": 'Steam 没有让它加入 {}',
   description: '简介',
   'pick at least one piece besides dividers': '请至少选择一个分隔线以外的部分',
   'add at least one line': '请至少添加一行',

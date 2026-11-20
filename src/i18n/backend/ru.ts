@@ -238,7 +238,7 @@ export const backend: Record<BackendMessage, string> = {
     'Все игры уже куплены или в вишлисте',
   "the store didn't take any of the games": 'магазин не принял ни одной игры',
   'unreadable store data': 'нечитаемые данные магазина',
-  "Steam didn't let it join": 'Steam не дал вступить',
+  "Steam didn't add it to {}": 'Steam не добавил его в {}',
   description: 'описание',
   'pick at least one piece besides dividers':
     'выберите хотя бы одну часть, кроме разделителей',

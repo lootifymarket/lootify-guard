@@ -1,6 +1,7 @@
 //! Joining public Steam Community groups, a few at a time, like a person who
 //! finds them one by one.
 
+use std::collections::HashSet;
 use std::thread;
 use std::time::Duration;
 
@@ -209,37 +210,51 @@ fn parse_one(word: &str) -> Option<GroupLink> {
 pub struct Joined {
     /// The groups' names, as their pages show them.
     pub joined: Vec<String>,
+    /// Groups it asked to join that Steam answered with an error.
+    pub refused: Vec<String>,
     /// Links that led to no group.
     pub missing: usize,
 }
 
 /// Joins up to `count` of the groups, picked at random among the ones the account
-/// can join and isn't in yet.
+/// can join and isn't in yet. What it's in comes from the account's own list of
+/// groups, as the group's page shows a join button to members too. That list
+/// lags a few minutes behind, so a join is judged by Steam's answer to it.
 pub fn join(
     account: &Account,
     proxy: Option<&ProxyAddress>,
     groups: &[GroupLink],
     count: usize,
 ) -> Result<(Session, Joined), SteamError> {
-    with_session(account, proxy, |client, session, _| {
+    with_session(account, proxy, |client, session, steam_id| {
+        let member_of = memberships(client, steam_id)?;
         let mut done = Joined::default();
         for group in random::shuffled(groups, &mut random::below) {
-            if done.joined.len() >= count {
+            if done.joined.len() + done.refused.len() >= count {
                 break;
+            }
+            if let GroupLink::Id(id) = group
+                && member_of.contains(&id)
+            {
+                continue;
             }
             let url = group.url();
             match page_state(&community_get(client, &url)?) {
                 Page::Missing => done.missing += 1,
-                // In it already, or it only takes requests or invites.
+                // It only takes requests or invites.
                 Page::Closed => {}
-                Page::Open(name) => {
-                    if !done.joined.is_empty() {
+                Page::Open { id, .. } if member_of.contains(&id) => {}
+                Page::Open { name, .. } => {
+                    if !done.joined.is_empty() || !done.refused.is_empty() {
                         thread::sleep(
                             Duration::from_secs(random::between(PAUSE.0, PAUSE.1) as u64),
                         );
                     }
-                    join_one(client, session, &url)?;
-                    done.joined.push(name);
+                    if join_one(client, session, &url)? {
+                        done.joined.push(name);
+                    } else {
+                        done.refused.push(name);
+                    }
                 }
             }
         }
@@ -247,7 +262,24 @@ pub fn join(
     })
 }
 
-fn join_one(client: &Client, session: &Session, url: &str) -> Result<(), SteamError> {
+/// The IDs of the groups the account is in, from its profile's XML.
+fn memberships(client: &Client, steam_id: u64) -> Result<HashSet<u64>, SteamError> {
+    let page = community_get(
+        client,
+        &format!("{COMMUNITY_URL}/profiles/{steam_id}/?xml=1"),
+    )?;
+    Ok(group_ids(&page))
+}
+
+fn group_ids(page: &str) -> HashSet<u64> {
+    page.split("<groupID64>")
+        .skip(1)
+        .filter_map(|rest| rest.split('<').next()?.trim().parse().ok())
+        .collect()
+}
+
+/// Whether Steam took the join: it answers with the group's page, or its error page.
+fn join_one(client: &Client, session: &Session, url: &str) -> Result<bool, SteamError> {
     // The group's form names the session `sessionID`, unlike Steam's other forms.
     let id = session_id(session);
     let page = community_post(
@@ -256,17 +288,17 @@ fn join_one(client: &Client, session: &Session, url: &str) -> Result<(), SteamEr
         session,
         &[("action", "join"), ("sessionID", &id)],
     )?;
-    match page_state(&page) {
-        Page::Open(_) => Err(SteamError::Refused("Steam didn't let it join".to_owned())),
-        _ => Ok(()),
-    }
+    Ok(page_state(&page) != Page::Missing)
 }
 
 #[derive(Debug, PartialEq, Eq)]
 enum Page {
     Missing,
-    /// Has a join button; holds the group's name.
-    Open(String),
+    /// Has a join button, which members see too; holds the group's name and ID.
+    Open {
+        name: String,
+        id: u64,
+    },
     Closed,
 }
 
@@ -279,13 +311,22 @@ fn page_state(page: &str) -> Page {
         .find("</title>")
         .map(|end| html_unescape(page[start..start + end].trim()))
         .unwrap_or_default();
+    // The page names the group by its ID in its comment thread and its chat button.
+    let id = ["Clan_", "OpenGroupChat( '"].into_iter().find_map(|mark| {
+        page.split(mark).skip(1).find_map(|rest| {
+            let digits: String = rest.chars().take_while(char::is_ascii_digit).collect();
+            digits.parse::<u64>().ok()
+        })
+    });
     // Groups that take requests have the same form with another action.
     let join_form = page
         .find("id=\"join_group_form\"")
         .map(|at| &page[at..])
         .and_then(|form| form.find("</form>").map(|end| &form[..end]));
-    match join_form {
-        Some(form) if form.contains("name=\"action\" value=\"join\"") => Page::Open(name),
+    match (join_form, id) {
+        (Some(form), Some(id)) if form.contains("name=\"action\" value=\"join\"") => {
+            Page::Open { name, id }
+        }
         _ => Page::Closed,
     }
 }
@@ -295,6 +336,7 @@ mod tests {
     use super::*;
 
     const OPEN: &str = r#"<title>Steam Community :: Group :: Steam Client Beta</title>
+        <div id="commentthread_Clan_103582791433918461_pagecontrols"></div>
         <form name="join_group_form" id="join_group_form" method="POST" action="https://steamcommunity.com/groups/SteamClientBeta">
             <input type="hidden" name="action" value="join">
             <input type="hidden" name="sessionID" value="007a10a5e6910dba87caeb49">
@@ -323,11 +365,28 @@ mod tests {
 
     #[test]
     fn the_page_says_whether_it_can_be_joined() {
-        assert_eq!(page_state(OPEN), Page::Open("Steam Client Beta".to_owned()));
+        assert_eq!(
+            page_state(OPEN),
+            Page::Open {
+                name: "Steam Client Beta".to_owned(),
+                id: 103582791433918461
+            }
+        );
         let member = "<title>Steam Community :: Group :: Steam Client Beta</title>";
         assert_eq!(page_state(member), Page::Closed);
         let requests = OPEN.replace("value=\"join\"", "value=\"request\"");
         assert_eq!(page_state(&requests), Page::Closed);
+        let no_comments = OPEN.replace(
+            r#"<div id="commentthread_Clan_103582791433918461_pagecontrols"></div>"#,
+            r#"<div class="joinchat_bg" onclick="OpenGroupChat( '103582791433918461' )"></div>"#,
+        );
+        assert!(matches!(
+            page_state(&no_comments),
+            Page::Open {
+                id: 103582791433918461,
+                ..
+            }
+        ));
         let missing = "<title>Steam Community :: Error</title>No group could be retrieved";
         assert_eq!(page_state(missing), Page::Missing);
     }
@@ -340,10 +399,28 @@ mod tests {
     }
 
     #[test]
+    fn a_profile_lists_its_groups_by_id() {
+        let xml = r#"<groups><group isPrimary="1"><groupID64>103582791434298690</groupID64>
+            <groupURL><![CDATA[SteamDB]]></groupURL></group>
+            <group isPrimary="0"><groupID64>103582791430626789</groupID64></group></groups>"#;
+        assert_eq!(
+            group_ids(xml),
+            HashSet::from([103582791434298690, 103582791430626789])
+        );
+        assert!(group_ids("<profile></profile>").is_empty());
+    }
+
+    #[test]
     fn names_are_unescaped() {
         let page = "<title>Steam Community :: Group :: Tom &amp; Jerry</title>";
         assert_eq!(page_state(page), Page::Closed);
         let page = OPEN.replace("Steam Client Beta", "Tom &amp; Jerry");
-        assert_eq!(page_state(&page), Page::Open("Tom & Jerry".to_owned()));
+        assert_eq!(
+            page_state(&page),
+            Page::Open {
+                name: "Tom & Jerry".to_owned(),
+                id: 103582791433918461
+            }
+        );
     }
 }

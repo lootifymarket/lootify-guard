@@ -297,8 +297,13 @@ fn profile(
 }
 
 fn joined_outcome(done: &steam_groups::Joined, listed: usize) -> Outcome {
-    if !done.joined.is_empty() {
+    let refused = format!("Steam didn't add it to {}", done.refused.join(", "));
+    if !done.joined.is_empty() && !done.refused.is_empty() {
+        Outcome::Warning(format!("Joined {}; {refused}", done.joined.join(", ")))
+    } else if !done.joined.is_empty() {
         Outcome::Done(format!("Joined {}", done.joined.join(", ")))
+    } else if !done.refused.is_empty() {
+        Outcome::Warning(refused)
     } else if done.missing == listed {
         Outcome::Warning("none of the links lead to a group".to_owned())
     } else {
