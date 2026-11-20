@@ -13,7 +13,7 @@ const SECTIONS: {
   kinds: Kind[]
 }[] = [
   { id: 'playing', kinds: ['hourBoost', 'cardFarming', 'goOffline'] },
-  { id: 'profile', kinds: ['profile'] },
+  { id: 'profile', kinds: ['profile', 'joinGroups', 'wishlist'] },
   { id: 'items', kinds: ['moveToStorage', 'acceptGifts'] },
   { id: 'store', kinds: ['freeGames', 'events'] },
   { id: 'checks', kinds: ['check'] },

@@ -33,6 +33,14 @@ export const tasks = {
       name: 'Events',
       text: 'Discovery queue and the free sale item',
     },
+    joinGroups: {
+      name: 'Join groups',
+      text: 'A few groups from your list each run',
+    },
+    wishlist: {
+      name: 'Wishlist',
+      text: 'A few games from a big list each run',
+    },
     check: {
       name: 'Check',
       text: 'Session, profile, Web API key, bans and limits',
@@ -68,6 +76,20 @@ export const tasks = {
     'Store links, app/… or sub/… IDs, split by spaces or commas. A plain number is an app ID. Games already owned are skipped.',
 
   onlyOwn: 'Only from my accounts',
+
+  groupLinks: 'Groups',
+  groupsPlaceholder: 'steamcommunity.com/groups/…, one per line',
+  eachRun: 'Each run',
+  groupsPerRun: { 1: '1 group', 2: '1–2 groups', 3: '1–3 groups' },
+  joinNote:
+    'Each account joins this many groups from the list that it isn’t in yet, picked at random. Groups that only take requests or invites are passed over. Run it once a day or so.',
+  wishGames: 'Games',
+  wishSources: { popular: 'Popular games, built in', mine: 'My list' },
+  myGames: 'My games',
+  myGamesPlaceholder: 'App IDs or store links',
+  wishSizes: { small: '2–4 games', medium: '3–8 games', large: '5–12 games' },
+  wishNote:
+    'Each account gets its own mix of games. Ones already owned or on the wishlist are skipped.',
 
   atOnce: 'At once',
   oneByOne: 'One by one',

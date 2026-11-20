@@ -33,6 +33,9 @@ const PAUSES: { value: string; min: number; max: number }[] = [
   { value: 'long', min: 30, max: 90 },
 ]
 
+const WISH_SIZES = ['small', 'medium', 'large'] as const
+type WishSize = (typeof WISH_SIZES)[number]
+
 // Tasks with nothing to set besides whom they run on.
 const PLAIN: Kind[] = ['check', 'cardFarming', 'goOffline']
 
@@ -77,6 +80,11 @@ export default function TaskDialog({
   const [boostGames, setBoostGames] = useState('')
   const [queues, setQueues] = useState(1)
   const [claimItem, setClaimItem] = useState(true)
+  const [groupLinks, setGroupLinks] = useState('')
+  const [groupsPerRun, setGroupsPerRun] = useState(1)
+  const [wishSource, setWishSource] = useState<'popular' | 'mine'>('popular')
+  const [wishGames, setWishGames] = useState('')
+  const [wishSize, setWishSize] = useState<WishSize>('medium')
   const [atOnce, setAtOnce] = useState(3)
   const [pause, setPause] = useState('medium')
   const [retry, setRetry] = useState(true)
@@ -115,14 +123,18 @@ export default function TaskDialog({
         ? licenses.trim() !== ''
         : kind === 'events'
           ? queues > 0 || claimItem
-          : kind !== 'profile' ||
-            // A description that can't be made holds the whole task back.
-            ((profile.description.mode === 'keep' ||
-              describes(profile.description)) &&
-              (profile.nameTemplate.trim() !== '' ||
-                profile.description.mode !== 'keep' ||
-                Object.keys(profile.privacy).length > 0 ||
-                profile.avatar !== null))
+          : kind === 'joinGroups'
+            ? groupLinks.trim() !== ''
+            : kind === 'wishlist'
+              ? wishSource === 'popular' || wishGames.trim() !== ''
+              : kind !== 'profile' ||
+                // A description that can't be made holds the whole task back.
+                ((profile.description.mode === 'keep' ||
+                  describes(profile.description)) &&
+                  (profile.nameTemplate.trim() !== '' ||
+                    profile.description.mode !== 'keep' ||
+                    Object.keys(profile.privacy).length > 0 ||
+                    profile.avatar !== null))
 
   function pickTarget(value: string) {
     const next: Target =
@@ -153,6 +165,14 @@ export default function TaskDialog({
         return { kind }
       case 'events':
         return { kind, queues, claimItem }
+      case 'joinGroups':
+        return { kind, groups: groupLinks, perRun: groupsPerRun }
+      case 'wishlist':
+        return {
+          kind,
+          games: wishSource === 'mine' ? wishGames : '',
+          size: wishSize,
+        }
       case 'profile': {
         const { avatar } = profile
         return {
@@ -330,6 +350,75 @@ export default function TaskDialog({
 
               {kind === 'profile' && (
                 <ProfileOptions choice={profile} onChange={setProfile} />
+              )}
+
+              {kind === 'joinGroups' && (
+                <div className={styles.options}>
+                  <div className={styles.optionGroup}>
+                    <label htmlFor="task-groups" className={styles.fieldLabel}>
+                      {t.groupLinks}
+                    </label>
+                    <textarea
+                      id="task-groups"
+                      className={styles.textarea}
+                      rows={4}
+                      spellCheck={false}
+                      placeholder={t.groupsPlaceholder}
+                      value={groupLinks}
+                      onChange={(event) => setGroupLinks(event.target.value)}
+                    />
+                  </div>
+                  <Dropdown
+                    label={t.eachRun}
+                    size="sm"
+                    value={String(groupsPerRun)}
+                    options={([1, 2, 3] as const).map((n) => ({
+                      value: String(n),
+                      label: t.groupsPerRun[n],
+                    }))}
+                    onChange={(value) => setGroupsPerRun(Number(value))}
+                  />
+                  <p className={styles.note}>{t.joinNote}</p>
+                </div>
+              )}
+
+              {kind === 'wishlist' && (
+                <div className={styles.options}>
+                  <div className={styles.pacing}>
+                    <Dropdown
+                      label={t.wishGames}
+                      size="sm"
+                      value={wishSource}
+                      options={(['popular', 'mine'] as const).map((value) => ({
+                        value,
+                        label: t.wishSources[value],
+                      }))}
+                      onChange={(value) =>
+                        setWishSource(value as 'popular' | 'mine')
+                      }
+                    />
+                    <Dropdown
+                      label={t.eachRun}
+                      size="sm"
+                      value={wishSize}
+                      options={WISH_SIZES.map((value) => ({
+                        value,
+                        label: t.wishSizes[value],
+                      }))}
+                      onChange={(value) => setWishSize(value as WishSize)}
+                    />
+                  </div>
+                  {wishSource === 'mine' && (
+                    <TextField
+                      label={t.myGames}
+                      placeholder={t.myGamesPlaceholder}
+                      className={styles.input}
+                      value={wishGames}
+                      onChange={(event) => setWishGames(event.target.value)}
+                    />
+                  )}
+                  <p className={styles.note}>{t.wishNote}</p>
+                </div>
               )}
 
               {kind === 'acceptGifts' && (

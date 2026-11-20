@@ -16,10 +16,12 @@ use lootify_guard_core::licenses::{self, License, MAX_LICENSES};
 use lootify_guard_core::moves::{self, Side};
 use lootify_guard_core::profile_settings::{AvatarImage, MAX_AVATAR_LEN};
 use lootify_guard_core::steam::SteamError;
+use lootify_guard_core::steam_groups::{self, MAX_GROUPS};
 use lootify_guard_core::tasks::{
     self, MAX_PERSONA_NAME, Outcome, PrivacyChanges, ProfileTask, Task, longest_persona_name,
 };
 use lootify_guard_core::vault::VaultError;
+use lootify_guard_core::wishlist::{self, MAX_APPS};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, State};
 
@@ -134,6 +136,36 @@ pub enum TaskInput {
         storage: String,
         game: Game,
     },
+    /// Group links as typed, and the most to join in one run.
+    #[serde(rename_all = "camelCase")]
+    JoinGroups {
+        groups: String,
+        per_run: usize,
+    },
+    /// Games as typed, or nothing for the built-in popular ones.
+    Wishlist {
+        games: String,
+        size: WishlistSize,
+    },
+}
+
+/// How many games one Wishlist run adds to each account.
+#[derive(Deserialize, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
+pub enum WishlistSize {
+    Small,
+    Medium,
+    Large,
+}
+
+impl WishlistSize {
+    fn range(self) -> (usize, usize) {
+        match self {
+            Self::Small => (2, 4),
+            Self::Medium => (3, 8),
+            Self::Large => (5, 12),
+        }
+    }
 }
 
 impl TaskInput {
@@ -148,6 +180,8 @@ impl TaskInput {
             Self::CardFarming => "cardFarming",
             Self::Events { .. } => "events",
             Self::MoveToStorage { .. } => "moveToStorage",
+            Self::JoinGroups { .. } => "joinGroups",
+            Self::Wishlist { .. } => "wishlist",
         }
     }
 }
@@ -283,6 +317,40 @@ pub fn start_task(
                 }
                 Work::Each(Task::Events { queues, claim_item })
             }
+            TaskInput::JoinGroups { groups, per_run } => {
+                let groups = steam_groups::parse(&groups).map_err(|word| {
+                    CommandError::Failed(format!(
+                        "can't read \"{word}\": use links like steamcommunity.com/groups/name"
+                    ))
+                })?;
+                if groups.is_empty() {
+                    return Err(CommandError::Failed("add a group".to_owned()));
+                }
+                if groups.len() > MAX_GROUPS {
+                    return Err(CommandError::Failed(format!(
+                        "list at most {MAX_GROUPS} groups"
+                    )));
+                }
+                Work::Each(Task::JoinGroups {
+                    groups,
+                    per_run: (1, per_run.clamp(1, 3)),
+                })
+            }
+            TaskInput::Wishlist { games, size } => {
+                let apps = match app_ids(&games)? {
+                    Some(apps) if apps.len() > MAX_APPS => {
+                        return Err(CommandError::Failed(format!(
+                            "list at most {MAX_APPS} games"
+                        )));
+                    }
+                    Some(apps) => apps,
+                    None => wishlist::POPULAR.to_vec(),
+                };
+                Work::Each(Task::Wishlist {
+                    apps,
+                    per_run: size.range(),
+                })
+            }
             TaskInput::MoveToStorage { storage, game } => {
                 contents.account(&storage).ok_or_else(no_such_account)?;
                 // The storage account has nothing to send to itself.
@@ -356,16 +424,22 @@ pub fn start_task(
 }
 
 fn boost_games(text: &str) -> Result<Option<Vec<u32>>, CommandError> {
+    let games = app_ids(text)?;
+    if games.as_ref().is_some_and(|games| games.len() > MAX_GAMES) {
+        return Err(CommandError::Failed(format!(
+            "Steam plays at most {MAX_GAMES} games at once"
+        )));
+    }
+    Ok(games)
+}
+
+/// App IDs as typed, or `None` when nothing was.
+fn app_ids(text: &str) -> Result<Option<Vec<u32>>, CommandError> {
     let licenses = licenses::parse(text).map_err(|word| {
         CommandError::Failed(format!("can't read \"{word}\": use app IDs or store links"))
     })?;
     if licenses.is_empty() {
         return Ok(None);
-    }
-    if licenses.len() > MAX_GAMES {
-        return Err(CommandError::Failed(format!(
-            "Steam plays at most {MAX_GAMES} games at once"
-        )));
     }
     licenses
         .into_iter()

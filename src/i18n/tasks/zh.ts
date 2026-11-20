@@ -34,6 +34,14 @@ export const tasks: typeof en = {
       name: '活动',
       text: '探索队列和免费促销物品',
     },
+    joinGroups: {
+      name: '加入群组',
+      text: '每次从你的列表中加入几个群组',
+    },
+    wishlist: {
+      name: '愿望单',
+      text: '每次从大列表中加入几款游戏',
+    },
     check: {
       name: '检查',
       text: '会话、个人资料、Web API 密钥、封禁和限制',
@@ -67,6 +75,23 @@ export const tasks: typeof en = {
     '商店链接，或 app/…、sub/… 形式的 ID，用空格或逗号分隔。纯数字视为应用 ID。已拥有的游戏会跳过。',
 
   onlyOwn: '只接受我的账户',
+
+  groupLinks: '群组',
+  groupsPlaceholder: 'steamcommunity.com/groups/…，每行一个',
+  eachRun: '每次运行',
+  groupsPerRun: { 1: '1 个群组', 2: '1–2 个群组', 3: '1–3 个群组' },
+  joinNote:
+    '每个账户随机加入列表中尚未加入的这么多个群组。只接受申请或邀请的群组会被跳过。大约每天运行一次。',
+  wishGames: '游戏',
+  wishSources: { popular: '热门游戏，内置列表', mine: '我的列表' },
+  myGames: '我的游戏',
+  myGamesPlaceholder: '应用 ID 或商店链接',
+  wishSizes: {
+    small: '2–4 款游戏',
+    medium: '3–8 款游戏',
+    large: '5–12 款游戏',
+  },
+  wishNote: '每个账户得到自己的一组游戏。已拥有或已在愿望单中的会被跳过。',
 
   atOnce: '同时进行',
   oneByOne: '逐个进行',

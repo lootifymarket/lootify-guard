@@ -204,6 +204,22 @@ export const backend: Record<BackendMessage, string> = {
     'sub {} — це пакет, використайте його app ID',
   'add a game': 'додайте гру',
   'add a game or a status': 'додайте гру або статус',
+  'can\'t read "{}": use links like steamcommunity.com/groups/name':
+    'не вдалося прочитати «{}»: вкажіть посилання на зразок steamcommunity.com/groups/name',
+  'add a group': 'додайте групу',
+  'list at most {} groups': 'не більше {} груп',
+  'list at most {} games': 'не більше {} ігор',
+  'Joined {}': 'Вступив: {}',
+  'none of the links lead to a group': 'жодне посилання не веде на групу',
+  'Already in every group it can join':
+    'Уже в усіх групах, куди можна вступити',
+  'Added to the wishlist: {}': 'Додано до списку бажаного: {}',
+  'Every game is owned or on the wishlist already':
+    'Усі ігри вже куплені або в списку бажаного',
+  "the store didn't take any of the games": 'магазин не прийняв жодної гри',
+  'unreadable store data': 'нечитабельні дані магазину',
+  "Steam didn't let it join": 'Steam не дав вступити',
+  description: 'опис',
   'pick at least one piece besides dividers':
     'виберіть хоча б одну частину, крім роздільників',
   'add at least one line': 'додайте хоча б один рядок',

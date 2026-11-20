@@ -50,6 +50,10 @@ export type TaskInput =
   | { kind: 'events'; queues: number; claimItem: boolean }
   /** Every tradable item to one account. */
   | { kind: 'moveToStorage'; storage: string; game: Game }
+  /** Group links; each run joins from 1 to `perRun` of them. */
+  | { kind: 'joinGroups'; groups: string; perRun: number }
+  /** App IDs or store links; empty takes the built-in popular games. */
+  | { kind: 'wishlist'; games: string; size: 'small' | 'medium' | 'large' }
 
 export type Pacing = {
   /** How many accounts run at the same time. */
