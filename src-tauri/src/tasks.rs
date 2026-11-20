@@ -29,6 +29,7 @@ use tauri::{AppHandle, Manager, State};
 use crate::accounts::{account_and_proxy, no_such_account};
 use crate::farming::Farms;
 use crate::inventory::InventoryCache;
+use crate::plans::Plans;
 use crate::playing::{self, Players};
 use crate::settings::SettingsState;
 use crate::vault::{CommandError, VaultState};
@@ -64,6 +65,20 @@ struct Held {
 }
 
 impl Book {
+    fn hold(&mut self, copies: Vec<(Account, Option<ProxyAddress>)>) {
+        for (account, proxy) in copies {
+            self.held
+                .entry(account.account_name.clone())
+                .and_modify(|held| held.jobs += 1)
+                .or_insert(Held {
+                    account,
+                    proxy,
+                    jobs: 1,
+                    unsaved: false,
+                });
+        }
+    }
+
     /// Lets go of the copies a finished job held, except ones the vault still needs.
     fn release(&mut self, account_names: &[String]) {
         for name in account_names {
@@ -181,14 +196,14 @@ pub enum TaskInput {
 /// How many games one Wishlist run adds to each account.
 #[derive(Deserialize, Clone, Copy)]
 #[serde(rename_all = "camelCase")]
-pub enum WishlistSize {
+pub(crate) enum WishlistSize {
     Small,
     Medium,
     Large,
 }
 
 impl WishlistSize {
-    fn range(self) -> (usize, usize) {
+    pub(crate) fn range(self) -> (usize, usize) {
         match self {
             Self::Small => (2, 4),
             Self::Medium => (3, 8),
@@ -253,6 +268,15 @@ impl Tasks {
             .held
             .get(account_name)
             .map(|held| (held.account.clone(), held.proxy.clone()))
+    }
+
+    /// Holds copies of the accounts, for a plan, the way a job holds its own.
+    pub(crate) fn hold(&self, copies: Vec<(Account, Option<ProxyAddress>)>) {
+        self.book().hold(copies);
+    }
+
+    pub(crate) fn release(&self, account_names: &[String]) {
+        self.book().release(account_names);
     }
 
     /// Keeps the copy up to date with what a run brought back. Returns whether
@@ -443,16 +467,7 @@ pub fn start_task(
         };
         // Only tasks on the web can do with a session alone.
         let copies = if keep_going && matches!(work, Work::Each(_)) {
-            account_names
-                .iter()
-                .map(|name| {
-                    let account = contents.account(name).ok_or_else(no_such_account)?;
-                    let proxy = contents
-                        .proxy_of(account)?
-                        .map(|proxy| proxy.address.clone());
-                    Ok((account.for_web_tasks(), proxy))
-                })
-                .collect::<Result<Vec<_>, CommandError>>()?
+            web_copies(&contents, &account_names)?
         } else {
             Vec::new()
         };
@@ -485,17 +500,7 @@ pub fn start_task(
             cancelled: cancelled.clone(),
             holds: !copies.is_empty(),
         });
-        for (account, proxy) in copies {
-            book.held
-                .entry(account.account_name.clone())
-                .and_modify(|held| held.jobs += 1)
-                .or_insert(Held {
-                    account,
-                    proxy,
-                    jobs: 1,
-                    unsaved: false,
-                });
-        }
+        book.hold(copies);
         let finished = book
             .jobs
             .iter()
@@ -539,6 +544,57 @@ pub fn start_task(
     Ok(id)
 }
 
+/// The accounts as tasks on the web need them, to hold while the vault is locked.
+pub(crate) fn web_copies(
+    contents: &Contents,
+    account_names: &[String],
+) -> Result<Vec<(Account, Option<ProxyAddress>)>, CommandError> {
+    account_names
+        .iter()
+        .map(|name| {
+            let account = contents.account(name).ok_or_else(no_such_account)?;
+            let proxy = contents
+                .proxy_of(account)?
+                .map(|proxy| proxy.address.clone());
+            Ok((account.for_web_tasks(), proxy))
+        })
+        .collect()
+}
+
+/// How one step of a plan went.
+pub(crate) enum StepRun {
+    Done(Outcome),
+    /// `for_good` when trying again can't help, like when the session ended.
+    Failed {
+        reason: String,
+        for_good: bool,
+    },
+    /// The vault is locked and nothing holds the account: the step waits.
+    Locked,
+}
+
+/// Runs one task on one account for a plan, as a job's worker would.
+pub(crate) fn run_step(app: &AppHandle, task: Task, account_name: &str) -> StepRun {
+    let state = app.state::<VaultState>();
+    match run_one(app, &state, &Work::Each(task), account_name, 1) {
+        Ok(outcome) => StepRun::Done(outcome),
+        Err(Failed::Vault(CommandError::Locked)) => StepRun::Locked,
+        Err(Failed::Steam(err) | Failed::Storage(_, err)) => StepRun::Failed {
+            for_good: matches!(err, SteamError::SessionExpired),
+            reason: err.to_string(),
+        },
+        // Like an account taken out of the vault.
+        Err(Failed::Vault(CommandError::Failed(reason))) => StepRun::Failed {
+            reason,
+            for_good: true,
+        },
+        Err(Failed::Vault(_)) => StepRun::Failed {
+            reason: "the vault couldn't be read".to_owned(),
+            for_good: false,
+        },
+    }
+}
+
 fn boost_games(text: &str) -> Result<Option<Vec<u32>>, CommandError> {
     let games = app_ids(text)?;
     if games.as_ref().is_some_and(|games| games.len() > MAX_GAMES) {
@@ -550,7 +606,7 @@ fn boost_games(text: &str) -> Result<Option<Vec<u32>>, CommandError> {
 }
 
 /// App IDs as typed, or `None` when nothing was.
-fn app_ids(text: &str) -> Result<Option<Vec<u32>>, CommandError> {
+pub(crate) fn app_ids(text: &str) -> Result<Option<Vec<u32>>, CommandError> {
     let licenses = licenses::parse(text).map_err(|word| {
         CommandError::Failed(format!("can't read \"{word}\": use app IDs or store links"))
     })?;
@@ -885,13 +941,18 @@ pub fn cancel_task(tasks: State<'_, Tasks>, id: u32) {
 }
 
 #[tauri::command]
-pub fn clear_finished_tasks(tasks: State<'_, Tasks>) {
+pub fn clear_finished_tasks(
+    state: State<'_, VaultState>,
+    tasks: State<'_, Tasks>,
+    plans: State<'_, Plans>,
+) {
     tasks.book().jobs.retain(|job| job.finished_at.is_none());
+    crate::plans::clear_finished(&state, &plans);
 }
 
 /// A number from `min` to `max`, both included. The standard library seeds each
 /// `RandomState` afresh, which is plenty to keep pauses from looking regular.
-fn random_between(min: u32, max: u32) -> u64 {
+pub(crate) fn random_between(min: u32, max: u32) -> u64 {
     if max <= min {
         return u64::from(min);
     }
@@ -899,7 +960,7 @@ fn random_between(min: u32, max: u32) -> u64 {
     u64::from(min) + RandomState::new().build_hasher().finish() % spread
 }
 
-fn now() -> u64 {
+pub(crate) fn now() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_or(0, |since| since.as_secs())

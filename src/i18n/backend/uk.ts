@@ -204,6 +204,10 @@ export const backend: Record<BackendMessage, string> = {
     'sub {} — це пакет, використайте його app ID',
   'add a game': 'додайте гру',
   'add a game or a status': 'додайте гру або статус',
+  'a plan lasts from 1 to 30 days': 'план триває від 1 до 30 днів',
+  'the hours have to end later than they start':
+    'кінець годин має бути пізніше за початок',
+  'pick at least one step': 'виберіть хоча б один крок',
   'can\'t read "{}": use links like steamcommunity.com/groups/name':
     'не вдалося прочитати «{}»: вкажіть посилання на зразок steamcommunity.com/groups/name',
   'add a group': 'додайте групу',

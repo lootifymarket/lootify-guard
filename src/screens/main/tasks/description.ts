@@ -34,6 +34,12 @@ export const KEEP_DESCRIPTION: DescriptionChoice = {
   lines: '',
 }
 
+/** Every piece, in both languages: what a plan writes when nothing's set. */
+export const GENERATED: DescriptionChoice = {
+  ...KEEP_DESCRIPTION,
+  mode: 'generate',
+}
+
 /** What the task sends, or `null` to keep each account's description. */
 export function descriptionSource(
   choice: DescriptionChoice,

@@ -193,6 +193,9 @@ export const backend: Record<BackendMessage, string> = {
   'sub {} is a package, use its app ID': 'sub {} 是礼包，请使用其 app ID',
   'add a game': '请添加游戏',
   'add a game or a status': '请添加游戏或状态',
+  'a plan lasts from 1 to 30 days': '计划持续 1 到 30 天',
+  'the hours have to end later than they start': '结束时间必须晚于开始时间',
+  'pick at least one step': '请至少选择一个步骤',
   'can\'t read "{}": use links like steamcommunity.com/groups/name':
     '无法识别“{}”：请使用 steamcommunity.com/groups/name 这样的链接',
   'add a group': '请添加群组',

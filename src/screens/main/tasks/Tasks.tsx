@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import type { Account, Group } from '../../../api/accounts.ts'
-import type { Job } from '../../../api/tasks.ts'
 import { useT } from '../../../i18n/index.ts'
 import layout from '../layout.module.css'
 import Queue from './Queue.tsx'
@@ -13,7 +12,7 @@ const SECTIONS: {
   kinds: Kind[]
 }[] = [
   { id: 'playing', kinds: ['hourBoost', 'cardFarming', 'goOffline'] },
-  { id: 'profile', kinds: ['profile', 'joinGroups', 'wishlist'] },
+  { id: 'profile', kinds: ['profile', 'joinGroups', 'wishlist', 'warmUp'] },
   { id: 'items', kinds: ['moveToStorage', 'acceptGifts'] },
   { id: 'store', kinds: ['freeGames', 'events'] },
   { id: 'checks', kinds: ['check'] },
@@ -29,10 +28,7 @@ export default function Tasks({ accounts, groups }: Props) {
   const t = useT().tasks
   const [open, setOpen] = useState<Kind | null>(null)
   const [started, setStarted] = useState(0)
-  const [jobs, setJobs] = useState<Job[]>([])
-  const running = new Set(
-    jobs.filter((job) => job.finishedAt === null).map((job) => job.kind),
-  )
+  const [running, setRunning] = useState<Set<string>>(new Set())
 
   return (
     <>
@@ -77,7 +73,7 @@ export default function Tasks({ accounts, groups }: Props) {
           ))}
         </div>
 
-        <Queue started={started} onJobs={setJobs} />
+        <Queue started={started} onRunning={setRunning} />
       </div>
 
       <TaskDialog

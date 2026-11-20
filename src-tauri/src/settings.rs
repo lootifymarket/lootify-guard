@@ -5,11 +5,12 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use lootify_guard_core::settings::{AUTO_LOCK_CHOICES, Language, Settings};
 use tauri::async_runtime::spawn_blocking;
-use tauri::{AppHandle, State, Window};
+use tauri::{AppHandle, Manager, State, Window};
 use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_dialog::DialogExt;
 
 use crate::accounts::write_private;
+use crate::plans::Plans;
 use crate::tasks::Tasks;
 use crate::vault::{CommandError, VaultState};
 
@@ -96,6 +97,7 @@ pub fn set_language(
 /// Off, the sessions held for running jobs are let go at once.
 #[tauri::command]
 pub fn set_tasks_while_locked(
+    app: AppHandle,
     settings: State<'_, SettingsState>,
     state: State<'_, VaultState>,
     tasks: State<'_, Tasks>,
@@ -105,8 +107,13 @@ pub fn set_tasks_while_locked(
         tasks_while_locked: on,
         ..settings.get()
     })?;
-    if !on {
+    let plans = app.state::<Plans>();
+    if on {
+        // Running plans hold their accounts from now on, not from the next unlock.
+        plans.opened(&app);
+    } else {
         tasks.drop_held(&state);
+        plans.forget_held();
     }
     Ok(())
 }

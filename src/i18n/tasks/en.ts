@@ -41,6 +41,10 @@ export const tasks = {
       name: 'Wishlist',
       text: 'A few games from a big list each run',
     },
+    warmUp: {
+      name: 'Warm-up plan',
+      text: 'Profile, groups and wishlist over several days',
+    },
     check: {
       name: 'Check',
       text: 'Session, profile, Web API key, bans and limits',
@@ -177,7 +181,44 @@ export const tasks = {
       'One description per line. {a|b|c} picks one of the options, {country} a random country, {n} the account’s place. Each account gets a line at random.',
   },
 
+  plan: {
+    steps: {
+      description: {
+        name: 'Description',
+        hint: 'Its own text for every account, made like the Profile task’s',
+      },
+      groups: {
+        name: 'Join groups',
+        hint: 'One group a day from the list below',
+      },
+      wishlist: {
+        name: 'Wishlist',
+        hint: 'A few games at a time, as set below',
+      },
+      queue: {
+        name: 'Discovery queue',
+        hint: 'One queue, like a normal visit to the store',
+      },
+    },
+    over: 'Over',
+    days: (n: number) => `${n} days`,
+    from: 'From',
+    to: 'To',
+    note: 'Each account does one step a day, in its own order, at a random time between these hours. Steps run while the app is open, in the tray too. Days it’s off are skipped and the plan ends later, never doubled up. While the vault is locked, the plan waits unless Settings › Keep tasks running while locked is on.',
+    started: (target: string) => `Warm-up plan started on ${target}`,
+    startOn: (target: string, n: number) => `Start plan on ${target} (${n})`,
+    startOnPicked: (n: number) =>
+      `Start plan on ${n === 1 ? '1 account' : `${n} accounts`}`,
+  },
   queue: {
+    dayOf: (day: number, days: number) => `Day ${day} of ${days}`,
+    today: (done: number, total: number) => `${done} of ${total} today`,
+    nextSoon: 'next any minute',
+    nextInMinutes: (n: number) => `next in ~${n} min`,
+    nextInHours: (n: number) => `next in ~${n} h`,
+    nextAt: (time: string) => `next ${time}`,
+    stopPlan: 'Stop plan',
+    planStopped: 'Plan stopped',
     title: 'Queue',
     clearFinished: 'Clear finished',
     empty: 'Nothing has run yet.',

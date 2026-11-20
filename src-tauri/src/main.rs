@@ -13,6 +13,7 @@ mod groups;
 mod inventory;
 #[cfg(target_os = "macos")]
 mod menu;
+mod plans;
 mod playing;
 mod profile;
 mod profiles;
@@ -67,6 +68,7 @@ fn main() {
             app.manage(inventory::InventoryCache::default());
             app.manage(inventory::IconCache::default());
             app.manage(tasks::Tasks::default());
+            app.manage(plans::Plans::default());
             app.manage(playing::Players::default());
             app.manage(farming::Farms::default());
             app.manage(browser::Browsers::default());
@@ -78,6 +80,7 @@ fn main() {
                 tray::hide_window(app.handle());
             }
             vault::watch_idle(app.handle().clone());
+            plans::watch(app.handle().clone());
             tray::watch_accounts(app.handle().clone());
             auto_confirm::watch(app.handle().clone());
             profiles::watch(app.handle().clone());
@@ -180,6 +183,9 @@ fn main() {
             tasks::task_queue,
             tasks::cancel_task,
             tasks::clear_finished_tasks,
+            plans::start_plan,
+            plans::plan_queue,
+            plans::cancel_plan,
             trades::list_trade_offers,
             trades::accept_trade_offer,
             trades::decline_trade_offer,

@@ -42,6 +42,10 @@ export const tasks: typeof en = {
       name: '愿望单',
       text: '每次从大列表中加入几款游戏',
     },
+    warmUp: {
+      name: '预热计划',
+      text: '在几天内完成资料、群组和愿望单',
+    },
     check: {
       name: '检查',
       text: '会话、个人资料、Web API 密钥、封禁和限制',
@@ -178,7 +182,34 @@ export const tasks: typeof en = {
       '每行一个简介。{a|b|c} 从选项中选一个，{country} 为随机国家，{n} 为账户在任务中的序号。每个账户随机分到一行。',
   },
 
+  plan: {
+    steps: {
+      description: {
+        name: '简介',
+        hint: '每个账户都有自己的文本，生成方式与“个人资料”任务相同',
+      },
+      groups: { name: '加入群组', hint: '每天从下方列表中加入一个群组' },
+      wishlist: { name: '愿望单', hint: '每次加入几款游戏，数量见下方设置' },
+      queue: { name: '探索队列', hint: '浏览一次队列，就像平常逛商店' },
+    },
+    over: '持续',
+    days: (n: number) => `${n} 天`,
+    from: '从',
+    to: '到',
+    note: '每个账户每天按自己的顺序做一步，时间在这些小时之间随机。应用打开时（包括在托盘中）步骤才会运行。应用关闭的日子会被跳过，计划只是顺延结束，不会一天做两步。保险库锁定时计划会等待，除非开启了“设置 › 锁定时继续运行任务”。',
+    started: (target: string) => `已在 ${target} 上启动预热计划`,
+    startOn: (target: string, n: number) => `在 ${target} 上启动计划（${n}）`,
+    startOnPicked: (n: number) => `在 ${n} 个账户上启动计划`,
+  },
   queue: {
+    dayOf: (day: number, days: number) => `第 ${day} / ${days} 天`,
+    today: (done: number, total: number) => `今天 ${done} / ${total}`,
+    nextSoon: '马上进行下一步',
+    nextInMinutes: (n: number) => `约 ${n} 分钟后下一步`,
+    nextInHours: (n: number) => `约 ${n} 小时后下一步`,
+    nextAt: (time: string) => `下一步 ${time}`,
+    stopPlan: '停止计划',
+    planStopped: '计划已停止',
     title: '队列',
     clearFinished: '清除已完成',
     empty: '还没有运行过任务。',

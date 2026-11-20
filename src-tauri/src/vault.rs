@@ -18,6 +18,7 @@ use zeroize::Zeroizing;
 use crate::accounts::confirm_owner;
 use crate::biometrics::{self, BiometricError};
 use crate::browser::{self, Browsers};
+use crate::plans::Plans;
 use crate::tasks::Tasks;
 
 const UNLOCK_REASON: &str = "unlock your vault";
@@ -209,6 +210,7 @@ pub async fn create_vault(
 
 #[tauri::command]
 pub async fn unlock_vault(
+    app: AppHandle,
     state: State<'_, VaultState>,
     tasks: State<'_, Tasks>,
     password: String,
@@ -219,11 +221,13 @@ pub async fn unlock_vault(
     state.open(vault);
     // Jobs that went on while it was locked brought back renewed sessions.
     tasks.save_held(&state);
+    app.state::<Plans>().opened(&app);
     Ok(())
 }
 
 #[tauri::command]
 pub async fn unlock_with_biometrics(
+    app: AppHandle,
     state: State<'_, VaultState>,
     tasks: State<'_, Tasks>,
 ) -> Result<(), CommandError> {
@@ -243,6 +247,7 @@ pub async fn unlock_with_biometrics(
     .await??;
     state.open(vault);
     tasks.save_held(&state);
+    app.state::<Plans>().opened(&app);
     Ok(())
 }
 
