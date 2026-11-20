@@ -34,7 +34,7 @@ const LINK_DETAILS_URL: &str =
 const AVATAR_URL: &str = "https://avatars.steamstatic.com";
 // A 64×64 JPEG is a few kilobytes; anything far bigger isn't an avatar.
 const MAX_AVATAR_LEN: usize = 256 * 1024;
-const COMMUNITY_URL: &str = "https://steamcommunity.com";
+pub(crate) const COMMUNITY_URL: &str = "https://steamcommunity.com";
 pub(crate) const STORE_URL: &str = "https://store.steampowered.com";
 const SERVER_INFO_URL: &str = "https://api.steampowered.com/ISteamWebAPIUtil/GetServerInfo/v1/";
 // Open-source and keyless. It sees only the proxy's IP, since the lookup goes through it.
@@ -61,6 +61,10 @@ pub enum SteamError {
     WrongCode,
     #[error("Steam wants a phone number on the account first")]
     NeedsPhone,
+    #[error(
+        "Steam moves Guard by SMS, and the account has no phone number: use the revocation code instead"
+    )]
+    MoveNeedsPhone,
     #[error("open the link in the email Steam sent, then try again")]
     ConfirmEmail,
     #[error("the account already has Steam Guard on another device")]

@@ -5,13 +5,18 @@ export type SignInCode = 'email' | 'phone'
 
 export type Next =
   | { step: 'code'; from: SignInCode }
-  /** Signed in. `onPhone`: Steam Guard is already on a phone and can only be moved. */
+  /** Signed in. `onPhone`: Steam Guard is already on a phone, so a new one can't be added. */
   | { step: 'guard'; onPhone: boolean }
 
-export type GuardMethod = 'new' | 'move'
+export type GuardMethod = 'new' | 'move' | 'revocationCode'
 
 export type ConfirmBy =
   { by: 'sms'; phoneHint: string | null } | { by: 'email' }
+
+export type GuardStart =
+  | { outcome: 'sent'; confirmBy: ConfirmBy }
+  /** Moving is confirmed by SMS, and the account has no phone number. */
+  | { outcome: 'noPhone' }
 
 export type NewAccount = {
   accountName: string
@@ -34,8 +39,18 @@ export const addAccountSignIn = (
 export const addAccountSignInCode = (code: string) =>
   invoke<Next>('add_account_sign_in_code', { code })
 
-export const addAccountGuard = (method: GuardMethod) =>
-  invoke<ConfirmBy>('add_account_guard', { method })
+/** `revocationCode` is the one shown in the Steam app on the phone. */
+export const addAccountGuard = (
+  method: GuardMethod,
+  revocationCode: string | null = null,
+) => invoke<GuardStart>('add_account_guard', { method, revocationCode })
+
+/**
+ * Adds the account with Guard from its .maFile. Resolves to the account's name,
+ * or `null` when picking was cancelled.
+ */
+export const addAccountImportMaFile = () =>
+  invoke<string | null>('add_account_import_mafile')
 
 /** Saves the account to the vault once Steam accepts the code. */
 export const addAccountConfirm = (code: string) =>

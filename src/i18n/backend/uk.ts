@@ -10,6 +10,8 @@ export const backend: Record<BackendMessage, string> = {
     'неправильний код, перевірте його й спробуйте ще раз',
   'Steam wants a phone number on the account first':
     'Steam спершу просить додати до акаунта номер телефону',
+  'Steam moves Guard by SMS, and the account has no phone number: use the revocation code instead':
+    'Steam переносить Guard через SMS, а до акаунта не прив’язано номер: скористайтеся кодом відновлення',
   'open the link in the email Steam sent, then try again':
     'відкрийте посилання з листа від Steam і спробуйте ще раз',
   'the account already has Steam Guard on another device':
@@ -76,6 +78,11 @@ export const backend: Record<BackendMessage, string> = {
   'nothing to confirm': 'нічого підтверджувати',
   'this sign-in has ended, start adding the account again':
     'цей вхід завершився, почніть додавати акаунт заново',
+  "the account's Steam Guard is already off, add a new one":
+    'Steam Guard акаунта вже знято, додайте новий',
+  'this .maFile is for another account': 'цей .maFile від іншого акаунта',
+  'this .maFile is from an older Steam Guard, Steam no longer takes its codes':
+    'цей .maFile від попереднього Steam Guard, Steam більше не приймає його коди',
   'this replacement has ended, start it again':
     'ця заміна завершилася, почніть її заново',
   "the old Steam Guard is off the account, but the new one isn't on yet: {}":
@@ -197,6 +204,29 @@ export const backend: Record<BackendMessage, string> = {
     'sub {} — це пакет, використайте його app ID',
   'add a game': 'додайте гру',
   'add a game or a status': 'додайте гру або статус',
+  'a plan lasts from 1 to 30 days': 'план триває від 1 до 30 днів',
+  'the hours have to end later than they start':
+    'кінець годин має бути пізніше за початок',
+  'pick at least one step': 'виберіть хоча б один крок',
+  'can\'t read "{}": use links like steamcommunity.com/groups/name':
+    'не вдалося прочитати «{}»: вкажіть посилання на зразок steamcommunity.com/groups/name',
+  'add a group': 'додайте групу',
+  'list at most {} groups': 'не більше {} груп',
+  'list at most {} games': 'не більше {} ігор',
+  'Joined {}': 'Вступив: {}',
+  'none of the links lead to a group': 'жодне посилання не веде на групу',
+  'Already in every group it can join':
+    'Уже в усіх групах, куди можна вступити',
+  'Added to the wishlist: {}': 'Додано до списку бажаного: {}',
+  'Every game is owned or on the wishlist already':
+    'Усі ігри вже куплені або в списку бажаного',
+  "the store didn't take any of the games": 'магазин не прийняв жодної гри',
+  'unreadable store data': 'нечитабельні дані магазину',
+  "Steam didn't add it to {}": 'Steam не додав його до {}',
+  description: 'опис',
+  'pick at least one piece besides dividers':
+    'виберіть хоча б одну частину, крім роздільників',
+  'add at least one line': 'додайте хоча б один рядок',
   'the status is over 64 characters': 'статус довший за 64 символи',
   'Steam plays at most 32 games at once, the status counts as one':
     'Steam запускає щонайбільше 32 ігри одночасно, статус рахується як одна',

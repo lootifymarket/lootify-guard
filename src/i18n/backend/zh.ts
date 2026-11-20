@@ -9,6 +9,8 @@ export const backend: Record<BackendMessage, string> = {
   'wrong code, check it and try again': '验证码错误，请检查后重试',
   'Steam wants a phone number on the account first':
     'Steam 要求账户先绑定手机号码',
+  'Steam moves Guard by SMS, and the account has no phone number: use the revocation code instead':
+    'Steam 通过短信转移令牌，但该账户没有绑定手机号码：请改用撤销码',
   'open the link in the email Steam sent, then try again':
     '请打开 Steam 发送的邮件中的链接，然后重试',
   'the account already has Steam Guard on another device':
@@ -69,6 +71,11 @@ export const backend: Record<BackendMessage, string> = {
   'nothing to confirm': '没有需要确认的内容',
   'this sign-in has ended, start adding the account again':
     '此次登录已结束，请重新开始添加账户',
+  "the account's Steam Guard is already off, add a new one":
+    '该账户的 Steam 令牌已移除，请添加新的令牌',
+  'this .maFile is for another account': '此 .maFile 属于其他账户',
+  'this .maFile is from an older Steam Guard, Steam no longer takes its codes':
+    '此 .maFile 来自旧的 Steam 令牌，Steam 已不再接受它的代码',
   'this replacement has ended, start it again': '此次更换已结束，请重新开始',
   "the old Steam Guard is off the account, but the new one isn't on yet: {}":
     '旧的 Steam 令牌已从账户移除，但新的尚未启用：{}',
@@ -186,6 +193,26 @@ export const backend: Record<BackendMessage, string> = {
   'sub {} is a package, use its app ID': 'sub {} 是礼包，请使用其 app ID',
   'add a game': '请添加游戏',
   'add a game or a status': '请添加游戏或状态',
+  'a plan lasts from 1 to 30 days': '计划持续 1 到 30 天',
+  'the hours have to end later than they start': '结束时间必须晚于开始时间',
+  'pick at least one step': '请至少选择一个步骤',
+  'can\'t read "{}": use links like steamcommunity.com/groups/name':
+    '无法识别“{}”：请使用 steamcommunity.com/groups/name 这样的链接',
+  'add a group': '请添加群组',
+  'list at most {} groups': '最多列出 {} 个群组',
+  'list at most {} games': '最多列出 {} 个游戏',
+  'Joined {}': '已加入：{}',
+  'none of the links lead to a group': '没有链接指向群组',
+  'Already in every group it can join': '已加入所有可加入的群组',
+  'Added to the wishlist: {}': '已加入愿望单：{}',
+  'Every game is owned or on the wishlist already':
+    '所有游戏都已拥有或在愿望单中',
+  "the store didn't take any of the games": '商店未接受任何游戏',
+  'unreadable store data': '无法读取商店数据',
+  "Steam didn't add it to {}": 'Steam 没有让它加入 {}',
+  description: '简介',
+  'pick at least one piece besides dividers': '请至少选择一个分隔线以外的部分',
+  'add at least one line': '请至少添加一行',
   'the status is over 64 characters': '状态超过 64 个字符',
   'Steam plays at most 32 games at once, the status counts as one':
     'Steam 最多同时运行 32 个游戏，状态也算一个',

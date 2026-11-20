@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import type { ConfirmBy } from './addAccount.ts'
+import type { GuardStart } from './addAccount.ts'
 
 /**
  * `sms`: Steam moves Guard here with an SMS to the account's phone.
@@ -19,8 +19,11 @@ export const replaceGuardBegin = (
   password: string | null,
 ) => invoke<Begun>('replace_guard_begin', { accountName, password })
 
-export const replaceGuardStart = (method: ReplaceMethod) =>
-  invoke<ConfirmBy>('replace_guard_start', { method })
+/** `revocationCode` is one the user typed, for when the vault has none. */
+export const replaceGuardStart = (
+  method: ReplaceMethod,
+  revocationCode: string | null = null,
+) => invoke<GuardStart>('replace_guard_start', { method, revocationCode })
 
 /** Saves the new secrets over the old ones once Steam accepts the code. */
 export const replaceGuardConfirm = (code: string) =>

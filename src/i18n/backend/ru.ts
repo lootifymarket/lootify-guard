@@ -11,6 +11,8 @@ export const backend: Record<BackendMessage, string> = {
     'неверный код, проверьте и попробуйте снова',
   'Steam wants a phone number on the account first':
     'Steam сначала просит привязать к аккаунту номер телефона',
+  'Steam moves Guard by SMS, and the account has no phone number: use the revocation code instead':
+    'Steam переносит Guard через SMS, а к аккаунту не привязан номер: используйте код восстановления',
   'open the link in the email Steam sent, then try again':
     'откройте ссылку из письма от Steam и попробуйте снова',
   'the account already has Steam Guard on another device':
@@ -79,6 +81,11 @@ export const backend: Record<BackendMessage, string> = {
   'nothing to confirm': 'подтверждать нечего',
   'this sign-in has ended, start adding the account again':
     'этот вход закончился, начните добавлять аккаунт заново',
+  "the account's Steam Guard is already off, add a new one":
+    'Steam Guard аккаунта уже снят, добавьте новый',
+  'this .maFile is for another account': 'этот .maFile от другого аккаунта',
+  'this .maFile is from an older Steam Guard, Steam no longer takes its codes':
+    'этот .maFile от прежнего Steam Guard, Steam больше не принимает его коды',
   'this replacement has ended, start it again':
     'эта замена закончилась, начните её заново',
   "the old Steam Guard is off the account, but the new one isn't on yet: {}":
@@ -213,6 +220,29 @@ export const backend: Record<BackendMessage, string> = {
     'sub {} — это пакет, укажите ID приложения',
   'add a game': 'добавьте игру',
   'add a game or a status': 'добавьте игру или статус',
+  'a plan lasts from 1 to 30 days': 'план длится от 1 до 30 дней',
+  'the hours have to end later than they start':
+    'конец часов должен быть позже начала',
+  'pick at least one step': 'выберите хотя бы один шаг',
+  'can\'t read "{}": use links like steamcommunity.com/groups/name':
+    'не удалось прочитать «{}»: укажите ссылки вида steamcommunity.com/groups/name',
+  'add a group': 'добавьте группу',
+  'list at most {} groups': 'не больше {} групп',
+  'list at most {} games': 'не больше {} игр',
+  'Joined {}': 'Вступил: {}',
+  'none of the links lead to a group': 'ни одна ссылка не ведёт на группу',
+  'Already in every group it can join':
+    'Уже во всех группах, куда можно вступить',
+  'Added to the wishlist: {}': 'Добавлено в вишлист: {}',
+  'Every game is owned or on the wishlist already':
+    'Все игры уже куплены или в вишлисте',
+  "the store didn't take any of the games": 'магазин не принял ни одной игры',
+  'unreadable store data': 'нечитаемые данные магазина',
+  "Steam didn't add it to {}": 'Steam не добавил его в {}',
+  description: 'описание',
+  'pick at least one piece besides dividers':
+    'выберите хотя бы одну часть, кроме разделителей',
+  'add at least one line': 'добавьте хотя бы одну строку',
   'the status is over 64 characters': 'статус длиннее 64 символов',
   'Steam plays at most 32 games at once, the status counts as one':
     'Steam запускает не больше 32 игр одновременно, статус считается за одну',

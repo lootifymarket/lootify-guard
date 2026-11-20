@@ -6,7 +6,7 @@ import {
   checkForUpdates,
   downloadUpdate,
   installUpdate,
-  releasePoints,
+  releaseSections,
   type Release,
   type UpdateStatus,
 } from '../../api/updates.ts'
@@ -122,7 +122,7 @@ function Steps({
     else go()
   }
 
-  const points = releasePoints(release.notes)
+  const sections = releaseSections(release.notes)
   const working =
     status.state === 'downloading' ||
     (restartWhenReady && status.state === 'ready')
@@ -136,15 +136,27 @@ function Steps({
 
       {!warning && !working && (
         <div className={styles.notes}>
-          <span className={styles.label}>{t.whatsNew}</span>
-          {points.length === 0 ? (
-            <span className={styles.muted}>{t.noNotes}</span>
+          {sections.length === 0 ? (
+            <>
+              <span className={styles.label}>{t.whatsNew}</span>
+              <span className={styles.muted}>{t.noNotes}</span>
+            </>
           ) : (
-            <ul className={styles.list}>
-              {points.map((point, index) => (
-                <li key={index}>{point}</li>
-              ))}
-            </ul>
+            sections.map((section, index) => (
+              <section key={index} className={styles.section}>
+                <h3 className={styles.label}>{section.title ?? t.whatsNew}</h3>
+                <ul className={styles.list}>
+                  {section.points.map((point, index) => (
+                    <li key={index}>
+                      {point.lead && (
+                        <strong className={styles.lead}>{point.lead}</strong>
+                      )}{' '}
+                      {point.text}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))
           )}
         </div>
       )}

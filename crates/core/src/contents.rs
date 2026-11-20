@@ -8,6 +8,7 @@ use crate::browser::{Bookmark, SavedCookie};
 use crate::browser_profiles::BrowserProfile;
 use crate::browser_region::RegionChoice;
 use crate::games::PlayingList;
+use crate::plans::Plan;
 use crate::proxy::{Proxy, ProxyAddress};
 
 /// What the vault holds once decrypted.
@@ -36,6 +37,11 @@ pub struct Contents {
     /// Never reused, so a tab of a deleted profile can't turn into a new one.
     #[serde(default)]
     pub(crate) last_profile_id: u32,
+    /// Warm-up plans, running and finished. In the vault, as they name accounts.
+    #[serde(default)]
+    pub plans: Vec<Plan>,
+    #[serde(default)]
+    pub last_plan_id: u32,
 }
 
 /// A set of accounts the user handles together, like "Farm" or "Storage".
@@ -126,6 +132,29 @@ pub struct Account {
     /// The time zone and language its browser tab shows pages.
     #[serde(default)]
     pub browser_region: RegionChoice,
+}
+
+impl Account {
+    /// A copy with only what tasks on the web need: the session, the profile and
+    /// the proxy. No password, Guard secrets, client token or sites' cookies, so it
+    /// can be kept while the vault is locked without holding those.
+    pub fn for_web_tasks(&self) -> Self {
+        let empty = || Secret::from(String::new());
+        Self {
+            authenticator: Authenticator {
+                shared_secret: empty(),
+                identity_secret: empty(),
+                revocation_code: None,
+                secret_1: None,
+                uri: None,
+                ..self.authenticator.clone()
+            },
+            password: None,
+            client_token: None,
+            saved_cookies: Vec::new(),
+            ..self.clone()
+        }
+    }
 }
 
 /// Vaults from before an account could be in several groups keep one id, or none.
@@ -648,6 +677,27 @@ mod tests {
             contents.add_to_group(&trader, farm),
             Err(GroupError::Missing)
         );
+    }
+
+    #[test]
+    fn a_copy_for_web_tasks_keeps_only_the_session() {
+        let mut full = account();
+        full.client_token = Some("client-refresh-token".to_owned().into());
+        let copy = full.for_web_tasks();
+        let left: Vec<&str> = secrets(&copy)
+            .into_iter()
+            .filter(|s| !s.is_empty())
+            .collect();
+        assert_eq!(
+            left,
+            [
+                "eyJhY2Nlc3MiOnRydWV9.access",
+                "eyJyZWZyZXNoIjp0cnVlfQ.refresh"
+            ]
+        );
+        assert!(copy.client_token.is_none());
+        assert_eq!(copy.steam_id, full.steam_id);
+        assert_eq!(copy.authenticator.token_gid, full.authenticator.token_gid);
     }
 
     #[test]

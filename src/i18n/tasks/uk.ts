@@ -3,13 +3,9 @@ import type { tasks as en } from './en.ts'
 
 export const tasks: typeof en = {
   title: 'Завдання',
-  subtitle:
-    'Дії одразу для цілої групи акаунтів, з обмеженнями та випадковими паузами',
-  groups: 'Групи',
+  subtitle: 'Виберіть завдання, а потім акаунти для нього',
   allAccounts: 'Усі акаунти',
   noGroup: 'Без групи',
-  groupsHint: 'Групи створюються на екрані «Акаунти».',
-  task: 'Завдання',
   kinds: {
     hourBoost: {
       name: 'Буст годин',
@@ -29,7 +25,7 @@ export const tasks: typeof en = {
     },
     profile: {
       name: 'Профіль',
-      text: 'Нікнейм, аватар і приватність',
+      text: 'Нікнейм, опис, аватар і приватність',
     },
     freeGames: {
       name: 'Безкоштовні ігри',
@@ -38,6 +34,18 @@ export const tasks: typeof en = {
     events: {
       name: 'Події',
       text: 'Черга відкриттів і безкоштовний предмет розпродажу',
+    },
+    joinGroups: {
+      name: 'Вступити в групи',
+      text: 'Кілька груп із вашого списку за запуск',
+    },
+    wishlist: {
+      name: 'Список бажаного',
+      text: 'Кілька ігор із великого списку за запуск',
+    },
+    warmUp: {
+      name: 'План прогріву',
+      text: 'Профіль, групи й список бажаного за кілька днів',
     },
     check: {
       name: 'Перевірка',
@@ -77,6 +85,27 @@ export const tasks: typeof en = {
 
   onlyOwn: 'Лише від моїх акаунтів',
 
+  groupLinks: 'Групи',
+  groupsPlaceholder: 'steamcommunity.com/groups/…, по одній на рядок',
+  groupSources: {
+    popular: 'Популярні групи, вбудований список',
+    mine: 'Мій список',
+  },
+  eachRun: 'За запуск',
+  groupsPerRun: { 1: '1 група', 2: '1–2 групи', 3: '1–3 групи' },
+  joinNote:
+    'Кожен акаунт вступає в стільки груп зі списку, в яких ще не перебуває, вибираючи їх випадково. Групи, куди пускають лише за заявкою чи запрошенням, пропускаються. Запускайте приблизно раз на день.',
+  wishGames: 'Ігри',
+  wishSources: {
+    popular: 'Популярні ігри, вбудований список',
+    mine: 'Мій список',
+  },
+  myGames: 'Мої ігри',
+  myGamesPlaceholder: 'ID застосунків або посилання з магазину',
+  wishSizes: { small: '2–4 гри', medium: '3–8 ігор', large: '5–12 ігор' },
+  wishNote:
+    'Кожен акаунт отримує свій набір ігор. Уже куплені й ті, що вже в списку бажаного, пропускаються.',
+
   atOnce: 'Одночасно',
   oneByOne: 'По одному',
   accountsAtOnce: (n) =>
@@ -84,9 +113,29 @@ export const tasks: typeof en = {
   pause: 'Пауза між акаунтами',
   noPause: 'Немає',
   seconds: (min, max) => `${min}–${max} с`,
-  retry: 'Повторювати невдалі акаунти (до 3 разів)',
+  retry: 'Повторювати невдалі, до 3 разів',
   retryLabel: 'Повторювати невдалі акаунти',
   runOn: (target, n) => `Запустити: ${target} (${n})`,
+  sections: {
+    playing: 'Ігри',
+    profile: 'Профіль і активність',
+    items: 'Предмети й трейди',
+    store: 'Магазин і події',
+    checks: 'Перевірки',
+  },
+  running: 'Іде',
+  accounts: 'Акаунти',
+  pickAccounts: 'Вибрати акаунти…',
+  pickedAccounts: 'Вибрані акаунти',
+  accountCount: (n: number) =>
+    `${n} ${plural('uk', n, { one: 'акаунт', few: 'акаунти', other: 'акаунтів' })}`,
+  selected: (n: number, total: number) => `Вибрано ${n} з ${total}`,
+  search: 'Пошук акаунтів',
+  pickAll: 'Усі',
+  pickNone: 'Жодного',
+  noMatches: 'Нічого не знайшлося.',
+  runOnPicked: (n: number) =>
+    `Запустити: ${n} ${plural('uk', n, { one: 'акаунт', few: 'акаунти', other: 'акаунтів' })}`,
   started: (task, target) => `Завдання «${task}» запущено: ${target}`,
 
   profile: {
@@ -105,9 +154,85 @@ export const tasks: typeof en = {
     avatarKeep: 'Аватар: не змінювати',
     remove: 'Прибрати',
     chooseImage: 'Вибрати зображення',
+    description: 'Опис',
+    descriptionModes: {
+      keep: 'Не змінювати',
+      generate: 'Згенерувати',
+      lines: 'З моїх рядків',
+    },
+    piecesLabel: 'Частини',
+    pieces: {
+      greeting: 'Привітання',
+      about: 'Про себе',
+      games: 'Ігри',
+      status: 'Статус',
+      quote: 'Цитата',
+      tradeNote: 'Про трейди',
+      ascii: 'ASCII-арт',
+      kaomoji: 'Каомодзі',
+      divider: 'Роздільники',
+    },
+    language: 'Мова',
+    languages: {
+      mixed: 'Англійська й російська',
+      english: 'Англійська',
+      russian: 'Російська',
+    },
+    length: 'Довжина',
+    lengths: {
+      short: 'Короткий, 1–2 частини',
+      medium: 'Середній, 3–4 частини',
+      long: 'Довгий, 5–7 частин',
+    },
+    examples: 'Приклади',
+    shuffle: 'Перемішати',
+    generateNote:
+      'Кожен акаунт отримує свій текст: частини йдуть у випадковому порядку, і в кожної свої варіанти. Двох однакових в одному завданні не буде.',
+    myLines: 'Мої рядки',
+    linesPlaceholder: '{hey|yo}, just a {CS2|Rust} player from {country}',
+    linesNote:
+      'Один опис на рядок. {a|b|c} вибирає один із варіантів, {country} — випадкову країну, {n} — номер акаунта. Кожен акаунт отримує випадковий рядок.',
   },
 
+  plan: {
+    steps: {
+      description: {
+        name: 'Опис',
+        hint: 'Свій текст для кожного акаунта, як у завданні «Профіль»',
+      },
+      groups: {
+        name: 'Вступити в групи',
+        hint: 'Одна група на день зі списку нижче',
+      },
+      wishlist: {
+        name: 'Список бажаного',
+        hint: 'Кілька ігор за раз, як задано нижче',
+      },
+      queue: {
+        name: 'Список рекомендацій',
+        hint: 'Один список, як під час звичайного заходу в магазин',
+      },
+    },
+    over: 'Строк',
+    days: (n: number) =>
+      `${n} ${plural('uk', n, { one: 'день', few: 'дні', other: 'днів' })}`,
+    from: 'З',
+    to: 'До',
+    note: 'Кожен акаунт робить один крок на день, у своєму порядку, у випадковий час між цими годинами. Кроки йдуть, поки застосунок відкритий, зокрема в треї. Дні, коли він вимкнений, пропускаються, і план просто закінчується пізніше, без подвійних кроків. При заблокованому сховищі план чекає, якщо не ввімкнено «Налаштування › Продовжувати завдання під час блокування».',
+    started: (target: string) => `План прогріву запущено: ${target}`,
+    startOn: (target: string, n: number) => `Запустити план: ${target} (${n})`,
+    startOnPicked: (n: number) =>
+      `Запустити план: ${n} ${plural('uk', n, { one: 'акаунт', few: 'акаунти', other: 'акаунтів' })}`,
+  },
   queue: {
+    dayOf: (day: number, days: number) => `День ${day} з ${days}`,
+    today: (done: number, total: number) => `сьогодні ${done} з ${total}`,
+    nextSoon: 'наступний ось-ось',
+    nextInMinutes: (n: number) => `наступний за ~${n} хв`,
+    nextInHours: (n: number) => `наступний за ~${n} год`,
+    nextAt: (time: string) => `наступний ${time}`,
+    stopPlan: 'Зупинити план',
+    planStopped: 'План зупинено',
     title: 'Черга',
     clearFinished: 'Прибрати завершені',
     empty: 'Поки нічого не запускалося.',

@@ -3,6 +3,28 @@ import { fromBackend } from '../i18n/backend/index.ts'
 import type { Game } from './inventory.ts'
 import type { Visibility } from './profile.ts'
 
+export type DescriptionPiece =
+  | 'greeting'
+  | 'about'
+  | 'games'
+  | 'status'
+  | 'quote'
+  | 'tradeNote'
+  | 'ascii'
+  | 'kaomoji'
+  | 'divider'
+
+export type DescriptionSource =
+  | {
+      mode: 'generate'
+      pieces: DescriptionPiece[]
+      /** `mixed` gives each account one of the other two. */
+      language: 'mixed' | 'english' | 'russian'
+      length: 'short' | 'medium' | 'long'
+    }
+  /** One description a line, with `{a|b}`, `{country}` and `{n}` filled in. */
+  | { mode: 'lines'; lines: string }
+
 export type TaskInput =
   | { kind: 'check' }
   | { kind: 'acceptGifts'; onlyOwn: boolean }
@@ -10,6 +32,8 @@ export type TaskInput =
       kind: 'profile'
       /** `{n}` becomes the account's place in the task, from 1. */
       nameTemplate: string | null
+      /** Each account gets its own; `null` keeps what it has. */
+      description: DescriptionSource | null
       /** A setting left out keeps what each account has. */
       privacy: Partial<Record<'profile' | 'inventory' | 'games', Visibility>>
       /** The image's bytes, for every account. */
@@ -26,6 +50,10 @@ export type TaskInput =
   | { kind: 'events'; queues: number; claimItem: boolean }
   /** Every tradable item to one account. */
   | { kind: 'moveToStorage'; storage: string; game: Game }
+  /** Group links, or none for the built-in ones; each run joins 1 to `perRun`. */
+  | { kind: 'joinGroups'; groups: string; perRun: number }
+  /** App IDs or store links; empty takes the built-in popular games. */
+  | { kind: 'wishlist'; games: string; size: 'small' | 'medium' | 'large' }
 
 export type Pacing = {
   /** How many accounts run at the same time. */
@@ -49,6 +77,7 @@ export type Run = { accountName: string; tries: number } & (
 
 export type Job = {
   id: number
+  kind: TaskInput['kind']
   title: string
   /** What it runs on, like a group's name. */
   target: string
@@ -87,3 +116,10 @@ function translateRun(run: Run): Run {
 export const cancelTask = (id: number) => invoke<void>('cancel_task', { id })
 
 export const clearFinishedTasks = () => invoke<void>('clear_finished_tasks')
+
+/** The built-in groups as links, to start a list of one's own from. */
+export const popularGroups = () => invoke<string[]>('popular_groups')
+
+/** A couple of descriptions as a Profile task would make them. */
+export const descriptionSamples = (description: DescriptionSource) =>
+  invoke<string[]>('description_samples', { description })

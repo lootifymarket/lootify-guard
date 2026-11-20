@@ -6,12 +6,15 @@ import Icon from '../../../components/Icon.tsx'
 import TextField from '../../../components/TextField.tsx'
 import { useT } from '../../../i18n/index.ts'
 import { DICE_ICON } from '../dice.ts'
+import type { DescriptionChoice } from './description.ts'
+import DescriptionOptions from './DescriptionOptions.tsx'
 import styles from './Tasks.module.css'
 
 export type PrivacyKey = 'profile' | 'inventory' | 'games'
 
 export type ProfileChoice = {
   nameTemplate: string
+  description: DescriptionChoice
   privacy: Partial<Record<PrivacyKey, Visibility>>
   avatar: File | null
 }
@@ -74,6 +77,11 @@ export default function ProfileOptions({ choice, onChange }: Props) {
         </div>
         <p className={styles.note}>{t.templateNote}</p>
       </div>
+
+      <DescriptionOptions
+        choice={choice.description}
+        onChange={(description) => onChange({ ...choice, description })}
+      />
 
       <div className={styles.privacy}>
         {PRIVACY.map((key) => (

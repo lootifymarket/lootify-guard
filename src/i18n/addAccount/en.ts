@@ -20,15 +20,24 @@ export const addAccount = {
     new: {
       name: 'Add a new authenticator',
       text: 'Made here and confirmed with a code Steam sends by SMS or email.',
-      unavailable:
-        'Steam Guard is already on a phone. Move it instead, or import its .maFile from the accounts list.',
     },
     move: {
       name: 'Move from phone',
-      text: 'Officially through Steam, confirmed by SMS. Guard stops working on the phone.',
-      unavailable: 'This account has no Steam Guard on a phone to move.',
+      text: 'Officially through Steam, confirmed by SMS to the account’s phone number. Guard stops working on the phone.',
+      noPhone:
+        'The account has no phone number for Steam to send the SMS to. Use the revocation code or the .maFile instead.',
+    },
+    revocationCode: {
+      name: 'Replace with the revocation code',
+      text: 'The code is in the Steam app on the phone, in the Steam Guard settings. It takes Guard off the phone, then Steam confirms the new one by email.',
+    },
+    maFile: {
+      name: 'Import its .maFile',
+      text: 'If the account’s .maFile was saved from SDA or another app. Guard keeps working where it is now.',
     },
   },
+  revocationCodeLabel: 'Revocation code',
+  chooseMaFile: 'Choose .maFile',
   tradeHold:
     'For the first 7 days after adding Guard, trades are held. That’s how Steam works.',
   askingSteam: 'Asking Steam…',

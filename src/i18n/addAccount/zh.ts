@@ -22,15 +22,24 @@ export const addAccount: typeof en = {
     new: {
       name: '添加新的验证器',
       text: '在这里创建，并用 Steam 通过短信或邮件发送的代码确认。',
-      unavailable:
-        'Steam 令牌已在手机上。请改为转移，或在账户列表中导入它的 .maFile。',
     },
     move: {
       name: '从手机转移',
-      text: '通过 Steam 官方转移，短信确认。手机上的令牌将停止工作。',
-      unavailable: '此账户的手机上没有可转移的 Steam 令牌。',
+      text: '通过 Steam 官方转移，向账户绑定的手机号发送短信确认。手机上的令牌将停止工作。',
+      noPhone:
+        '该账户没有绑定可接收 Steam 短信的手机号码。请改用撤销码或 .maFile。',
+    },
+    revocationCode: {
+      name: '用撤销码替换',
+      text: '撤销码在手机上 Steam 应用的 Steam 令牌设置中。它会移除手机上的令牌，然后 Steam 通过邮件确认新的令牌。',
+    },
+    maFile: {
+      name: '导入它的 .maFile',
+      text: '如果账户的 .maFile 已从 SDA 或其他应用保存。令牌在原处仍可继续使用。',
     },
   },
+  revocationCodeLabel: '撤销码',
+  chooseMaFile: '选择 .maFile',
   tradeHold: '添加令牌后的前 7 天内，交易会被暂挂。这是 Steam 的规则。',
   askingSteam: '正在请求 Steam…',
 

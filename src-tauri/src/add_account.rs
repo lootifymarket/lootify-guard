@@ -9,7 +9,7 @@ use tauri::{State, Window};
 use tauri_plugin_dialog::DialogExt;
 use zeroize::Zeroizing;
 
-use crate::accounts::{file_name, find, write_private};
+use crate::accounts::{MAFILE_FILTER, file_name, find, read_mafile, write_private};
 use crate::vault::{CommandError, VaultState};
 
 /// The account being added, one at a time. It lives only in memory, and a command
@@ -18,10 +18,14 @@ use crate::vault::{CommandError, VaultState};
 pub struct AddAccountState(Mutex<Option<Flow>>);
 
 struct Flow {
+    account_name: String,
     proxy_id: Option<u32>,
     /// Only when the user asked to keep it.
     password: Option<Secret>,
     step: Step,
+    /// The phone's Guard is already off the account, so the only way on is to add a
+    /// new one.
+    guard_removed: bool,
 }
 
 enum Step {
@@ -48,6 +52,18 @@ pub enum Next {
 pub enum GuardMethod {
     New,
     Move,
+    /// The revocation code takes the phone's Guard off, then a new one is added.
+    RevocationCode,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase", tag = "outcome")]
+pub enum GuardStart {
+    /// Steam sent the code that confirms the new authenticator.
+    #[serde(rename_all = "camelCase")]
+    Sent { confirm_by: ConfirmBy },
+    /// Moving is confirmed by SMS, and the account has no phone number.
+    NoPhone,
 }
 
 #[derive(Serialize)]
@@ -112,6 +128,7 @@ pub async fn add_account_sign_in(
 
     let (step, next) = spawn_blocking({
         let password = password.clone();
+        let account_name = account_name.clone();
         move || {
             let sign_in = link::begin_sign_in(&account_name, &password, proxy.as_ref())?;
             Ok::<_, SteamError>(match sign_in.code {
@@ -122,9 +139,11 @@ pub async fn add_account_sign_in(
     })
     .await??;
     flow.put(Flow {
+        account_name,
         proxy_id,
         password: remember_password.then(|| password.to_string().into()),
         step,
+        guard_removed: false,
     });
     Ok(next)
 }
@@ -164,28 +183,133 @@ pub async fn add_account_sign_in_code(
 }
 
 /// Asks Steam for a new authenticator, or to move the phone's here. Either way
-/// Steam sends a code that `add_account_confirm` takes.
+/// Steam sends a code that `add_account_confirm` takes. Once the phone's Guard is
+/// off, any method just tries adding the new one again.
 #[tauri::command]
 pub async fn add_account_guard(
     state: State<'_, VaultState>,
     flow: State<'_, AddAccountState>,
     method: GuardMethod,
-) -> Result<ConfirmBy, CommandError> {
+    revocation_code: Option<String>,
+) -> Result<GuardStart, CommandError> {
+    let revocation_code = revocation_code.map(Zeroizing::new);
     let mut current = flow.take(&state)?;
     let Step::Guard(mut guard) = current.step else {
         return Err(start_again());
     };
-    let (guard, result) = spawn_blocking(move || {
+    let mut removed = current.guard_removed;
+    let (guard, removed, result) = spawn_blocking(move || {
         let result = match method {
             GuardMethod::New => guard.add(),
+            _ if removed => guard.add(),
             GuardMethod::Move => guard.start_move(),
+            GuardMethod::RevocationCode => {
+                let code = revocation_code.as_deref().map_or("", |code| code.trim());
+                guard.remove(code).and_then(|()| {
+                    removed = true;
+                    guard.add()
+                })
+            }
         };
-        (guard, result)
+        (guard, removed, result)
     })
     .await?;
     current.step = Step::Guard(guard);
+    current.guard_removed = removed;
     flow.put(current);
-    Ok(result?)
+    match result {
+        Ok(confirm_by) => Ok(GuardStart::Sent { confirm_by }),
+        Err(SteamError::MoveNeedsPhone) => Ok(GuardStart::NoPhone),
+        Err(err) if removed => Err(CommandError::Failed(format!(
+            "the old Steam Guard is off the account, but the new one isn't on yet: {err}"
+        ))),
+        Err(err) => Err(err.into()),
+    }
+}
+
+/// Takes the Guard already on the phone from its .maFile, with the session this
+/// sign-in got. Returns the added account's name, or `None` when picking was cancelled.
+#[tauri::command]
+pub async fn add_account_import_mafile(
+    window: Window,
+    state: State<'_, VaultState>,
+    flow: State<'_, AddAccountState>,
+) -> Result<Option<String>, CommandError> {
+    let picker = window
+        .dialog()
+        .file()
+        .set_parent(&window)
+        .add_filter(MAFILE_FILTER.0, MAFILE_FILTER.1);
+    let Some(picked) = spawn_blocking(move || picker.blocking_pick_file()).await? else {
+        return Ok(None);
+    };
+    let path = picked
+        .into_path()
+        .map_err(|err| CommandError::Failed(err.to_string()))?;
+    let mut account = spawn_blocking(move || read_mafile(&path))
+        .await?
+        .map_err(CommandError::Failed)?;
+
+    let mut current = flow.take(&state)?;
+    let Step::Guard(guard) = current.step else {
+        return Err(start_again());
+    };
+    let same = match account.steam_id {
+        Some(steam_id) => steam_id == guard.steam_id(),
+        None => account
+            .account_name
+            .eq_ignore_ascii_case(&current.account_name),
+    };
+    if !same || current.guard_removed {
+        current.step = Step::Guard(guard);
+        flow.put(current);
+        return Err(CommandError::Failed(if same {
+            "the account's Steam Guard is already off, add a new one".to_owned()
+        } else {
+            "this .maFile is for another account".to_owned()
+        }));
+    }
+    let (guard, on_steam) = spawn_blocking(move || {
+        let on_steam = guard.guard_token_gid();
+        (guard, on_steam)
+    })
+    .await?;
+    // A file that doesn't say which authenticator it holds is taken as the one on.
+    let outdated = match (on_steam, account.authenticator.token_gid.as_deref()) {
+        (Ok(Some(theirs)), Some(ours)) => !theirs.eq_ignore_ascii_case(ours),
+        (Ok(_), _) => false,
+        (Err(err), _) => {
+            current.step = Step::Guard(guard);
+            flow.put(current);
+            return Err(err.into());
+        }
+    };
+    if outdated {
+        current.step = Step::Guard(guard);
+        flow.put(current);
+        return Err(CommandError::Failed(
+            "this .maFile is from an older Steam Guard, Steam no longer takes its codes".to_owned(),
+        ));
+    }
+
+    account.account_name = current.account_name.clone();
+    account.steam_id = Some(guard.steam_id());
+    account.session = Some(guard.session());
+    account.proxy = current.proxy_id;
+    account.password = current.password.take();
+    {
+        let mut unlocked = state.unlocked();
+        let vault = unlocked.as_mut().ok_or(CommandError::Locked)?;
+        let mut contents = Contents::from_bytes(vault.data())?;
+        contents.put_account(account);
+        vault.save_data(contents.to_bytes())?;
+    }
+    let account_name = current.account_name.clone();
+    current.step = Step::Added {
+        account_name: account_name.clone(),
+    };
+    flow.put(current);
+    Ok(Some(account_name))
 }
 
 /// Confirms the authenticator and saves the account at once: from here on its

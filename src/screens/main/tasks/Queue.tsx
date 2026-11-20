@@ -6,6 +6,7 @@ import {
   type Job,
   type Run,
 } from '../../../api/tasks.ts'
+import { cancelPlan, planQueue, type Plan } from '../../../api/plans.ts'
 import { errorMessage } from '../../../api/vault.ts'
 import Button from '../../../components/Button.tsx'
 import Dialog from '../../../components/Dialog.tsx'
@@ -22,29 +23,40 @@ const SKELETON_JOBS = 4
 type Props = {
   /** Goes up whenever a job starts, so the queue asks again at once. */
   started: number
+  /** The kinds of the tasks and plans running, after every answer. */
+  onRunning?: (kinds: Set<string>) => void
 }
 
 type JobState = 'running' | 'stopped' | 'error' | 'done'
 
-export default function Queue({ started }: Props) {
-  const t = useT().tasks.queue
+export default function Queue({ started, onRunning }: Props) {
+  const words = useT()
+  const t = words.tasks.queue
   const toast = useToast()
   // `null` until the first answer.
   const [jobs, setJobs] = useState<Job[] | null>(null)
+  const [plans, setPlans] = useState<Plan[]>([])
+  const [openPlanId, setOpenPlanId] = useState<number | null>(null)
   const [error, setError] = useState('')
   const [openId, setOpenId] = useState<number | null>(null)
   const [revision, setRevision] = useState(0)
 
-  const loaded = useEffectEvent((next: Job[]) => {
+  const loaded = useEffectEvent((next: Job[], nextPlans: Plan[]) => {
     setJobs(next)
+    setPlans(nextPlans)
     setError('')
+    const running = new Set<string>(
+      next.filter((job) => job.finishedAt === null).map((job) => job.kind),
+    )
+    if (nextPlans.some((plan) => !plan.finished)) running.add('warmUp')
+    onRunning?.(running)
   })
   const failed = useEffectEvent((err: unknown) => setError(errorMessage(err)))
   useEffect(() => {
     let current = true
     const load = () =>
-      void taskQueue().then(
-        (next) => current && loaded(next),
+      void Promise.all([taskQueue(), planQueue()]).then(
+        ([next, nextPlans]) => current && loaded(next, nextPlans),
         (err: unknown) => current && failed(err),
       )
     load()
@@ -55,8 +67,12 @@ export default function Queue({ started }: Props) {
     }
   }, [started, revision])
 
-  const finished = jobs?.some((job) => job.finishedAt !== null) ?? false
+  const finished =
+    (jobs?.some((job) => job.finishedAt !== null) ?? false) ||
+    plans.some((plan) => plan.finished)
   const open = jobs?.find((job) => job.id === openId)
+  const openPlan = plans.find((plan) => plan.id === openPlanId)
+  const empty = jobs?.length === 0 && plans.length === 0
 
   return (
     <section className={styles.queue} aria-labelledby="queue-title">
@@ -92,14 +108,44 @@ export default function Queue({ started }: Props) {
           ))}
         </div>
       )}
-      {jobs?.length === 0 && <p className={styles.empty}>{t.empty}</p>}
-      {jobs && jobs.length > 0 && (
+      {empty && <p className={styles.empty}>{t.empty}</p>}
+      {jobs && !empty && (
         <div className="rise">
+          {plans.map((plan) => (
+            <PlanRow
+              key={`plan-${plan.id}`}
+              plan={plan}
+              onOpen={() => setOpenPlanId(plan.id)}
+            />
+          ))}
           {jobs.map((job) => (
             <JobRow key={job.id} job={job} onOpen={() => setOpenId(job.id)} />
           ))}
         </div>
       )}
+      <Dialog
+        open={openPlan !== undefined}
+        title={
+          openPlan
+            ? `${words.tasks.kinds.warmUp.name} · ${openPlan.target}`
+            : ''
+        }
+        onClose={() => setOpenPlanId(null)}
+      >
+        {openPlan && (
+          <PlanLog
+            plan={openPlan}
+            onClose={() => setOpenPlanId(null)}
+            onStop={() =>
+              void cancelPlan(openPlan.id).then(() => {
+                setOpenPlanId(null)
+                setRevision((n) => n + 1)
+                toast(t.planStopped)
+              })
+            }
+          />
+        )}
+      </Dialog>
       <Dialog
         open={open !== undefined}
         title={open ? `${open.title} · ${open.target}` : ''}
@@ -201,6 +247,107 @@ function Log({
       </div>
     </>
   )
+}
+
+function PlanRow({ plan, onOpen }: { plan: Plan; onOpen: () => void }) {
+  const words = useT()
+  const t = words.tasks.queue
+  const state: JobState = plan.finished ? 'done' : 'running'
+  const progress = plan.finished
+    ? 1
+    : (plan.day - 1 + (plan.today > 0 ? plan.doneToday / plan.today : 0)) /
+      plan.days
+  return (
+    <button
+      type="button"
+      className={styles.job}
+      data-state={state}
+      onClick={onOpen}
+    >
+      <span className={styles.jobHead}>
+        <span className={styles.jobName}>{words.tasks.kinds.warmUp.name}</span>
+        <span className={styles.jobState}>
+          {plan.finished ? t.done : t.dayOf(plan.day, plan.days)}
+        </span>
+      </span>
+      <span className={styles.jobMeta}>
+        {plan.target}
+        {!plan.finished && ` · ${t.today(plan.doneToday, plan.today)}`}
+        {plan.nextAt !== null && ` · ${nextIn(t, plan.nextAt)}`}
+      </span>
+      <span className={styles.bar}>
+        <span
+          className={styles.barFill}
+          style={{ width: `${progress * 100}%` }}
+        />
+      </span>
+    </button>
+  )
+}
+
+/** How each account of the plan is doing. */
+function PlanLog({
+  plan,
+  onClose,
+  onStop,
+}: {
+  plan: Plan
+  onClose: () => void
+  onStop: () => void
+}) {
+  const t = useT().tasks.queue
+  return (
+    <>
+      <ul className={styles.runs}>
+        {plan.accounts.map((account) => (
+          <li
+            key={account.accountName}
+            data-state={account.state === 'stopped' ? 'failed' : account.state}
+          >
+            <span className={styles.runName}>{account.accountName}</span>
+            <span className={styles.runNote}>
+              {account.state === 'waiting' && account.nextAt !== null
+                ? [account.note, t.nextAt(timeOf(account.nextAt))]
+                    .filter(Boolean)
+                    .join(' · ')
+                : (account.note ?? t.done)}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <div className={dialogStyles.actions}>
+        {plan.finished ? (
+          <Button variant="secondary" size="sm" onClick={onClose}>
+            {t.close}
+          </Button>
+        ) : (
+          <Button variant="secondary" size="sm" onClick={onStop}>
+            <span className={styles.stop}>{t.stopPlan}</span>
+          </Button>
+        )}
+        <Button size="sm" onClick={onClose}>
+          {t.ok}
+        </Button>
+      </div>
+    </>
+  )
+}
+
+/** How long until a step, roughly. */
+function nextIn(t: Dictionary['tasks']['queue'], at: number) {
+  const minutes = Math.round((at - Date.now() / 1000) / 60)
+  if (minutes < 1) return t.nextSoon
+  if (minutes < 60) return t.nextInMinutes(minutes)
+  return t.nextInHours(Math.round(minutes / 60))
+}
+
+/** The day and time of a step, by this computer's clock. */
+function timeOf(at: number) {
+  return new Date(at * 1000).toLocaleString(undefined, {
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 const isOver = (run: Run) => run.state !== 'waiting' && run.state !== 'running'

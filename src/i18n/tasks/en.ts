@@ -1,12 +1,8 @@
 export const tasks = {
   title: 'Tasks',
-  subtitle:
-    'Run actions on a whole group of accounts, with limits and random pauses',
-  groups: 'Groups',
+  subtitle: 'Pick a task, then the accounts to run it on',
   allAccounts: 'All accounts',
   noGroup: 'No group',
-  groupsHint: 'Make groups on the Accounts screen.',
-  task: 'Task',
   /** By the task's kind, as the backend names it. */
   kinds: {
     hourBoost: {
@@ -27,7 +23,7 @@ export const tasks = {
     },
     profile: {
       name: 'Profile',
-      text: 'Nickname, avatar and privacy',
+      text: 'Nickname, description, avatar and privacy',
     },
     freeGames: {
       name: 'Free games',
@@ -36,6 +32,18 @@ export const tasks = {
     events: {
       name: 'Events',
       text: 'Discovery queue and the free sale item',
+    },
+    joinGroups: {
+      name: 'Join groups',
+      text: 'A few groups from your list each run',
+    },
+    wishlist: {
+      name: 'Wishlist',
+      text: 'A few games from a big list each run',
+    },
+    warmUp: {
+      name: 'Warm-up plan',
+      text: 'Profile, groups and wishlist over several days',
     },
     check: {
       name: 'Check',
@@ -73,15 +81,49 @@ export const tasks = {
 
   onlyOwn: 'Only from my accounts',
 
+  groupLinks: 'Groups',
+  groupsPlaceholder: 'steamcommunity.com/groups/…, one per line',
+  groupSources: { popular: 'Popular groups, built in', mine: 'My list' },
+  eachRun: 'Each run',
+  groupsPerRun: { 1: '1 group', 2: '1–2 groups', 3: '1–3 groups' },
+  joinNote:
+    'Each account joins this many groups from the list that it isn’t in yet, picked at random. Groups that only take requests or invites are passed over. Run it once a day or so.',
+  wishGames: 'Games',
+  wishSources: { popular: 'Popular games, built in', mine: 'My list' },
+  myGames: 'My games',
+  myGamesPlaceholder: 'App IDs or store links',
+  wishSizes: { small: '2–4 games', medium: '3–8 games', large: '5–12 games' },
+  wishNote:
+    'Each account gets its own mix of games. Ones already owned or on the wishlist are skipped.',
+
   atOnce: 'At once',
   oneByOne: 'One by one',
   accountsAtOnce: (n: number) => `${n} accounts`,
   pause: 'Pause between accounts',
   noPause: 'None',
   seconds: (min: number, max: number) => `${min}–${max} s`,
-  retry: 'Retry failed accounts (up to 3 times)',
+  retry: 'Retry failed, up to 3 times',
   retryLabel: 'Retry failed accounts',
   runOn: (target: string, n: number) => `Run on ${target} (${n})`,
+  sections: {
+    playing: 'Playing',
+    profile: 'Profile and activity',
+    items: 'Items and trades',
+    store: 'Store and events',
+    checks: 'Checks',
+  },
+  running: 'Running',
+  accounts: 'Accounts',
+  pickAccounts: 'Pick accounts…',
+  pickedAccounts: 'Chosen accounts',
+  accountCount: (n: number) => (n === 1 ? '1 account' : `${n} accounts`),
+  selected: (n: number, total: number) => `${n} of ${total} selected`,
+  search: 'Search accounts',
+  pickAll: 'All',
+  pickNone: 'None',
+  noMatches: 'No accounts match.',
+  runOnPicked: (n: number) =>
+    `Run on ${n === 1 ? '1 account' : `${n} accounts`}`,
   started: (task: string, target: string) => `“${task}” started on ${target}`,
 
   profile: {
@@ -100,9 +142,84 @@ export const tasks = {
     avatarKeep: 'Avatar: keep',
     remove: 'Remove',
     chooseImage: 'Choose image',
+    description: 'Description',
+    descriptionModes: {
+      keep: 'Keep',
+      generate: 'Generate',
+      lines: 'From my lines',
+    },
+    piecesLabel: 'Pieces',
+    pieces: {
+      greeting: 'Greeting',
+      about: 'About',
+      games: 'Games',
+      status: 'Status',
+      quote: 'Quote',
+      tradeNote: 'Trade note',
+      ascii: 'ASCII art',
+      kaomoji: 'Kaomoji',
+      divider: 'Dividers',
+    },
+    language: 'Language',
+    languages: {
+      mixed: 'English and Russian',
+      english: 'English',
+      russian: 'Russian',
+    },
+    length: 'Length',
+    lengths: {
+      short: 'Short, 1–2 pieces',
+      medium: 'Medium, 3–4 pieces',
+      long: 'Long, 5–7 pieces',
+    },
+    examples: 'Examples',
+    shuffle: 'Shuffle',
+    generateNote:
+      'Every account gets its own text: the pieces come in a random order, each with options of its own. No two in a task are the same.',
+    myLines: 'My lines',
+    linesPlaceholder: '{hey|yo}, just a {CS2|Rust} player from {country}',
+    linesNote:
+      'One description per line. {a|b|c} picks one of the options, {country} a random country, {n} the account’s place. Each account gets a line at random.',
   },
 
+  plan: {
+    steps: {
+      description: {
+        name: 'Description',
+        hint: 'Its own text for every account, made like the Profile task’s',
+      },
+      groups: {
+        name: 'Join groups',
+        hint: 'One group a day from the list below',
+      },
+      wishlist: {
+        name: 'Wishlist',
+        hint: 'A few games at a time, as set below',
+      },
+      queue: {
+        name: 'Discovery queue',
+        hint: 'One queue, like a normal visit to the store',
+      },
+    },
+    over: 'Over',
+    days: (n: number) => `${n} days`,
+    from: 'From',
+    to: 'To',
+    note: 'Each account does one step a day, in its own order, at a random time between these hours. Steps run while the app is open, in the tray too. Days it’s off are skipped and the plan ends later, never doubled up. While the vault is locked, the plan waits unless Settings › Keep tasks running while locked is on.',
+    started: (target: string) => `Warm-up plan started on ${target}`,
+    startOn: (target: string, n: number) => `Start plan on ${target} (${n})`,
+    startOnPicked: (n: number) =>
+      `Start plan on ${n === 1 ? '1 account' : `${n} accounts`}`,
+  },
   queue: {
+    dayOf: (day: number, days: number) => `Day ${day} of ${days}`,
+    today: (done: number, total: number) => `${done} of ${total} today`,
+    nextSoon: 'next any minute',
+    nextInMinutes: (n: number) => `next in ~${n} min`,
+    nextInHours: (n: number) => `next in ~${n} h`,
+    nextAt: (time: string) => `next ${time}`,
+    stopPlan: 'Stop plan',
+    planStopped: 'Plan stopped',
     title: 'Queue',
     clearFinished: 'Clear finished',
     empty: 'Nothing has run yet.',
