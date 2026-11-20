@@ -128,6 +128,29 @@ pub struct Account {
     pub browser_region: RegionChoice,
 }
 
+impl Account {
+    /// A copy with only what tasks on the web need: the session, the profile and
+    /// the proxy. No password, Guard secrets, client token or sites' cookies, so it
+    /// can be kept while the vault is locked without holding those.
+    pub fn for_web_tasks(&self) -> Self {
+        let empty = || Secret::from(String::new());
+        Self {
+            authenticator: Authenticator {
+                shared_secret: empty(),
+                identity_secret: empty(),
+                revocation_code: None,
+                secret_1: None,
+                uri: None,
+                ..self.authenticator.clone()
+            },
+            password: None,
+            client_token: None,
+            saved_cookies: Vec::new(),
+            ..self.clone()
+        }
+    }
+}
+
 /// Vaults from before an account could be in several groups keep one id, or none.
 fn group_ids<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Vec<u32>, D::Error> {
     #[derive(Deserialize)]
@@ -648,6 +671,27 @@ mod tests {
             contents.add_to_group(&trader, farm),
             Err(GroupError::Missing)
         );
+    }
+
+    #[test]
+    fn a_copy_for_web_tasks_keeps_only_the_session() {
+        let mut full = account();
+        full.client_token = Some("client-refresh-token".to_owned().into());
+        let copy = full.for_web_tasks();
+        let left: Vec<&str> = secrets(&copy)
+            .into_iter()
+            .filter(|s| !s.is_empty())
+            .collect();
+        assert_eq!(
+            left,
+            [
+                "eyJhY2Nlc3MiOnRydWV9.access",
+                "eyJyZWZyZXNoIjp0cnVlfQ.refresh"
+            ]
+        );
+        assert!(copy.client_token.is_none());
+        assert_eq!(copy.steam_id, full.steam_id);
+        assert_eq!(copy.authenticator.token_gid, full.authenticator.token_gid);
     }
 
     #[test]
