@@ -1,13 +1,15 @@
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
 use lootify_guard_core::contents::Contents;
-use lootify_guard_core::link::{self, ConfirmBy, NewGuard};
+use lootify_guard_core::link::{self, NewGuard};
 use lootify_guard_core::steam::SteamError;
 use serde::{Deserialize, Serialize};
 use tauri::State;
 use tauri::async_runtime::spawn_blocking;
+use zeroize::Zeroizing;
 
 use crate::accounts::{account_and_proxy, confirm_owner, find, no_such_account, settle};
+use crate::add_account::GuardStart;
 use crate::vault::{CommandError, VaultState};
 
 /// The account whose Steam Guard is being replaced, one at a time. It lives only in
@@ -96,28 +98,34 @@ pub async fn replace_guard_begin(
 
 /// Asks Steam for the new authenticator. Either way Steam sends a code that
 /// `replace_guard_confirm` takes. Once the old Guard is off, any method just tries
-/// adding the new one again.
+/// adding the new one again. `revocation_code` is the one the user typed, for an
+/// account whose code isn't in the vault.
 #[tauri::command]
 pub async fn replace_guard_start(
     state: State<'_, VaultState>,
     flow: State<'_, ReplaceGuardState>,
     method: ReplaceMethod,
-) -> Result<ConfirmBy, CommandError> {
+    revocation_code: Option<String>,
+) -> Result<GuardStart, CommandError> {
+    let typed = revocation_code.map(Zeroizing::new);
     let mut current = flow.take(&state)?;
     let revocation_code = match method {
         ReplaceMethod::RevocationCode if !current.removed => {
-            let unlocked = state.unlocked();
-            let vault = unlocked.as_ref().ok_or(CommandError::Locked)?;
-            let contents = Contents::from_bytes(vault.data())?;
-            let code = find(&contents, &current.account_name)?
-                .authenticator
-                .revocation_code
-                .as_ref()
+            let stored = {
+                let unlocked = state.unlocked();
+                let vault = unlocked.as_ref().ok_or(CommandError::Locked)?;
+                let contents = Contents::from_bytes(vault.data())?;
+                find(&contents, &current.account_name)?
+                    .authenticator
+                    .revocation_code
+                    .as_ref()
+                    .map(|code| Zeroizing::new(code.expose().to_owned()))
+            };
+            let code = stored
+                .or_else(|| typed.filter(|code| !code.trim().is_empty()))
                 .ok_or_else(|| {
                     CommandError::Failed("this account has no revocation code".to_owned())
-                })?
-                .expose()
-                .to_owned();
+                })?;
             Some(code)
         }
         _ => None,
@@ -127,7 +135,7 @@ pub async fn replace_guard_start(
         let result = if current.removed {
             current.guard.add()
         } else if let Some(code) = revocation_code {
-            current.guard.remove(&code).and_then(|()| {
+            current.guard.remove(code.trim()).and_then(|()| {
                 current.removed = true;
                 current.guard.add()
             })
@@ -139,15 +147,14 @@ pub async fn replace_guard_start(
     .await?;
     let removed = current.removed;
     flow.put(current);
-    result.map_err(|err| {
-        if removed {
-            CommandError::Failed(format!(
-                "the old Steam Guard is off the account, but the new one isn't on yet: {err}"
-            ))
-        } else {
-            err.into()
-        }
-    })
+    match result {
+        Ok(confirm_by) => Ok(GuardStart::Sent { confirm_by }),
+        Err(SteamError::MoveNeedsPhone) => Ok(GuardStart::NoPhone),
+        Err(err) if removed => Err(CommandError::Failed(format!(
+            "the old Steam Guard is off the account, but the new one isn't on yet: {err}"
+        ))),
+        Err(err) => Err(err.into()),
+    }
 }
 
 /// Confirms the new authenticator and saves its secrets over the old ones at once:

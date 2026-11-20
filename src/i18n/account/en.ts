@@ -173,6 +173,11 @@ export const account = {
     continue: 'Continue',
     methods:
       'Steam confirms by SMS to the account’s phone. With no phone on the account, use the revocation code: it takes the old Guard off, then Steam confirms the new one by email.',
+    noPhone:
+      'The account has no phone number, and Steam moves Guard only by SMS. Use the revocation code instead: it takes the old Guard off, then Steam confirms the new one by email.',
+    noPhoneTypeCode:
+      'The account has no phone number, and Steam moves Guard only by SMS. Enter the account’s revocation code instead: it takes the old Guard off, then Steam confirms the new one by email.',
+    revocationCode: 'Revocation code',
     smsOnly: 'Steam confirms by SMS to the account’s phone.',
     noGuard:
       'Steam shows no Steam Guard on this account, so a new one is added here. Steam sends a code to confirm it.',
