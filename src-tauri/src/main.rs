@@ -10,6 +10,7 @@ mod browser_profiles;
 mod confirmations;
 mod farming;
 mod groups;
+mod home_group;
 mod inventory;
 #[cfg(target_os = "macos")]
 mod menu;
@@ -69,6 +70,7 @@ fn main() {
             app.manage(inventory::IconCache::default());
             app.manage(tasks::Tasks::default());
             app.manage(plans::Plans::default());
+            app.manage(home_group::HomeGroup::default());
             app.manage(playing::Players::default());
             app.manage(farming::Farms::default());
             app.manage(browser::Browsers::default());
@@ -81,6 +83,7 @@ fn main() {
             }
             vault::watch_idle(app.handle().clone());
             plans::watch(app.handle().clone());
+            home_group::watch(app.handle().clone());
             tray::watch_accounts(app.handle().clone());
             auto_confirm::watch(app.handle().clone());
             profiles::watch(app.handle().clone());

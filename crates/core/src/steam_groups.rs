@@ -150,6 +150,25 @@ pub const POPULAR: &[&str] = &[
     "RunAwayGaming",
 ];
 
+/// Lootify Market's own group, by the name in its link and its ID.
+pub const LOOTIFY: (&str, u64) = ("lootifymarket", 103_582_791_475_655_061);
+
+/// Joins the group unless the account is in it already. Returns whether it joined
+/// just now. The account's list of groups lags a few minutes behind, so one that
+/// left a moment ago may be taken as still in it.
+pub fn keep_in(
+    account: &Account,
+    proxy: Option<&ProxyAddress>,
+    (name, id): (&str, u64),
+) -> Result<(Session, bool), SteamError> {
+    with_session(account, proxy, |client, session, steam_id| {
+        if memberships(client, steam_id)?.contains(&id) {
+            return Ok(false);
+        }
+        join_one(client, session, &GroupLink::Name(name.to_owned()).url())
+    })
+}
+
 /// The built-in groups, as links to show and edit.
 pub fn popular() -> Vec<GroupLink> {
     POPULAR
