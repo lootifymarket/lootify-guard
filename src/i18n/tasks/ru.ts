@@ -29,7 +29,7 @@ export const tasks: typeof en = {
     },
     profile: {
       name: 'Профиль',
-      text: 'Никнейм, аватар и приватность',
+      text: 'Никнейм, описание, аватар и приватность',
     },
     freeGames: {
       name: 'Бесплатные игры',
@@ -105,6 +105,44 @@ export const tasks: typeof en = {
     avatarKeep: 'Аватар: не менять',
     remove: 'Убрать',
     chooseImage: 'Выбрать изображение',
+    description: 'Описание',
+    descriptionModes: {
+      keep: 'Не менять',
+      generate: 'Сгенерировать',
+      lines: 'Из моих строк',
+    },
+    piecesLabel: 'Части',
+    pieces: {
+      greeting: 'Приветствие',
+      about: 'О себе',
+      games: 'Игры',
+      status: 'Статус',
+      quote: 'Цитата',
+      tradeNote: 'Про трейды',
+      ascii: 'ASCII-арт',
+      kaomoji: 'Каомодзи',
+      divider: 'Разделители',
+    },
+    language: 'Язык',
+    languages: {
+      mixed: 'Английский и русский',
+      english: 'Английский',
+      russian: 'Русский',
+    },
+    length: 'Длина',
+    lengths: {
+      short: 'Короткое, 1–2 части',
+      medium: 'Среднее, 3–4 части',
+      long: 'Длинное, 5–7 частей',
+    },
+    examples: 'Примеры',
+    shuffle: 'Перемешать',
+    generateNote:
+      'Каждый аккаунт получает свой текст: части идут в случайном порядке, и у каждой свои варианты. Двух одинаковых в одной задаче не будет.',
+    myLines: 'Мои строки',
+    linesPlaceholder: '{hey|yo}, just a {CS2|Rust} player from {country}',
+    linesNote:
+      'Одно описание на строку. {a|b|c} выбирает один из вариантов, {country} — случайную страну, {n} — номер аккаунта. Каждый аккаунт получает случайную строку.',
   },
 
   queue: {

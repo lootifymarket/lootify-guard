@@ -175,6 +175,7 @@ fn main() {
             playing::owned_games,
             playing::free_games,
             tasks::start_task,
+            tasks::description_samples,
             tasks::task_queue,
             tasks::cancel_task,
             tasks::clear_finished_tasks,

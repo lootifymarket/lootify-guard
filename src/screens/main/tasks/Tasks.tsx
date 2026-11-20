@@ -10,6 +10,11 @@ import Toggle from '../../../components/Toggle.tsx'
 import { useT } from '../../../i18n/index.ts'
 import { useToast } from '../../../lib/toast.ts'
 import layout from '../layout.module.css'
+import {
+  describes,
+  descriptionSource,
+  KEEP_DESCRIPTION,
+} from './description.ts'
 import ProfileOptions, { type ProfileChoice } from './ProfileOptions.tsx'
 import Queue from './Queue.tsx'
 import styles from './Tasks.module.css'
@@ -59,6 +64,7 @@ export default function Tasks({ accounts, groups }: Props) {
   const [onlyOwn, setOnlyOwn] = useState(true)
   const [profile, setProfile] = useState<ProfileChoice>({
     nameTemplate: '',
+    description: KEEP_DESCRIPTION,
     privacy: {},
     avatar: null,
   })
@@ -104,9 +110,13 @@ export default function Tasks({ accounts, groups }: Props) {
         : kind === 'events'
           ? queues > 0 || claimItem
           : kind !== 'profile' ||
-            profile.nameTemplate.trim() !== '' ||
-            Object.keys(profile.privacy).length > 0 ||
-            profile.avatar !== null
+            // A description that can't be made holds the whole task back.
+            ((profile.description.mode === 'keep' ||
+              describes(profile.description)) &&
+              (profile.nameTemplate.trim() !== '' ||
+                profile.description.mode !== 'keep' ||
+                Object.keys(profile.privacy).length > 0 ||
+                profile.avatar !== null))
 
   async function input(): Promise<TaskInput> {
     switch (kind) {
@@ -130,6 +140,7 @@ export default function Tasks({ accounts, groups }: Props) {
         return {
           kind,
           nameTemplate: profile.nameTemplate.trim() || null,
+          description: descriptionSource(profile.description),
           privacy: profile.privacy,
           avatar: avatar
             ? Array.from(new Uint8Array(await avatar.arrayBuffer()))

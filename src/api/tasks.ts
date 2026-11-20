@@ -3,6 +3,28 @@ import { fromBackend } from '../i18n/backend/index.ts'
 import type { Game } from './inventory.ts'
 import type { Visibility } from './profile.ts'
 
+export type DescriptionPiece =
+  | 'greeting'
+  | 'about'
+  | 'games'
+  | 'status'
+  | 'quote'
+  | 'tradeNote'
+  | 'ascii'
+  | 'kaomoji'
+  | 'divider'
+
+export type DescriptionSource =
+  | {
+      mode: 'generate'
+      pieces: DescriptionPiece[]
+      /** `mixed` gives each account one of the other two. */
+      language: 'mixed' | 'english' | 'russian'
+      length: 'short' | 'medium' | 'long'
+    }
+  /** One description a line, with `{a|b}`, `{country}` and `{n}` filled in. */
+  | { mode: 'lines'; lines: string }
+
 export type TaskInput =
   | { kind: 'check' }
   | { kind: 'acceptGifts'; onlyOwn: boolean }
@@ -10,6 +32,8 @@ export type TaskInput =
       kind: 'profile'
       /** `{n}` becomes the account's place in the task, from 1. */
       nameTemplate: string | null
+      /** Each account gets its own; `null` keeps what it has. */
+      description: DescriptionSource | null
       /** A setting left out keeps what each account has. */
       privacy: Partial<Record<'profile' | 'inventory' | 'games', Visibility>>
       /** The image's bytes, for every account. */
@@ -87,3 +111,7 @@ function translateRun(run: Run): Run {
 export const cancelTask = (id: number) => invoke<void>('cancel_task', { id })
 
 export const clearFinishedTasks = () => invoke<void>('clear_finished_tasks')
+
+/** A couple of descriptions as a Profile task would make them. */
+export const descriptionSamples = (description: DescriptionSource) =>
+  invoke<string[]>('description_samples', { description })

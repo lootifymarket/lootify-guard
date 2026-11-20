@@ -173,6 +173,8 @@ export const BACKEND_MESSAGES = [
   'sub {} is a package, use its app ID',
   'add a game',
   'add a game or a status',
+  'pick at least one piece besides dividers',
+  'add at least one line',
   'the status is over 64 characters',
   'Steam plays at most 32 games at once, the status counts as one',
   'Steam plays at most {} games at once',

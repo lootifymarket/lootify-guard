@@ -195,6 +195,97 @@
   line-height: 1.5;
 }
 
+.pieces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.piece {
+  height: 30px;
+  padding: 0 12px;
+  background: transparent;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 15px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.piece[aria-pressed='true'] {
+  background: var(--color-selected);
+  border-color: var(--color-text-ghost);
+  color: var(--color-text);
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.fieldLabel {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.textarea {
+  min-height: 96px;
+  padding: 12px 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-line-strong);
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.textarea::placeholder {
+  color: var(--color-text-faint);
+}
+
+.textarea:focus-visible {
+  outline: none;
+  border-color: var(--color-text-muted);
+}
+
+.samples {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.samplesHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.sample {
+  margin: 0;
+  padding: 12px 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.sampleProblem {
+  margin: 0;
+  color: var(--color-text-faint);
+  font-size: 12px;
+}
+
+.sampleProblem::first-letter {
+  text-transform: uppercase;
+}
+
 .privacy {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

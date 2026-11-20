@@ -27,7 +27,7 @@ export const tasks: typeof en = {
     },
     profile: {
       name: '个人资料',
-      text: '昵称、头像和隐私',
+      text: '昵称、简介、头像和隐私',
     },
     freeGames: {
       name: '免费游戏',
@@ -98,6 +98,44 @@ export const tasks: typeof en = {
     avatarKeep: '头像：不变',
     remove: '移除',
     chooseImage: '选择图片',
+    description: '简介',
+    descriptionModes: {
+      keep: '保持不变',
+      generate: '自动生成',
+      lines: '使用我的文本',
+    },
+    piecesLabel: '组成部分',
+    pieces: {
+      greeting: '问候',
+      about: '自我介绍',
+      games: '游戏',
+      status: '状态',
+      quote: '名言',
+      tradeNote: '交易说明',
+      ascii: 'ASCII 图案',
+      kaomoji: '颜文字',
+      divider: '分隔线',
+    },
+    language: '语言',
+    languages: {
+      mixed: '英语和俄语',
+      english: '英语',
+      russian: '俄语',
+    },
+    length: '长度',
+    lengths: {
+      short: '短，1–2 部分',
+      medium: '中，3–4 部分',
+      long: '长，5–7 部分',
+    },
+    examples: '示例',
+    shuffle: '换一批',
+    generateNote:
+      '每个账户都会得到自己的文本：各部分顺序随机，每部分也有各自的选项。同一任务中不会有两个相同的简介。',
+    myLines: '我的文本',
+    linesPlaceholder: '{hey|yo}, just a {CS2|Rust} player from {country}',
+    linesNote:
+      '每行一个简介。{a|b|c} 从选项中选一个，{country} 为随机国家，{n} 为账户在任务中的序号。每个账户随机分到一行。',
   },
 
   queue: {

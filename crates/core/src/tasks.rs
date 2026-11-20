@@ -43,6 +43,9 @@ pub struct ProfileTask {
     /// `{n}` in it becomes the account's place in the task, from 1, and
     /// `{random}` a random nickname, a new one for each account.
     pub name_template: Option<String>,
+    /// One for each account, by its place in the task, from 1: made when the task
+    /// starts, so no two accounts get the same.
+    pub descriptions: Option<Vec<String>>,
     pub privacy: PrivacyChanges,
     /// A JPEG, PNG or GIF for every account.
     pub avatar: Option<Vec<u8>>,
@@ -243,6 +246,10 @@ fn profile(
     if let Some(name) = &changes.persona_name {
         changed.push(format!("nickname to {name}"));
     }
+    if let Some(descriptions) = task.descriptions.as_ref().filter(|all| !all.is_empty()) {
+        changes.summary = Some(descriptions[number.saturating_sub(1) % descriptions.len()].clone());
+        changed.push("description".to_owned());
+    }
     if !task.privacy.is_empty() {
         // Settings left alone keep what each account has, which differs.
         let (session, current) = profile_settings::settings(account, proxy)?;
@@ -250,7 +257,7 @@ fn profile(
         changes.privacy = Some(task.privacy.over(current.privacy));
         changed.push("privacy".to_owned());
     }
-    if changes.persona_name.is_some() || changes.privacy.is_some() {
+    if changes.persona_name.is_some() || changes.summary.is_some() || changes.privacy.is_some() {
         account.session = Some(profile_settings::save(account, proxy, &changes)?);
     }
     if let Some(image) = &task.avatar {

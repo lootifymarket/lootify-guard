@@ -8,6 +8,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use lootify_guard_core::cm::MAX_GAMES;
 use lootify_guard_core::contents::{Account, Contents, DamagedContents};
+use lootify_guard_core::descriptions::{self, DescriptionSource};
 use lootify_guard_core::events::MAX_QUEUES;
 use lootify_guard_core::games::PlayingList;
 use lootify_guard_core::inventory::Game;
@@ -106,6 +107,7 @@ pub enum TaskInput {
     #[serde(rename_all = "camelCase")]
     Profile {
         name_template: Option<String>,
+        description: Option<DescriptionSource>,
         privacy: PrivacyChanges,
         avatar: Option<Vec<u8>>,
     },
@@ -221,10 +223,12 @@ pub fn start_task(
             }),
             TaskInput::Profile {
                 name_template,
+                description,
                 privacy,
                 avatar,
             } => Work::Each(Task::Profile(profile_task(
                 name_template,
+                description.as_ref(),
                 privacy,
                 avatar,
                 account_names.len(),
@@ -356,15 +360,24 @@ fn boost_games(text: &str) -> Result<Option<Vec<u32>>, CommandError> {
 
 fn profile_task(
     name_template: Option<String>,
+    description: Option<&DescriptionSource>,
     privacy: PrivacyChanges,
     avatar: Option<Vec<u8>>,
     count: usize,
 ) -> Result<ProfileTask, CommandError> {
     let fail = |reason: &str| Err(CommandError::Failed(reason.to_owned()));
     let name_template = name_template.filter(|template| !template.trim().is_empty());
-    if name_template.is_none() && privacy == PrivacyChanges::default() && avatar.is_none() {
+    if name_template.is_none()
+        && description.is_none()
+        && privacy == PrivacyChanges::default()
+        && avatar.is_none()
+    {
         return fail("pick something to change");
     }
+    let descriptions = description
+        .map(|source| descriptions::for_accounts(source, count))
+        .transpose()
+        .map_err(|err| CommandError::Failed(err.to_string()))?;
     if let Some(template) = &name_template
         && longest_persona_name(template, count) > MAX_PERSONA_NAME
     {
@@ -380,9 +393,16 @@ fn profile_task(
     }
     Ok(ProfileTask {
         name_template,
+        descriptions,
         privacy,
         avatar,
     })
+}
+
+/// A few descriptions as a Profile task would make them, to show before it runs.
+#[tauri::command]
+pub fn description_samples(description: DescriptionSource) -> Result<Vec<String>, CommandError> {
+    descriptions::for_accounts(&description, 2).map_err(|err| CommandError::Failed(err.to_string()))
 }
 
 /// One worker: takes accounts off the line until it's empty or the job stops.

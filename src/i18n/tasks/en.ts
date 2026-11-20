@@ -27,7 +27,7 @@ export const tasks = {
     },
     profile: {
       name: 'Profile',
-      text: 'Nickname, avatar and privacy',
+      text: 'Nickname, description, avatar and privacy',
     },
     freeGames: {
       name: 'Free games',
@@ -100,6 +100,44 @@ export const tasks = {
     avatarKeep: 'Avatar: keep',
     remove: 'Remove',
     chooseImage: 'Choose image',
+    description: 'Description',
+    descriptionModes: {
+      keep: 'Keep',
+      generate: 'Generate',
+      lines: 'From my lines',
+    },
+    piecesLabel: 'Pieces',
+    pieces: {
+      greeting: 'Greeting',
+      about: 'About',
+      games: 'Games',
+      status: 'Status',
+      quote: 'Quote',
+      tradeNote: 'Trade note',
+      ascii: 'ASCII art',
+      kaomoji: 'Kaomoji',
+      divider: 'Dividers',
+    },
+    language: 'Language',
+    languages: {
+      mixed: 'English and Russian',
+      english: 'English',
+      russian: 'Russian',
+    },
+    length: 'Length',
+    lengths: {
+      short: 'Short, 1–2 pieces',
+      medium: 'Medium, 3–4 pieces',
+      long: 'Long, 5–7 pieces',
+    },
+    examples: 'Examples',
+    shuffle: 'Shuffle',
+    generateNote:
+      'Every account gets its own text: the pieces come in a random order, each with options of its own. No two in a task are the same.',
+    myLines: 'My lines',
+    linesPlaceholder: '{hey|yo}, just a {CS2|Rust} player from {country}',
+    linesNote:
+      'One description per line. {a|b|c} picks one of the options, {country} a random country, {n} the account’s place. Each account gets a line at random.',
   },
 
   queue: {

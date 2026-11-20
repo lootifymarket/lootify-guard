@@ -29,7 +29,7 @@ export const tasks: typeof en = {
     },
     profile: {
       name: 'Профіль',
-      text: 'Нікнейм, аватар і приватність',
+      text: 'Нікнейм, опис, аватар і приватність',
     },
     freeGames: {
       name: 'Безкоштовні ігри',
@@ -105,6 +105,44 @@ export const tasks: typeof en = {
     avatarKeep: 'Аватар: не змінювати',
     remove: 'Прибрати',
     chooseImage: 'Вибрати зображення',
+    description: 'Опис',
+    descriptionModes: {
+      keep: 'Не змінювати',
+      generate: 'Згенерувати',
+      lines: 'З моїх рядків',
+    },
+    piecesLabel: 'Частини',
+    pieces: {
+      greeting: 'Привітання',
+      about: 'Про себе',
+      games: 'Ігри',
+      status: 'Статус',
+      quote: 'Цитата',
+      tradeNote: 'Про трейди',
+      ascii: 'ASCII-арт',
+      kaomoji: 'Каомодзі',
+      divider: 'Роздільники',
+    },
+    language: 'Мова',
+    languages: {
+      mixed: 'Англійська й російська',
+      english: 'Англійська',
+      russian: 'Російська',
+    },
+    length: 'Довжина',
+    lengths: {
+      short: 'Короткий, 1–2 частини',
+      medium: 'Середній, 3–4 частини',
+      long: 'Довгий, 5–7 частин',
+    },
+    examples: 'Приклади',
+    shuffle: 'Перемішати',
+    generateNote:
+      'Кожен акаунт отримує свій текст: частини йдуть у випадковому порядку, і в кожної свої варіанти. Двох однакових в одному завданні не буде.',
+    myLines: 'Мої рядки',
+    linesPlaceholder: '{hey|yo}, just a {CS2|Rust} player from {country}',
+    linesNote:
+      'Один опис на рядок. {a|b|c} вибирає один із варіантів, {country} — випадкову країну, {n} — номер акаунта. Кожен акаунт отримує випадковий рядок.',
   },
 
   queue: {

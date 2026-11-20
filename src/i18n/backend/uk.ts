@@ -204,6 +204,9 @@ export const backend: Record<BackendMessage, string> = {
     'sub {} — це пакет, використайте його app ID',
   'add a game': 'додайте гру',
   'add a game or a status': 'додайте гру або статус',
+  'pick at least one piece besides dividers':
+    'виберіть хоча б одну частину, крім роздільників',
+  'add at least one line': 'додайте хоча б один рядок',
   'the status is over 64 characters': 'статус довший за 64 символи',
   'Steam plays at most 32 games at once, the status counts as one':
     'Steam запускає щонайбільше 32 ігри одночасно, статус рахується як одна',

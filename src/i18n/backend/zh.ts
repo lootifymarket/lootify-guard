@@ -193,6 +193,8 @@ export const backend: Record<BackendMessage, string> = {
   'sub {} is a package, use its app ID': 'sub {} 是礼包，请使用其 app ID',
   'add a game': '请添加游戏',
   'add a game or a status': '请添加游戏或状态',
+  'pick at least one piece besides dividers': '请至少选择一个分隔线以外的部分',
+  'add at least one line': '请至少添加一行',
   'the status is over 64 characters': '状态超过 64 个字符',
   'Steam plays at most 32 games at once, the status counts as one':
     'Steam 最多同时运行 32 个游戏，状态也算一个',
