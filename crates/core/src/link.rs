@@ -17,6 +17,7 @@ use steamguard::{AccountLinkError, AccountLinker, ExposeSecret, SteamGuardAccoun
 
 use crate::contents::{Account, Authenticator, AutoConfirm, Secret, Session};
 use crate::games::PlayingList;
+use crate::guard_status::STATE_ON;
 use crate::proxy::ProxyAddress;
 use crate::steam::{
     self, SteamError, guard_code_error, login_error, mobile_login, session_of, steam_id_of,
@@ -194,18 +195,16 @@ impl NewGuard {
         Ok(by)
     }
 
-    /// Whether Steam has an authenticator on the account right now.
+    /// Whether Steam has a working authenticator on the account right now.
     pub fn guard_is_on(&self) -> Result<bool, SteamError> {
-        Ok(self.status()?.state() != 0)
+        Ok(self.status()?.state() == STATE_ON)
     }
 
     /// The token GID of the authenticator Steam has on the account now, when it says.
     pub fn guard_token_gid(&self) -> Result<Option<String>, SteamError> {
         let status = self.status()?;
-        Ok(
-            Some(status.token_gid().to_owned())
-                .filter(|gid| status.state() != 0 && !gid.is_empty()),
-        )
+        Ok(Some(status.token_gid().to_owned())
+            .filter(|gid| status.state() == STATE_ON && !gid.is_empty()))
     }
 
     fn status(&self) -> Result<CTwoFactor_Status_Response, SteamError> {
