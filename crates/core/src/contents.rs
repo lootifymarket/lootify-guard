@@ -8,6 +8,7 @@ use crate::browser::{Bookmark, SavedCookie};
 use crate::browser_profiles::BrowserProfile;
 use crate::browser_region::RegionChoice;
 use crate::games::PlayingList;
+use crate::plans::Plan;
 use crate::proxy::{Proxy, ProxyAddress};
 
 /// What the vault holds once decrypted.
@@ -36,6 +37,11 @@ pub struct Contents {
     /// Never reused, so a tab of a deleted profile can't turn into a new one.
     #[serde(default)]
     pub(crate) last_profile_id: u32,
+    /// Warm-up plans, running and finished. In the vault, as they name accounts.
+    #[serde(default)]
+    pub plans: Vec<Plan>,
+    #[serde(default)]
+    pub last_plan_id: u32,
 }
 
 /// A set of accounts the user handles together, like "Farm" or "Storage".

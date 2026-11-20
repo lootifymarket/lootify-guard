@@ -23,6 +23,7 @@ pub mod market;
 pub mod moves;
 pub mod nicknames;
 pub mod partner;
+pub mod plans;
 pub mod profile;
 pub mod profile_settings;
 pub mod proxy;

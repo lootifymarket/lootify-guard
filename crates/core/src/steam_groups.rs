@@ -5,6 +5,7 @@ use std::thread;
 use std::time::Duration;
 
 use reqwest::blocking::Client;
+use serde::{Deserialize, Serialize};
 
 use crate::contents::{Account, Session};
 use crate::proxy::ProxyAddress;
@@ -20,7 +21,8 @@ pub const MAX_GROUPS: usize = 100;
 const PAUSE: (usize, usize) = (3, 9);
 
 /// A group by the name in its link, or by its 64-bit ID.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum GroupLink {
     Name(String),
     Id(u64),
