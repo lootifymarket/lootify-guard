@@ -104,23 +104,52 @@ function How({
   const t = words.account.replaceGuard
   const [busy, setBusy] = useState<ReplaceMethod | null>(null)
   const [error, setError] = useState('')
+  // Steam moves Guard by SMS only, and the account turned out to have no phone.
+  const [noPhone, setNoPhone] = useState(false)
+  const [typedCode, setTypedCode] = useState('')
+  const typing = noPhone && !hasRevocationCode
 
   async function start(method: ReplaceMethod) {
     setBusy(method)
     setError('')
     try {
-      onSent(method, await replaceGuardStart(method))
+      const started = await replaceGuardStart(method, typing ? typedCode : null)
+      if (started.outcome === 'sent') {
+        onSent(method, started.confirmBy)
+        return
+      }
+      setNoPhone(true)
     } catch (err) {
       setError(errorMessage(err))
-      setBusy(null)
     }
+    setBusy(null)
   }
+
+  const text = !guardOn
+    ? t.noGuard
+    : noPhone
+      ? hasRevocationCode
+        ? t.noPhone
+        : t.noPhoneTypeCode
+      : hasRevocationCode
+        ? t.methods
+        : t.smsOnly
 
   return (
     <>
-      <p className={dialogStyles.text}>
-        {!guardOn ? t.noGuard : hasRevocationCode ? t.methods : t.smsOnly}
-      </p>
+      <p className={dialogStyles.text}>{text}</p>
+      {typing && (
+        <TextField
+          label={t.revocationCode}
+          autoComplete="off"
+          autoCapitalize="characters"
+          spellCheck={false}
+          value={typedCode}
+          onChange={(event) =>
+            setTypedCode(event.target.value.replace(/\s/g, '').toUpperCase())
+          }
+        />
+      )}
       <p className={styles.muted}>{t.tradeHold}</p>
       {error && (
         <p className={dialogStyles.error} role="alert">
@@ -128,7 +157,7 @@ function How({
         </p>
       )}
       <div className={styles.formActions}>
-        {guardOn && hasRevocationCode && (
+        {guardOn && hasRevocationCode && !noPhone && (
           <Button
             variant="secondary"
             size="sm"
@@ -143,14 +172,29 @@ function How({
           <Button variant="secondary" size="sm" onClick={onCancel}>
             {words.common.cancel}
           </Button>
-          <Button
-            size="sm"
-            busy={busy === 'sms'}
-            disabled={busy !== null}
-            onClick={() => void start('sms')}
-          >
-            {busy === 'sms' ? t.askingSteam : guardOn ? t.sendSms : t.addGuard}
-          </Button>
+          {noPhone ? (
+            <Button
+              size="sm"
+              busy={busy !== null}
+              disabled={busy !== null || (typing && !typedCode)}
+              onClick={() => void start('revocationCode')}
+            >
+              {busy ? t.askingSteam : t.useRevocationCode}
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              busy={busy === 'sms'}
+              disabled={busy !== null}
+              onClick={() => void start('sms')}
+            >
+              {busy === 'sms'
+                ? t.askingSteam
+                : guardOn
+                  ? t.sendSms
+                  : t.addGuard}
+            </Button>
+          )}
         </div>
       </div>
     </>

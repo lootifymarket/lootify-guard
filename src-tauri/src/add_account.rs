@@ -59,7 +59,7 @@ pub enum GuardMethod {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase", tag = "outcome")]
 pub enum GuardStart {
-    /// Steam sent the code that `add_account_confirm` takes.
+    /// Steam sent the code that confirms the new authenticator.
     #[serde(rename_all = "camelCase")]
     Sent { confirm_by: ConfirmBy },
     /// Moving is confirmed by SMS, and the account has no phone number.

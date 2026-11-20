@@ -167,6 +167,11 @@ export const account: typeof en = {
     continue: '继续',
     methods:
       'Steam 会通过短信发送到账户绑定的手机进行确认。如果账户没有绑定手机，请使用撤销码：它会先移除旧令牌，然后 Steam 通过邮件确认新令牌。',
+    noPhone:
+      '该账户没有绑定手机号码，而 Steam 只能通过短信转移令牌。请改用撤销码：它会移除旧令牌，然后 Steam 通过邮件确认新的令牌。',
+    noPhoneTypeCode:
+      '该账户没有绑定手机号码，而 Steam 只能通过短信转移令牌。请输入账户的撤销码：它会移除旧令牌，然后 Steam 通过邮件确认新的令牌。',
+    revocationCode: '撤销码',
     smsOnly: 'Steam 会通过短信发送到账户绑定的手机进行确认。',
     noGuard:
       'Steam 显示此账户没有 Steam 令牌，因此将在这里添加一个新令牌。Steam 会发送验证码进行确认。',
