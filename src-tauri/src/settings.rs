@@ -10,6 +10,7 @@ use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_dialog::DialogExt;
 
 use crate::accounts::write_private;
+use crate::tasks::Tasks;
 use crate::vault::{CommandError, VaultState};
 
 pub struct SettingsState {
@@ -90,6 +91,24 @@ pub fn set_language(
         language,
         ..settings.get()
     })
+}
+
+/// Off, the sessions held for running jobs are let go at once.
+#[tauri::command]
+pub fn set_tasks_while_locked(
+    settings: State<'_, SettingsState>,
+    state: State<'_, VaultState>,
+    tasks: State<'_, Tasks>,
+    on: bool,
+) -> Result<(), CommandError> {
+    settings.save(Settings {
+        tasks_while_locked: on,
+        ..settings.get()
+    })?;
+    if !on {
+        tasks.drop_held(&state);
+    }
+    Ok(())
 }
 
 #[tauri::command]

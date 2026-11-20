@@ -1,5 +1,5 @@
-use std::collections::VecDeque;
 use std::collections::hash_map::RandomState;
+use std::collections::{HashMap, VecDeque};
 use std::hash::{BuildHasher, Hasher};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
@@ -15,6 +15,7 @@ use lootify_guard_core::inventory::Game;
 use lootify_guard_core::licenses::{self, License, MAX_LICENSES};
 use lootify_guard_core::moves::{self, Side};
 use lootify_guard_core::profile_settings::{AvatarImage, MAX_AVATAR_LEN};
+use lootify_guard_core::proxy::ProxyAddress;
 use lootify_guard_core::steam::SteamError;
 use lootify_guard_core::steam_groups::{self, MAX_GROUPS};
 use lootify_guard_core::tasks::{
@@ -29,6 +30,7 @@ use crate::accounts::{account_and_proxy, no_such_account};
 use crate::farming::Farms;
 use crate::inventory::InventoryCache;
 use crate::playing::{self, Players};
+use crate::settings::SettingsState;
 use crate::vault::{CommandError, VaultState};
 
 // A failed account goes to the back of the line, up to this many tries in all.
@@ -38,7 +40,8 @@ const MAX_AT_ONCE: u8 = 10;
 const KEEP_FINISHED: usize = 20;
 
 /// Bulk tasks, running and finished. Kept in memory only; they hold logins and
-/// short notes, no secrets.
+/// short notes, and, when the user asks, the web sessions of the accounts jobs
+/// run on, never their passwords or Guard secrets.
 #[derive(Default)]
 pub struct Tasks(Mutex<Book>);
 
@@ -46,6 +49,30 @@ pub struct Tasks(Mutex<Book>);
 struct Book {
     last_id: u32,
     jobs: Vec<Job>,
+    /// By login: copies that let jobs go on while the vault is locked.
+    held: HashMap<String, Held>,
+}
+
+/// An account as a job on the web needs it, from `Account::for_web_tasks`.
+struct Held {
+    account: Account,
+    proxy: Option<ProxyAddress>,
+    /// Jobs still running on it.
+    jobs: usize,
+    /// It changed while the vault was locked, so the vault still has to get it.
+    unsaved: bool,
+}
+
+impl Book {
+    /// Lets go of the copies a finished job held, except ones the vault still needs.
+    fn release(&mut self, account_names: &[String]) {
+        for name in account_names {
+            if let Some(held) = self.held.get_mut(name) {
+                held.jobs = held.jobs.saturating_sub(1);
+            }
+        }
+        self.held.retain(|_, held| held.jobs > 0 || held.unsaved);
+    }
 }
 
 struct Job {
@@ -59,6 +86,8 @@ struct Job {
     started_at: u64,
     finished_at: Option<u64>,
     cancelled: Arc<AtomicBool>,
+    /// Its accounts are held so it can go on while the vault is locked.
+    holds: bool,
 }
 
 #[derive(Clone, Serialize)]
@@ -219,6 +248,59 @@ impl Tasks {
         self.0.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
+    fn held(&self, account_name: &str) -> Option<(Account, Option<ProxyAddress>)> {
+        self.book()
+            .held
+            .get(account_name)
+            .map(|held| (held.account.clone(), held.proxy.clone()))
+    }
+
+    /// Keeps the copy up to date with what a run brought back. Returns whether
+    /// the account is held at all.
+    fn keep(&self, account: &Account, unsaved: bool) -> bool {
+        let mut book = self.book();
+        let Some(held) = book.held.get_mut(&account.account_name) else {
+            return false;
+        };
+        held.account = account.for_web_tasks();
+        held.unsaved |= unsaved;
+        true
+    }
+
+    /// Gives the vault what changed while it was locked. Called once it opens.
+    pub(crate) fn save_held(&self, state: &VaultState) {
+        let mut book = self.book();
+        if !book.held.values().any(|held| held.unsaved) {
+            return;
+        }
+        let mut unlocked = state.unlocked();
+        let Some(vault) = unlocked.as_mut() else {
+            return;
+        };
+        let Ok(mut contents) = Contents::from_bytes(vault.data()) else {
+            return;
+        };
+        for held in book.held.values().filter(|held| held.unsaved) {
+            // One removed meanwhile has nowhere to go.
+            if let Some(stored) = contents.account_mut(&held.account.account_name) {
+                copy_back(stored, &held.account);
+            }
+        }
+        if vault.save_data(contents.to_bytes()).is_ok() {
+            for held in book.held.values_mut() {
+                held.unsaved = false;
+            }
+            book.held.retain(|_, held| held.jobs > 0);
+        }
+    }
+
+    /// For when the user turns holding off: what's held goes, the vault getting
+    /// what it still needs first.
+    pub(crate) fn drop_held(&self, state: &VaultState) {
+        self.save_held(state);
+        self.book().held.clear();
+    }
+
     fn set(&self, job: u32, run: usize, state: RunState, tries: Option<u8>) {
         let mut book = self.book();
         if let Some(job) = book.jobs.iter_mut().find(|known| known.id == job) {
@@ -257,14 +339,15 @@ pub fn start_task(
         pacing,
     } = request;
     let kind = task.kind();
-    let work = {
+    let keep_going = app.state::<SettingsState>().get().tasks_while_locked;
+    let (work, copies) = {
         let unlocked = state.unlocked();
         let vault = unlocked.as_ref().ok_or(CommandError::Locked)?;
         let contents = Contents::from_bytes(vault.data())?;
         for name in &account_names {
             contents.account(name).ok_or_else(no_such_account)?;
         }
-        match task {
+        let work = match task {
             TaskInput::Check => Work::Each(Task::Check),
             TaskInput::AcceptGifts { only_own } => Work::Each(Task::AcceptGifts {
                 only_from: only_own.then(|| {
@@ -357,7 +440,23 @@ pub fn start_task(
                 account_names.retain(|name| *name != storage);
                 Work::MoveTo { storage, game }
             }
-        }
+        };
+        // Only tasks on the web can do with a session alone.
+        let copies = if keep_going && matches!(work, Work::Each(_)) {
+            account_names
+                .iter()
+                .map(|name| {
+                    let account = contents.account(name).ok_or_else(no_such_account)?;
+                    let proxy = contents
+                        .proxy_of(account)?
+                        .map(|proxy| proxy.address.clone());
+                    Ok((account.for_web_tasks(), proxy))
+                })
+                .collect::<Result<Vec<_>, CommandError>>()?
+        } else {
+            Vec::new()
+        };
+        (work, copies)
     };
     if account_names.is_empty() {
         return Err(CommandError::Failed("pick at least one account".to_owned()));
@@ -384,7 +483,19 @@ pub fn start_task(
             started_at: now(),
             finished_at: None,
             cancelled: cancelled.clone(),
+            holds: !copies.is_empty(),
         });
+        for (account, proxy) in copies {
+            book.held
+                .entry(account.account_name.clone())
+                .and_modify(|held| held.jobs += 1)
+                .or_insert(Held {
+                    account,
+                    proxy,
+                    jobs: 1,
+                    unsaved: false,
+                });
+        }
         let finished = book
             .jobs
             .iter()
@@ -418,7 +529,12 @@ pub fn start_task(
                 }
             }
             job.finished_at = Some(now());
+            if job.holds {
+                book.release(&account_names);
+            }
         }
+        drop(book);
+        tasks.save_held(&app.state());
     });
     Ok(id)
 }
@@ -626,14 +742,28 @@ fn run_one(
     account_name: &str,
     number: usize,
 ) -> Result<Outcome, Failed> {
-    let (mut account, proxy) = account_and_proxy(state, account_name)?;
+    let tasks = app.state::<Tasks>();
+    // What changed while the vault was locked goes in first, once it's open again.
+    tasks.save_held(state);
+    let (mut account, proxy) = match account_and_proxy(state, account_name) {
+        Err(CommandError::Locked) if matches!(work, Work::Each(_)) => {
+            tasks.held(account_name).ok_or(CommandError::Locked)?
+        }
+        found => found?,
+    };
     match work {
         Work::Each(task) => {
             let result = tasks::run(task, &mut account, proxy.as_ref(), now(), number);
             if let Err(SteamError::SessionExpired) = result {
                 account.session = None;
             }
-            save(state, &[&account])?;
+            match save(state, &[&account]) {
+                Ok(()) => {
+                    tasks.keep(&account, false);
+                }
+                Err(Failed::Vault(CommandError::Locked)) if tasks.keep(&account, true) => {}
+                Err(err) => return Err(err),
+            }
             result.map_err(Failed::Steam)
         }
         Work::Play(games) => {
@@ -709,16 +839,21 @@ fn save(state: &VaultState, accounts: &[&Account]) -> Result<(), Failed> {
         let stored = contents
             .account_mut(&account.account_name)
             .ok_or_else(no_such_account)?;
-        stored.session = account.session.clone();
-        if account.profile.is_some() {
-            stored.profile = account.profile.clone();
-        }
-        if account.last_check.is_some() {
-            stored.last_check = account.last_check.clone();
-        }
+        copy_back(stored, account);
     }
     vault.save_data(contents.to_bytes())?;
     Ok(())
+}
+
+/// What a run may change on an account: its session, profile and last check.
+fn copy_back(stored: &mut Account, account: &Account) {
+    stored.session = account.session.clone();
+    if account.profile.is_some() {
+        stored.profile = account.profile.clone();
+    }
+    if account.last_check.is_some() {
+        stored.last_check = account.last_check.clone();
+    }
 }
 
 /// Jobs newest first.

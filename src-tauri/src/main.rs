@@ -156,6 +156,7 @@ fn main() {
             settings::set_streamer_mode,
             settings::set_language,
             settings::set_close_to_tray,
+            settings::set_tasks_while_locked,
             settings::set_sidebar_collapsed,
             updates::update_status,
             updates::check_for_updates,

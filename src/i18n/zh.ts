@@ -192,6 +192,9 @@ export const zh: Dictionary = {
     streamerHint: '隐藏余额、价格、Steam 令牌代码、SteamID 和交易链接。',
     security: '安全',
     autoLock: '自动锁定',
+    tasksWhileLocked: '锁定时继续运行任务',
+    tasksWhileLockedHint:
+      '资料、群组、愿望单、免费游戏、礼物、活动和检查在保险库锁定时继续运行。内存中只保留这些账户的 Steam 会话：密码和令牌密钥照常清除，因此不会确认任何内容。转移物品、挂游戏和挂卡在锁定时仍会停止。',
     autoLockHint: '无操作超过这段时间后锁定保险库。自动确认只在解锁时运行。',
     minutes: (n) => (n === 60 ? '1 小时' : `${n} 分钟`),
     never: '从不',

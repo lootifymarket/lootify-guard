@@ -18,6 +18,8 @@ export type Settings = {
   sidebarCollapsed: boolean
   /** New versions download by themselves and install on the next restart. */
   autoUpdate: boolean
+  /** Tasks that need only a web session go on while the vault is locked. */
+  tasksWhileLocked: boolean
   /** The update installed on the way out, to say so once the new version opens. */
   installedUpdate: { version: string; notes: string | null } | null
 }
@@ -35,6 +37,10 @@ export const setStreamerMode = (on: boolean) =>
 
 export const saveLanguage = (language: Language) =>
   invoke<void>('set_language', { language })
+
+/** Off, the sessions held for running tasks are let go at once. */
+export const setTasksWhileLocked = (on: boolean) =>
+  invoke<void>('set_tasks_while_locked', { on })
 
 export const setCloseToTray = (on: boolean) =>
   invoke<void>('set_close_to_tray', { on })

@@ -197,6 +197,9 @@ export const en = {
       'Hides balances, prices, Steam Guard codes, Steam IDs and trade URLs.',
     security: 'Security',
     autoLock: 'Auto-lock',
+    tasksWhileLocked: 'Keep tasks running while locked',
+    tasksWhileLockedHint:
+      'Profile, groups, wishlist, free games, gifts, events and checks go on with the vault locked. Only those accounts’ Steam sessions stay in memory: passwords and Guard secrets are wiped as usual, so nothing gets confirmed. Moving items, playing and card farming still stop when it locks.',
     autoLockHint:
       'Locks the vault after this long without activity. Auto-confirm runs only while it’s unlocked.',
     minutes: (n: number) => (n === 60 ? '1 hour' : `${n} minutes`),
