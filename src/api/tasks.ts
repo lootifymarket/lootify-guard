@@ -73,6 +73,7 @@ export type Run = { accountName: string; tries: number } & (
 
 export type Job = {
   id: number
+  kind: TaskInput['kind']
   title: string
   /** What it runs on, like a group's name. */
   target: string

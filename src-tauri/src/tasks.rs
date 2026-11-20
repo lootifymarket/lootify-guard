@@ -48,6 +48,8 @@ struct Book {
 
 struct Job {
     id: u32,
+    /// The task's kind as the page names it, to tell which tasks are running.
+    kind: &'static str,
     title: String,
     /// What it runs on, like a group's name.
     target: String,
@@ -88,6 +90,7 @@ enum RunState {
 #[serde(rename_all = "camelCase")]
 pub struct JobView {
     id: u32,
+    kind: &'static str,
     title: String,
     target: String,
     runs: Vec<Run>,
@@ -131,6 +134,22 @@ pub enum TaskInput {
         storage: String,
         game: Game,
     },
+}
+
+impl TaskInput {
+    fn kind(&self) -> &'static str {
+        match self {
+            Self::Check => "check",
+            Self::AcceptGifts { .. } => "acceptGifts",
+            Self::Profile { .. } => "profile",
+            Self::FreeGames { .. } => "freeGames",
+            Self::HourBoost { .. } => "hourBoost",
+            Self::GoOffline => "goOffline",
+            Self::CardFarming => "cardFarming",
+            Self::Events { .. } => "events",
+            Self::MoveToStorage { .. } => "moveToStorage",
+        }
+    }
 }
 
 /// What each account of a job does.
@@ -203,6 +222,7 @@ pub fn start_task(
         mut account_names,
         pacing,
     } = request;
+    let kind = task.kind();
     let work = {
         let unlocked = state.unlocked();
         let vault = unlocked.as_ref().ok_or(CommandError::Locked)?;
@@ -282,6 +302,7 @@ pub fn start_task(
         let id = book.last_id;
         book.jobs.push(Job {
             id,
+            kind,
             title,
             target,
             runs: account_names
@@ -636,6 +657,7 @@ pub fn task_queue(tasks: State<'_, Tasks>) -> Vec<JobView> {
         .rev()
         .map(|job| JobView {
             id: job.id,
+            kind: job.kind,
             title: job.title.clone(),
             target: job.target.clone(),
             runs: job.runs.clone(),
