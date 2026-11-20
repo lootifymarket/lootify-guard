@@ -2623,7 +2623,7 @@ checksum = "5d15f86d12da44cd8d4ec3c73984537eb7f4cadcb9776a575a0a8a05ca11005c"
 
 [[package]]
 name = "lootify-guard"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "block2",
  "lootify-guard-core",
