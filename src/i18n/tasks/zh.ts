@@ -82,6 +82,7 @@ export const tasks: typeof en = {
 
   groupLinks: '群组',
   groupsPlaceholder: 'steamcommunity.com/groups/…，每行一个',
+  groupSources: { popular: '热门群组，内置列表', mine: '我的列表' },
   eachRun: '每次运行',
   groupsPerRun: { 1: '1 个群组', 2: '1–2 个群组', 3: '1–3 个群组' },
   joinNote:

@@ -50,7 +50,7 @@ export type TaskInput =
   | { kind: 'events'; queues: number; claimItem: boolean }
   /** Every tradable item to one account. */
   | { kind: 'moveToStorage'; storage: string; game: Game }
-  /** Group links; each run joins from 1 to `perRun` of them. */
+  /** Group links, or none for the built-in ones; each run joins 1 to `perRun`. */
   | { kind: 'joinGroups'; groups: string; perRun: number }
   /** App IDs or store links; empty takes the built-in popular games. */
   | { kind: 'wishlist'; games: string; size: 'small' | 'medium' | 'large' }
@@ -116,6 +116,9 @@ function translateRun(run: Run): Run {
 export const cancelTask = (id: number) => invoke<void>('cancel_task', { id })
 
 export const clearFinishedTasks = () => invoke<void>('clear_finished_tasks')
+
+/** The built-in groups as links, to start a list of one's own from. */
+export const popularGroups = () => invoke<string[]>('popular_groups')
 
 /** A couple of descriptions as a Profile task would make them. */
 export const descriptionSamples = (description: DescriptionSource) =>

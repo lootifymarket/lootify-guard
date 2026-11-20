@@ -8,14 +8,15 @@ use lootify_guard_core::descriptions::{self, DescriptionSource};
 use lootify_guard_core::plans::{
     self, MAX_DAYS, Plan, PlanAccount, Step, Window, record_done, record_failed,
 };
-use lootify_guard_core::steam_groups::{self, MAX_GROUPS};
 use lootify_guard_core::tasks::{Outcome, Task};
 use lootify_guard_core::wishlist::{self, MAX_APPS};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, State};
 
 use crate::settings::SettingsState;
-use crate::tasks::{self, StepRun, Tasks, WishlistSize, app_ids, random_between, web_copies};
+use crate::tasks::{
+    self, StepRun, Tasks, WishlistSize, app_ids, group_links, random_between, web_copies,
+};
 use crate::vault::{CommandError, VaultState};
 
 // How often the plans are looked at for a step that's due.
@@ -276,22 +277,7 @@ pub fn start_plan(
         return fail("the hours have to end later than they start");
     }
     let groups = match groups.as_deref() {
-        Some(text) => {
-            let links = steam_groups::parse(text).map_err(|word| {
-                CommandError::Failed(format!(
-                    "can't read \"{word}\": use links like steamcommunity.com/groups/name"
-                ))
-            })?;
-            if links.is_empty() {
-                return fail("add a group");
-            }
-            if links.len() > MAX_GROUPS {
-                return Err(CommandError::Failed(format!(
-                    "list at most {MAX_GROUPS} groups"
-                )));
-            }
-            links
-        }
+        Some(text) => group_links(text)?,
         None => Vec::new(),
     };
     let (apps, wishlist_size) = match &wishlist {

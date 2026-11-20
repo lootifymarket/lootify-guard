@@ -180,6 +180,7 @@ fn main() {
             playing::free_games,
             tasks::start_task,
             tasks::description_samples,
+            tasks::popular_groups,
             tasks::task_queue,
             tasks::cancel_task,
             tasks::clear_finished_tasks,

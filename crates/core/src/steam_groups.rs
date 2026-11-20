@@ -29,12 +29,132 @@ pub enum GroupLink {
 }
 
 impl GroupLink {
-    fn url(&self) -> String {
+    /// The group's page.
+    pub fn url(&self) -> String {
         match self {
             Self::Name(name) => format!("{COMMUNITY_URL}/groups/{name}"),
             Self::Id(id) => format!("{COMMUNITY_URL}/gid/{id}"),
         }
     }
+}
+
+/// Public groups many players are in, by the name in their links: teams, leagues,
+/// games and Steam's own. Each was looked up on Steam, and joins without a request.
+pub const POPULAR: &[&str] = &[
+    // Steam.
+    "steamuniverse",
+    "SteamClientBeta",
+    "SteamDB",
+    "community_market",
+    "steambroadcasting",
+    "SteamMobileApp",
+    "steamfamilies",
+    "summersaliens",
+    "gaben",
+    // Teams and players.
+    "Natus-Vincere",
+    "oficalnavijunior",
+    "Fnatic",
+    "fnaticteam",
+    "g2esports-official",
+    "virtusprofessional",
+    "cs2astralis",
+    "offSPIRIT",
+    "FaZe_CSGO",
+    "Team_Liquid_Pro",
+    "C9gaming-",
+    "teamcloud9cs",
+    "mouz33",
+    "mousesports",
+    "NIPGaming",
+    "ninjasinpyjamasgaming",
+    "big",
+    "eternalfiredream",
+    "Officialteamvitality",
+    "TheMongolz",
+    "tylooteams",
+    "tyloo",
+    "ezforence",
+    "ogcsgofans",
+    "1TapElite",
+    "kennySchrub",
+    "ZywooPEEK",
+    "m0NESYofficial",
+    "ohnePixel",
+    "ceh9tv",
+    // Leagues and stats.
+    "FACEITcom",
+    "esl",
+    "eslcs",
+    "ESEA",
+    "HLTV",
+    "CCSGO",
+    "pglromania",
+    "esl_dota2",
+    "UGCLeague",
+    "tfcompetitive",
+    "dotabuff",
+    "cybershokesteam",
+    // Trading.
+    "csmoneytrade",
+    "CsDealsOfficial",
+    "tradeitgg",
+    "skinsmonkey",
+    "dota2lounge",
+    "tf2scrap",
+    "csgoexchange",
+    // Games.
+    "gmod",
+    "fp",
+    "Facepunch",
+    "TF2_group",
+    "TF",
+    "Terraria_Online",
+    "terraria",
+    "mta",
+    "counterssa",
+    "officialcsp",
+    "cs-go-fr",
+    "TRCS2",
+    "cs2women",
+    "Star__Citizen",
+    "dayzunderground",
+    "asciiartamalgamation",
+    // Servers.
+    "gfl_css",
+    "UKCS",
+    "intoxgaming",
+    "Icefuse-Networks",
+    "FireGamesNetworkCSGO",
+    "-iNET-",
+    "werwolfgaming",
+    "warbanditsgg",
+    "bestrustservers",
+    "rustacademynet",
+    "rustyremains",
+    "LimitlessRustServer",
+    "PixieRust",
+    "ace-rust",
+    "dope_rust",
+    "survivorsrust",
+    "andysolam",
+    "immense-csgo",
+    "vf4freeze",
+    "vaultf4",
+    "LotusEU",
+    "TheBattleGrounds",
+    "ALTFS",
+    "WOTF2",
+    "xxlgamersdotnet",
+    "RunAwayGaming",
+];
+
+/// The built-in groups, as links to show and edit.
+pub fn popular() -> Vec<GroupLink> {
+    POPULAR
+        .iter()
+        .map(|name| GroupLink::Name((*name).to_owned()))
+        .collect()
 }
 
 /// Reads links like steamcommunity.com/groups/name and /gid/103582791429521412,
@@ -210,6 +330,13 @@ mod tests {
         assert_eq!(page_state(&requests), Page::Closed);
         let missing = "<title>Steam Community :: Error</title>No group could be retrieved";
         assert_eq!(page_state(missing), Page::Missing);
+    }
+
+    #[test]
+    fn the_popular_groups_read_back_and_fit_a_task() {
+        assert!(POPULAR.len() <= MAX_GROUPS);
+        let links: Vec<String> = popular().iter().map(GroupLink::url).collect();
+        assert_eq!(parse(&links.join("\n")), Ok(popular()));
     }
 
     #[test]

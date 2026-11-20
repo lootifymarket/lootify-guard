@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { Account, Group } from '../../../api/accounts.ts'
 import { GAME_NAMES, type Game } from '../../../api/inventory.ts'
 import { startPlan } from '../../../api/plans.ts'
-import { startTask, type TaskInput } from '../../../api/tasks.ts'
+import { popularGroups, startTask, type TaskInput } from '../../../api/tasks.ts'
 import { errorMessage } from '../../../api/vault.ts'
 import Button from '../../../components/Button.tsx'
 import Dialog from '../../../components/Dialog.tsx'
@@ -88,6 +88,7 @@ export default function TaskDialog({
   const [boostGames, setBoostGames] = useState('')
   const [queues, setQueues] = useState(1)
   const [claimItem, setClaimItem] = useState(true)
+  const [groupSource, setGroupSource] = useState<'popular' | 'mine'>('popular')
   const [groupLinks, setGroupLinks] = useState('')
   const [groupsPerRun, setGroupsPerRun] = useState(1)
   const [wishSource, setWishSource] = useState<'popular' | 'mine'>('popular')
@@ -133,6 +134,8 @@ export default function TaskDialog({
     kind === 'moveToStorage'
       ? chosen.accounts.filter((account) => account.accountName !== storage)
       : chosen.accounts
+  const groupsReady = groupSource === 'popular' || groupLinks.trim() !== ''
+  const groupsInput = groupSource === 'mine' ? groupLinks : ''
   // The plan writes descriptions as the Profile task is set to, or with every piece.
   const planDescription = describes(profile.description)
     ? profile.description
@@ -140,7 +143,7 @@ export default function TaskDialog({
   const ready =
     kind === 'warmUp'
       ? PLAN_STEPS.some((step) => planSteps[step]) &&
-        (!planSteps.groups || groupLinks.trim() !== '') &&
+        (!planSteps.groups || groupsReady) &&
         (!planSteps.wishlist ||
           wishSource === 'popular' ||
           wishGames.trim() !== '') &&
@@ -152,7 +155,7 @@ export default function TaskDialog({
           : kind === 'events'
             ? queues > 0 || claimItem
             : kind === 'joinGroups'
-              ? groupLinks.trim() !== ''
+              ? groupsReady
               : kind === 'wishlist'
                 ? wishSource === 'popular' || wishGames.trim() !== ''
                 : kind !== 'profile' ||
@@ -194,7 +197,7 @@ export default function TaskDialog({
       case 'events':
         return { kind, queues, claimItem }
       case 'joinGroups':
-        return { kind, groups: groupLinks, perRun: groupsPerRun }
+        return { kind, groups: groupsInput, perRun: groupsPerRun }
       case 'wishlist':
         return {
           kind,
@@ -243,7 +246,7 @@ export default function TaskDialog({
           description: planSteps.description
             ? descriptionSource(planDescription)
             : null,
-          groups: planSteps.groups ? groupLinks : null,
+          groups: planSteps.groups ? groupsInput : null,
           wishlist: planSteps.wishlist
             ? { games: wishSource === 'mine' ? wishGames : '', size: wishSize }
             : null,
@@ -273,21 +276,39 @@ export default function TaskDialog({
     setBusy(false)
   }
 
+  function pickGroupSource(value: string) {
+    const source = value as 'popular' | 'mine'
+    setGroupSource(source)
+    // A list of one's own starts as the built-in one, to edit.
+    if (source === 'mine' && groupLinks.trim() === '') {
+      void popularGroups().then((links) => setGroupLinks(links.join('\n')))
+    }
+  }
+
   const groupsField = (
-    <div className={styles.optionGroup}>
-      <label htmlFor="task-groups" className={styles.fieldLabel}>
-        {t.groupLinks}
-      </label>
-      <textarea
-        id="task-groups"
-        className={styles.textarea}
-        rows={4}
-        spellCheck={false}
-        placeholder={t.groupsPlaceholder}
-        value={groupLinks}
-        onChange={(event) => setGroupLinks(event.target.value)}
+    <>
+      <Dropdown
+        label={t.groupLinks}
+        size="sm"
+        value={groupSource}
+        options={(['popular', 'mine'] as const).map((value) => ({
+          value,
+          label: t.groupSources[value],
+        }))}
+        onChange={pickGroupSource}
       />
-    </div>
+      {groupSource === 'mine' && (
+        <textarea
+          aria-label={t.groupLinks}
+          className={styles.textarea}
+          rows={6}
+          spellCheck={false}
+          placeholder={t.groupsPlaceholder}
+          value={groupLinks}
+          onChange={(event) => setGroupLinks(event.target.value)}
+        />
+      )}
+    </>
   )
   const wishFields = (
     <>

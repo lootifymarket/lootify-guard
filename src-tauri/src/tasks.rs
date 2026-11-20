@@ -17,7 +17,7 @@ use lootify_guard_core::moves::{self, Side};
 use lootify_guard_core::profile_settings::{AvatarImage, MAX_AVATAR_LEN};
 use lootify_guard_core::proxy::ProxyAddress;
 use lootify_guard_core::steam::SteamError;
-use lootify_guard_core::steam_groups::{self, MAX_GROUPS};
+use lootify_guard_core::steam_groups::{self, GroupLink, MAX_GROUPS};
 use lootify_guard_core::tasks::{
     self, MAX_PERSONA_NAME, Outcome, PrivacyChanges, ProfileTask, Task, longest_persona_name,
 };
@@ -425,19 +425,7 @@ pub fn start_task(
                 Work::Each(Task::Events { queues, claim_item })
             }
             TaskInput::JoinGroups { groups, per_run } => {
-                let groups = steam_groups::parse(&groups).map_err(|word| {
-                    CommandError::Failed(format!(
-                        "can't read \"{word}\": use links like steamcommunity.com/groups/name"
-                    ))
-                })?;
-                if groups.is_empty() {
-                    return Err(CommandError::Failed("add a group".to_owned()));
-                }
-                if groups.len() > MAX_GROUPS {
-                    return Err(CommandError::Failed(format!(
-                        "list at most {MAX_GROUPS} groups"
-                    )));
-                }
+                let groups = group_links(&groups)?;
                 Work::Each(Task::JoinGroups {
                     groups,
                     per_run: (1, per_run.clamp(1, 3)),
@@ -603,6 +591,30 @@ fn boost_games(text: &str) -> Result<Option<Vec<u32>>, CommandError> {
         )));
     }
     Ok(games)
+}
+
+/// Group links as typed, or the built-in popular ones when nothing was.
+pub(crate) fn group_links(text: &str) -> Result<Vec<GroupLink>, CommandError> {
+    let links = steam_groups::parse(text).map_err(|word| {
+        CommandError::Failed(format!(
+            "can't read \"{word}\": use links like steamcommunity.com/groups/name"
+        ))
+    })?;
+    if links.is_empty() {
+        return Ok(steam_groups::popular());
+    }
+    if links.len() > MAX_GROUPS {
+        return Err(CommandError::Failed(format!(
+            "list at most {MAX_GROUPS} groups"
+        )));
+    }
+    Ok(links)
+}
+
+/// The built-in groups as links, for the user to start their own list from.
+#[tauri::command]
+pub fn popular_groups() -> Vec<String> {
+    steam_groups::popular().iter().map(GroupLink::url).collect()
 }
 
 /// App IDs as typed, or `None` when nothing was.

@@ -87,6 +87,10 @@ export const tasks: typeof en = {
 
   groupLinks: 'Группы',
   groupsPlaceholder: 'steamcommunity.com/groups/…, по одной на строку',
+  groupSources: {
+    popular: 'Популярные группы, встроенный список',
+    mine: 'Мой список',
+  },
   eachRun: 'За запуск',
   groupsPerRun: { 1: '1 группа', 2: '1–2 группы', 3: '1–3 группы' },
   joinNote:

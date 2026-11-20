@@ -83,6 +83,7 @@ export const tasks = {
 
   groupLinks: 'Groups',
   groupsPlaceholder: 'steamcommunity.com/groups/…, one per line',
+  groupSources: { popular: 'Popular groups, built in', mine: 'My list' },
   eachRun: 'Each run',
   groupsPerRun: { 1: '1 group', 2: '1–2 groups', 3: '1–3 groups' },
   joinNote:
