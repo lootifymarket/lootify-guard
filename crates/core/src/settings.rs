@@ -39,6 +39,8 @@ pub struct Settings {
     pub sidebar_collapsed: bool,
     /// New versions download by themselves and install on the next restart.
     pub auto_update: bool,
+    /// Tasks that need only a web session go on while the vault is locked.
+    pub tasks_while_locked: bool,
     /// The update installed on the way out, to say so once the new version opens.
     pub installed_update: Option<InstalledUpdate>,
 }
@@ -61,6 +63,7 @@ impl Default for Settings {
             language: Language::En,
             sidebar_collapsed: false,
             auto_update: true,
+            tasks_while_locked: false,
             installed_update: None,
         }
     }
@@ -114,6 +117,7 @@ mod tests {
             language: Language::Uk,
             sidebar_collapsed: true,
             auto_update: false,
+            tasks_while_locked: true,
             installed_update: Some(InstalledUpdate {
                 version: "0.2.0".to_owned(),
                 notes: Some("- Faster".to_owned()),

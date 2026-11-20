@@ -220,6 +220,29 @@ export const backend: Record<BackendMessage, string> = {
     'sub {} — это пакет, укажите ID приложения',
   'add a game': 'добавьте игру',
   'add a game or a status': 'добавьте игру или статус',
+  'a plan lasts from 1 to 30 days': 'план длится от 1 до 30 дней',
+  'the hours have to end later than they start':
+    'конец часов должен быть позже начала',
+  'pick at least one step': 'выберите хотя бы один шаг',
+  'can\'t read "{}": use links like steamcommunity.com/groups/name':
+    'не удалось прочитать «{}»: укажите ссылки вида steamcommunity.com/groups/name',
+  'add a group': 'добавьте группу',
+  'list at most {} groups': 'не больше {} групп',
+  'list at most {} games': 'не больше {} игр',
+  'Joined {}': 'Вступил: {}',
+  'none of the links lead to a group': 'ни одна ссылка не ведёт на группу',
+  'Already in every group it can join':
+    'Уже во всех группах, куда можно вступить',
+  'Added to the wishlist: {}': 'Добавлено в вишлист: {}',
+  'Every game is owned or on the wishlist already':
+    'Все игры уже куплены или в вишлисте',
+  "the store didn't take any of the games": 'магазин не принял ни одной игры',
+  'unreadable store data': 'нечитаемые данные магазина',
+  "Steam didn't add it to {}": 'Steam не добавил его в {}',
+  description: 'описание',
+  'pick at least one piece besides dividers':
+    'выберите хотя бы одну часть, кроме разделителей',
+  'add at least one line': 'добавьте хотя бы одну строку',
   'the status is over 64 characters': 'статус длиннее 64 символов',
   'Steam plays at most 32 games at once, the status counts as one':
     'Steam запускает не больше 32 игр одновременно, статус считается за одну',

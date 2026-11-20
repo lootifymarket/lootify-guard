@@ -8,6 +8,7 @@ import {
   saveLanguage,
   setAutoLock,
   setCloseToTray,
+  setTasksWhileLocked,
   setLaunchAtStartup,
   type Settings as SettingsValues,
 } from '../../../api/settings.ts'
@@ -175,6 +176,26 @@ export default function Settings({
                 }}
               />
             </span>
+          </div>
+
+          <div className={styles.row}>
+            <span className={styles.words}>
+              <span>{t.tasksWhileLocked}</span>
+              <span className={styles.hint}>{t.tasksWhileLockedHint}</span>
+            </span>
+            <Toggle
+              on={settings?.tasksWhileLocked ?? false}
+              label={t.tasksWhileLocked}
+              onChange={(on) =>
+                void act(async () => {
+                  await setTasksWhileLocked(on)
+                  setSettings(
+                    (current) =>
+                      current && { ...current, tasksWhileLocked: on },
+                  )
+                })
+              }
+            />
           </div>
 
           {biometricName && biometric && (

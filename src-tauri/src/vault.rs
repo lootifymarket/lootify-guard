@@ -18,6 +18,8 @@ use zeroize::Zeroizing;
 use crate::accounts::confirm_owner;
 use crate::biometrics::{self, BiometricError};
 use crate::browser::{self, Browsers};
+use crate::plans::Plans;
+use crate::tasks::Tasks;
 
 const UNLOCK_REASON: &str = "unlock your vault";
 const IDLE_CHECK_EVERY: Duration = Duration::from_secs(10);
@@ -208,18 +210,27 @@ pub async fn create_vault(
 
 #[tauri::command]
 pub async fn unlock_vault(
+    app: AppHandle,
     state: State<'_, VaultState>,
+    tasks: State<'_, Tasks>,
     password: String,
 ) -> Result<(), CommandError> {
     let password = Zeroizing::new(password);
     let path = state.path.clone();
     let vault = spawn_blocking(move || Vault::open(&path, &password)).await??;
     state.open(vault);
+    // Jobs that went on while it was locked brought back renewed sessions.
+    tasks.save_held(&state);
+    app.state::<Plans>().opened(&app);
     Ok(())
 }
 
 #[tauri::command]
-pub async fn unlock_with_biometrics(state: State<'_, VaultState>) -> Result<(), CommandError> {
+pub async fn unlock_with_biometrics(
+    app: AppHandle,
+    state: State<'_, VaultState>,
+    tasks: State<'_, Tasks>,
+) -> Result<(), CommandError> {
     let path = state.path.clone();
     let vault = spawn_blocking(move || {
         let key = biometrics::release_key(UNLOCK_REASON)?;
@@ -235,6 +246,8 @@ pub async fn unlock_with_biometrics(state: State<'_, VaultState>) -> Result<(), 
     })
     .await??;
     state.open(vault);
+    tasks.save_held(&state);
+    app.state::<Plans>().opened(&app);
     Ok(())
 }
 

@@ -1,5 +1,5 @@
-use std::collections::VecDeque;
 use std::collections::hash_map::RandomState;
+use std::collections::{HashMap, VecDeque};
 use std::hash::{BuildHasher, Hasher};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
@@ -8,24 +8,30 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use lootify_guard_core::cm::MAX_GAMES;
 use lootify_guard_core::contents::{Account, Contents, DamagedContents};
+use lootify_guard_core::descriptions::{self, DescriptionSource};
 use lootify_guard_core::events::MAX_QUEUES;
 use lootify_guard_core::games::PlayingList;
 use lootify_guard_core::inventory::Game;
 use lootify_guard_core::licenses::{self, License, MAX_LICENSES};
 use lootify_guard_core::moves::{self, Side};
 use lootify_guard_core::profile_settings::{AvatarImage, MAX_AVATAR_LEN};
+use lootify_guard_core::proxy::ProxyAddress;
 use lootify_guard_core::steam::SteamError;
+use lootify_guard_core::steam_groups::{self, GroupLink, MAX_GROUPS};
 use lootify_guard_core::tasks::{
     self, MAX_PERSONA_NAME, Outcome, PrivacyChanges, ProfileTask, Task, longest_persona_name,
 };
 use lootify_guard_core::vault::VaultError;
+use lootify_guard_core::wishlist::{self, MAX_APPS};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, State};
 
 use crate::accounts::{account_and_proxy, no_such_account};
 use crate::farming::Farms;
 use crate::inventory::InventoryCache;
+use crate::plans::Plans;
 use crate::playing::{self, Players};
+use crate::settings::SettingsState;
 use crate::vault::{CommandError, VaultState};
 
 // A failed account goes to the back of the line, up to this many tries in all.
@@ -35,7 +41,8 @@ const MAX_AT_ONCE: u8 = 10;
 const KEEP_FINISHED: usize = 20;
 
 /// Bulk tasks, running and finished. Kept in memory only; they hold logins and
-/// short notes, no secrets.
+/// short notes, and, when the user asks, the web sessions of the accounts jobs
+/// run on, never their passwords or Guard secrets.
 #[derive(Default)]
 pub struct Tasks(Mutex<Book>);
 
@@ -43,10 +50,50 @@ pub struct Tasks(Mutex<Book>);
 struct Book {
     last_id: u32,
     jobs: Vec<Job>,
+    /// By login: copies that let jobs go on while the vault is locked.
+    held: HashMap<String, Held>,
+}
+
+/// An account as a job on the web needs it, from `Account::for_web_tasks`.
+struct Held {
+    account: Account,
+    proxy: Option<ProxyAddress>,
+    /// Jobs still running on it.
+    jobs: usize,
+    /// It changed while the vault was locked, so the vault still has to get it.
+    unsaved: bool,
+}
+
+impl Book {
+    fn hold(&mut self, copies: Vec<(Account, Option<ProxyAddress>)>) {
+        for (account, proxy) in copies {
+            self.held
+                .entry(account.account_name.clone())
+                .and_modify(|held| held.jobs += 1)
+                .or_insert(Held {
+                    account,
+                    proxy,
+                    jobs: 1,
+                    unsaved: false,
+                });
+        }
+    }
+
+    /// Lets go of the copies a finished job held, except ones the vault still needs.
+    fn release(&mut self, account_names: &[String]) {
+        for name in account_names {
+            if let Some(held) = self.held.get_mut(name) {
+                held.jobs = held.jobs.saturating_sub(1);
+            }
+        }
+        self.held.retain(|_, held| held.jobs > 0 || held.unsaved);
+    }
 }
 
 struct Job {
     id: u32,
+    /// The task's kind as the page names it, to tell which tasks are running.
+    kind: &'static str,
     title: String,
     /// What it runs on, like a group's name.
     target: String,
@@ -54,6 +101,8 @@ struct Job {
     started_at: u64,
     finished_at: Option<u64>,
     cancelled: Arc<AtomicBool>,
+    /// Its accounts are held so it can go on while the vault is locked.
+    holds: bool,
 }
 
 #[derive(Clone, Serialize)]
@@ -87,6 +136,7 @@ enum RunState {
 #[serde(rename_all = "camelCase")]
 pub struct JobView {
     id: u32,
+    kind: &'static str,
     title: String,
     target: String,
     runs: Vec<Run>,
@@ -106,6 +156,7 @@ pub enum TaskInput {
     #[serde(rename_all = "camelCase")]
     Profile {
         name_template: Option<String>,
+        description: Option<DescriptionSource>,
         privacy: PrivacyChanges,
         avatar: Option<Vec<u8>>,
     },
@@ -129,6 +180,54 @@ pub enum TaskInput {
         storage: String,
         game: Game,
     },
+    /// Group links as typed, and the most to join in one run.
+    #[serde(rename_all = "camelCase")]
+    JoinGroups {
+        groups: String,
+        per_run: usize,
+    },
+    /// Games as typed, or nothing for the built-in popular ones.
+    Wishlist {
+        games: String,
+        size: WishlistSize,
+    },
+}
+
+/// How many games one Wishlist run adds to each account.
+#[derive(Deserialize, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
+pub(crate) enum WishlistSize {
+    Small,
+    Medium,
+    Large,
+}
+
+impl WishlistSize {
+    pub(crate) fn range(self) -> (usize, usize) {
+        match self {
+            Self::Small => (2, 4),
+            Self::Medium => (3, 8),
+            Self::Large => (5, 12),
+        }
+    }
+}
+
+impl TaskInput {
+    fn kind(&self) -> &'static str {
+        match self {
+            Self::Check => "check",
+            Self::AcceptGifts { .. } => "acceptGifts",
+            Self::Profile { .. } => "profile",
+            Self::FreeGames { .. } => "freeGames",
+            Self::HourBoost { .. } => "hourBoost",
+            Self::GoOffline => "goOffline",
+            Self::CardFarming => "cardFarming",
+            Self::Events { .. } => "events",
+            Self::MoveToStorage { .. } => "moveToStorage",
+            Self::JoinGroups { .. } => "joinGroups",
+            Self::Wishlist { .. } => "wishlist",
+        }
+    }
 }
 
 /// What each account of a job does.
@@ -162,6 +261,68 @@ impl Tasks {
     fn book(&self) -> MutexGuard<'_, Book> {
         // A panic elsewhere can't leave the book half-updated, so a poisoned lock is safe to reuse.
         self.0.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    fn held(&self, account_name: &str) -> Option<(Account, Option<ProxyAddress>)> {
+        self.book()
+            .held
+            .get(account_name)
+            .map(|held| (held.account.clone(), held.proxy.clone()))
+    }
+
+    /// Holds copies of the accounts, for a plan, the way a job holds its own.
+    pub(crate) fn hold(&self, copies: Vec<(Account, Option<ProxyAddress>)>) {
+        self.book().hold(copies);
+    }
+
+    pub(crate) fn release(&self, account_names: &[String]) {
+        self.book().release(account_names);
+    }
+
+    /// Keeps the copy up to date with what a run brought back. Returns whether
+    /// the account is held at all.
+    fn keep(&self, account: &Account, unsaved: bool) -> bool {
+        let mut book = self.book();
+        let Some(held) = book.held.get_mut(&account.account_name) else {
+            return false;
+        };
+        held.account = account.for_web_tasks();
+        held.unsaved |= unsaved;
+        true
+    }
+
+    /// Gives the vault what changed while it was locked. Called once it opens.
+    pub(crate) fn save_held(&self, state: &VaultState) {
+        let mut book = self.book();
+        if !book.held.values().any(|held| held.unsaved) {
+            return;
+        }
+        let mut unlocked = state.unlocked();
+        let Some(vault) = unlocked.as_mut() else {
+            return;
+        };
+        let Ok(mut contents) = Contents::from_bytes(vault.data()) else {
+            return;
+        };
+        for held in book.held.values().filter(|held| held.unsaved) {
+            // One removed meanwhile has nowhere to go.
+            if let Some(stored) = contents.account_mut(&held.account.account_name) {
+                copy_back(stored, &held.account);
+            }
+        }
+        if vault.save_data(contents.to_bytes()).is_ok() {
+            for held in book.held.values_mut() {
+                held.unsaved = false;
+            }
+            book.held.retain(|_, held| held.jobs > 0);
+        }
+    }
+
+    /// For when the user turns holding off: what's held goes, the vault getting
+    /// what it still needs first.
+    pub(crate) fn drop_held(&self, state: &VaultState) {
+        self.save_held(state);
+        self.book().held.clear();
     }
 
     fn set(&self, job: u32, run: usize, state: RunState, tries: Option<u8>) {
@@ -201,14 +362,16 @@ pub fn start_task(
         mut account_names,
         pacing,
     } = request;
-    let work = {
+    let kind = task.kind();
+    let keep_going = app.state::<SettingsState>().get().tasks_while_locked;
+    let (work, copies) = {
         let unlocked = state.unlocked();
         let vault = unlocked.as_ref().ok_or(CommandError::Locked)?;
         let contents = Contents::from_bytes(vault.data())?;
         for name in &account_names {
             contents.account(name).ok_or_else(no_such_account)?;
         }
-        match task {
+        let work = match task {
             TaskInput::Check => Work::Each(Task::Check),
             TaskInput::AcceptGifts { only_own } => Work::Each(Task::AcceptGifts {
                 only_from: only_own.then(|| {
@@ -221,10 +384,12 @@ pub fn start_task(
             }),
             TaskInput::Profile {
                 name_template,
+                description,
                 privacy,
                 avatar,
             } => Work::Each(Task::Profile(profile_task(
                 name_template,
+                description.as_ref(),
                 privacy,
                 avatar,
                 account_names.len(),
@@ -259,13 +424,42 @@ pub fn start_task(
                 }
                 Work::Each(Task::Events { queues, claim_item })
             }
+            TaskInput::JoinGroups { groups, per_run } => {
+                let groups = group_links(&groups)?;
+                Work::Each(Task::JoinGroups {
+                    groups,
+                    per_run: (1, per_run.clamp(1, 3)),
+                })
+            }
+            TaskInput::Wishlist { games, size } => {
+                let apps = match app_ids(&games)? {
+                    Some(apps) if apps.len() > MAX_APPS => {
+                        return Err(CommandError::Failed(format!(
+                            "list at most {MAX_APPS} games"
+                        )));
+                    }
+                    Some(apps) => apps,
+                    None => wishlist::POPULAR.to_vec(),
+                };
+                Work::Each(Task::Wishlist {
+                    apps,
+                    per_run: size.range(),
+                })
+            }
             TaskInput::MoveToStorage { storage, game } => {
                 contents.account(&storage).ok_or_else(no_such_account)?;
                 // The storage account has nothing to send to itself.
                 account_names.retain(|name| *name != storage);
                 Work::MoveTo { storage, game }
             }
-        }
+        };
+        // Only tasks on the web can do with a session alone.
+        let copies = if keep_going && matches!(work, Work::Each(_)) {
+            web_copies(&contents, &account_names)?
+        } else {
+            Vec::new()
+        };
+        (work, copies)
     };
     if account_names.is_empty() {
         return Err(CommandError::Failed("pick at least one account".to_owned()));
@@ -278,6 +472,7 @@ pub fn start_task(
         let id = book.last_id;
         book.jobs.push(Job {
             id,
+            kind,
             title,
             target,
             runs: account_names
@@ -291,7 +486,9 @@ pub fn start_task(
             started_at: now(),
             finished_at: None,
             cancelled: cancelled.clone(),
+            holds: !copies.is_empty(),
         });
+        book.hold(copies);
         let finished = book
             .jobs
             .iter()
@@ -325,22 +522,108 @@ pub fn start_task(
                 }
             }
             job.finished_at = Some(now());
+            if job.holds {
+                book.release(&account_names);
+            }
         }
+        drop(book);
+        tasks.save_held(&app.state());
     });
     Ok(id)
 }
 
+/// The accounts as tasks on the web need them, to hold while the vault is locked.
+pub(crate) fn web_copies(
+    contents: &Contents,
+    account_names: &[String],
+) -> Result<Vec<(Account, Option<ProxyAddress>)>, CommandError> {
+    account_names
+        .iter()
+        .map(|name| {
+            let account = contents.account(name).ok_or_else(no_such_account)?;
+            let proxy = contents
+                .proxy_of(account)?
+                .map(|proxy| proxy.address.clone());
+            Ok((account.for_web_tasks(), proxy))
+        })
+        .collect()
+}
+
+/// How one step of a plan went.
+pub(crate) enum StepRun {
+    Done(Outcome),
+    /// `for_good` when trying again can't help, like when the session ended.
+    Failed {
+        reason: String,
+        for_good: bool,
+    },
+    /// The vault is locked and nothing holds the account: the step waits.
+    Locked,
+}
+
+/// Runs one task on one account for a plan, as a job's worker would.
+pub(crate) fn run_step(app: &AppHandle, task: Task, account_name: &str) -> StepRun {
+    let state = app.state::<VaultState>();
+    match run_one(app, &state, &Work::Each(task), account_name, 1) {
+        Ok(outcome) => StepRun::Done(outcome),
+        Err(Failed::Vault(CommandError::Locked)) => StepRun::Locked,
+        Err(Failed::Steam(err) | Failed::Storage(_, err)) => StepRun::Failed {
+            for_good: matches!(err, SteamError::SessionExpired),
+            reason: err.to_string(),
+        },
+        // Like an account taken out of the vault.
+        Err(Failed::Vault(CommandError::Failed(reason))) => StepRun::Failed {
+            reason,
+            for_good: true,
+        },
+        Err(Failed::Vault(_)) => StepRun::Failed {
+            reason: "the vault couldn't be read".to_owned(),
+            for_good: false,
+        },
+    }
+}
+
 fn boost_games(text: &str) -> Result<Option<Vec<u32>>, CommandError> {
+    let games = app_ids(text)?;
+    if games.as_ref().is_some_and(|games| games.len() > MAX_GAMES) {
+        return Err(CommandError::Failed(format!(
+            "Steam plays at most {MAX_GAMES} games at once"
+        )));
+    }
+    Ok(games)
+}
+
+/// Group links as typed, or the built-in popular ones when nothing was.
+pub(crate) fn group_links(text: &str) -> Result<Vec<GroupLink>, CommandError> {
+    let links = steam_groups::parse(text).map_err(|word| {
+        CommandError::Failed(format!(
+            "can't read \"{word}\": use links like steamcommunity.com/groups/name"
+        ))
+    })?;
+    if links.is_empty() {
+        return Ok(steam_groups::popular());
+    }
+    if links.len() > MAX_GROUPS {
+        return Err(CommandError::Failed(format!(
+            "list at most {MAX_GROUPS} groups"
+        )));
+    }
+    Ok(links)
+}
+
+/// The built-in groups as links, for the user to start their own list from.
+#[tauri::command]
+pub fn popular_groups() -> Vec<String> {
+    steam_groups::popular().iter().map(GroupLink::url).collect()
+}
+
+/// App IDs as typed, or `None` when nothing was.
+pub(crate) fn app_ids(text: &str) -> Result<Option<Vec<u32>>, CommandError> {
     let licenses = licenses::parse(text).map_err(|word| {
         CommandError::Failed(format!("can't read \"{word}\": use app IDs or store links"))
     })?;
     if licenses.is_empty() {
         return Ok(None);
-    }
-    if licenses.len() > MAX_GAMES {
-        return Err(CommandError::Failed(format!(
-            "Steam plays at most {MAX_GAMES} games at once"
-        )));
     }
     licenses
         .into_iter()
@@ -356,15 +639,24 @@ fn boost_games(text: &str) -> Result<Option<Vec<u32>>, CommandError> {
 
 fn profile_task(
     name_template: Option<String>,
+    description: Option<&DescriptionSource>,
     privacy: PrivacyChanges,
     avatar: Option<Vec<u8>>,
     count: usize,
 ) -> Result<ProfileTask, CommandError> {
     let fail = |reason: &str| Err(CommandError::Failed(reason.to_owned()));
     let name_template = name_template.filter(|template| !template.trim().is_empty());
-    if name_template.is_none() && privacy == PrivacyChanges::default() && avatar.is_none() {
+    if name_template.is_none()
+        && description.is_none()
+        && privacy == PrivacyChanges::default()
+        && avatar.is_none()
+    {
         return fail("pick something to change");
     }
+    let descriptions = description
+        .map(|source| descriptions::for_accounts(source, count))
+        .transpose()
+        .map_err(|err| CommandError::Failed(err.to_string()))?;
     if let Some(template) = &name_template
         && longest_persona_name(template, count) > MAX_PERSONA_NAME
     {
@@ -380,9 +672,16 @@ fn profile_task(
     }
     Ok(ProfileTask {
         name_template,
+        descriptions,
         privacy,
         avatar,
     })
+}
+
+/// A few descriptions as a Profile task would make them, to show before it runs.
+#[tauri::command]
+pub fn description_samples(description: DescriptionSource) -> Result<Vec<String>, CommandError> {
+    descriptions::for_accounts(&description, 2).map_err(|err| CommandError::Failed(err.to_string()))
 }
 
 /// One worker: takes accounts off the line until it's empty or the job stops.
@@ -511,14 +810,28 @@ fn run_one(
     account_name: &str,
     number: usize,
 ) -> Result<Outcome, Failed> {
-    let (mut account, proxy) = account_and_proxy(state, account_name)?;
+    let tasks = app.state::<Tasks>();
+    // What changed while the vault was locked goes in first, once it's open again.
+    tasks.save_held(state);
+    let (mut account, proxy) = match account_and_proxy(state, account_name) {
+        Err(CommandError::Locked) if matches!(work, Work::Each(_)) => {
+            tasks.held(account_name).ok_or(CommandError::Locked)?
+        }
+        found => found?,
+    };
     match work {
         Work::Each(task) => {
             let result = tasks::run(task, &mut account, proxy.as_ref(), now(), number);
             if let Err(SteamError::SessionExpired) = result {
                 account.session = None;
             }
-            save(state, &[&account])?;
+            match save(state, &[&account]) {
+                Ok(()) => {
+                    tasks.keep(&account, false);
+                }
+                Err(Failed::Vault(CommandError::Locked)) if tasks.keep(&account, true) => {}
+                Err(err) => return Err(err),
+            }
             result.map_err(Failed::Steam)
         }
         Work::Play(games) => {
@@ -594,16 +907,21 @@ fn save(state: &VaultState, accounts: &[&Account]) -> Result<(), Failed> {
         let stored = contents
             .account_mut(&account.account_name)
             .ok_or_else(no_such_account)?;
-        stored.session = account.session.clone();
-        if account.profile.is_some() {
-            stored.profile = account.profile.clone();
-        }
-        if account.last_check.is_some() {
-            stored.last_check = account.last_check.clone();
-        }
+        copy_back(stored, account);
     }
     vault.save_data(contents.to_bytes())?;
     Ok(())
+}
+
+/// What a run may change on an account: its session, profile and last check.
+fn copy_back(stored: &mut Account, account: &Account) {
+    stored.session = account.session.clone();
+    if account.profile.is_some() {
+        stored.profile = account.profile.clone();
+    }
+    if account.last_check.is_some() {
+        stored.last_check = account.last_check.clone();
+    }
 }
 
 /// Jobs newest first.
@@ -616,6 +934,7 @@ pub fn task_queue(tasks: State<'_, Tasks>) -> Vec<JobView> {
         .rev()
         .map(|job| JobView {
             id: job.id,
+            kind: job.kind,
             title: job.title.clone(),
             target: job.target.clone(),
             runs: job.runs.clone(),
@@ -634,13 +953,18 @@ pub fn cancel_task(tasks: State<'_, Tasks>, id: u32) {
 }
 
 #[tauri::command]
-pub fn clear_finished_tasks(tasks: State<'_, Tasks>) {
+pub fn clear_finished_tasks(
+    state: State<'_, VaultState>,
+    tasks: State<'_, Tasks>,
+    plans: State<'_, Plans>,
+) {
     tasks.book().jobs.retain(|job| job.finished_at.is_none());
+    crate::plans::clear_finished(&state, &plans);
 }
 
 /// A number from `min` to `max`, both included. The standard library seeds each
 /// `RandomState` afresh, which is plenty to keep pauses from looking regular.
-fn random_between(min: u32, max: u32) -> u64 {
+pub(crate) fn random_between(min: u32, max: u32) -> u64 {
     if max <= min {
         return u64::from(min);
     }
@@ -648,7 +972,7 @@ fn random_between(min: u32, max: u32) -> u64 {
     u64::from(min) + RandomState::new().build_hasher().finish() % spread
 }
 
-fn now() -> u64 {
+pub(crate) fn now() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_or(0, |since| since.as_secs())
