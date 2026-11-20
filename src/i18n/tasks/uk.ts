@@ -3,13 +3,9 @@ import type { tasks as en } from './en.ts'
 
 export const tasks: typeof en = {
   title: 'Завдання',
-  subtitle:
-    'Дії одразу для цілої групи акаунтів, з обмеженнями та випадковими паузами',
-  groups: 'Групи',
+  subtitle: 'Виберіть завдання, а потім акаунти для нього',
   allAccounts: 'Усі акаунти',
   noGroup: 'Без групи',
-  groupsHint: 'Групи створюються на екрані «Акаунти».',
-  task: 'Завдання',
   kinds: {
     hourBoost: {
       name: 'Буст годин',
@@ -84,9 +80,29 @@ export const tasks: typeof en = {
   pause: 'Пауза між акаунтами',
   noPause: 'Немає',
   seconds: (min, max) => `${min}–${max} с`,
-  retry: 'Повторювати невдалі акаунти (до 3 разів)',
+  retry: 'Повторювати невдалі, до 3 разів',
   retryLabel: 'Повторювати невдалі акаунти',
   runOn: (target, n) => `Запустити: ${target} (${n})`,
+  sections: {
+    playing: 'Ігри',
+    profile: 'Профіль і активність',
+    items: 'Предмети й трейди',
+    store: 'Магазин і події',
+    checks: 'Перевірки',
+  },
+  running: 'Іде',
+  accounts: 'Акаунти',
+  pickAccounts: 'Вибрати акаунти…',
+  pickedAccounts: 'Вибрані акаунти',
+  accountCount: (n: number) =>
+    `${n} ${plural('uk', n, { one: 'акаунт', few: 'акаунти', other: 'акаунтів' })}`,
+  selected: (n: number, total: number) => `Вибрано ${n} з ${total}`,
+  search: 'Пошук акаунтів',
+  pickAll: 'Усі',
+  pickNone: 'Жодного',
+  noMatches: 'Нічого не знайшлося.',
+  runOnPicked: (n: number) =>
+    `Запустити: ${n} ${plural('uk', n, { one: 'акаунт', few: 'акаунти', other: 'акаунтів' })}`,
   started: (task, target) => `Завдання «${task}» запущено: ${target}`,
 
   profile: {

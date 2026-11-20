@@ -23,136 +23,262 @@
   font-weight: 500;
 }
 
-.targets {
-  flex: 0 1 200px;
-  min-width: 180px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.target {
-  height: 40px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  padding: 0 12px;
-  background: transparent;
-  border: 0;
-  border-radius: 8px;
-  color: var(--color-text-secondary);
-  font-size: 14px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.target[aria-pressed='true'] {
-  background: var(--color-selected);
-  color: var(--color-text);
-}
-
-.count {
-  color: var(--color-text-faint);
-  font-family: var(--font-mono);
-  font-size: 12px;
-}
-
-.hint {
-  margin: 8px 0 0;
-  color: var(--color-text-faint);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.setup {
-  flex: 999 1 440px;
+.sections {
+  flex: 999 1 560px;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 28px;
 }
 
-.setupHead {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 10px;
-  min-width: 0;
-}
-
-.groupName {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.members {
-  min-width: 0;
-  color: var(--color-text-faint);
-  font-size: 13px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Tiles joined by hairlines: the gap shows the background through. */
-.tasks {
+.cards {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1px;
-  overflow: hidden;
-  background: var(--color-divider);
-  border: 1px solid var(--color-divider);
-  border-radius: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
 }
 
-.task {
-  min-height: 76px;
+.card {
+  min-height: 84px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 4px;
   padding: 16px;
   background: var(--color-panel);
-  border: 0;
+  border: 1px solid var(--color-divider);
+  border-radius: 12px;
   text-align: left;
   cursor: pointer;
 }
 
-.task[aria-checked='true'] {
+.card:hover {
   background: var(--color-selected);
+  border-color: var(--color-line-strong);
 }
 
-.taskName {
+.cardHead {
+  width: 100%;
   display: flex;
+  justify-content: space-between;
   align-items: center;
   gap: 8px;
   font-size: 13px;
   font-weight: 500;
 }
 
-.taskDot {
-  width: 5px;
-  height: 5px;
-  flex: none;
-  border-radius: 50%;
+.running {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 400;
 }
 
-.task[aria-checked='true'] .taskDot {
+.runningDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
   background: var(--color-accent);
 }
 
-.taskText {
+.cardText {
   color: var(--color-text-faint);
   font-size: 12px;
   line-height: 1.4;
 }
 
+/* The dialog's parts, split by hairlines. */
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 18px;
+  border-top: 1px solid var(--color-line);
+}
+
+.accountsHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.picker {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 10px;
+}
+
+.pickerBar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.search {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  padding: 0 10px;
+  background: var(--color-field);
+  border: 1px solid var(--color-line-strong);
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.search::placeholder {
+  color: var(--color-text-faint);
+}
+
+.search:focus-visible {
+  outline: none;
+  border-color: var(--color-text-muted);
+}
+
+.pickerLink {
+  height: 32px;
+  padding: 0 10px;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.pickerList {
+  max-height: 232px;
+  overflow-y: auto;
+}
+
+.pickerGroup,
+.pickerRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  cursor: pointer;
+}
+
+.pickerGroup {
+  height: 34px;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.pickerGroupName {
+  flex: 1;
+}
+
+.pickerRow {
+  height: 36px;
+  font-size: 13px;
+}
+
+/* Rows sit under their group's header. */
+.pickerGroup ~ .pickerRow {
+  padding-left: 38px;
+}
+
+.pickerName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pickerLogin {
+  flex: none;
+  color: var(--color-text-faint);
+  font-size: 12px;
+}
+
+.pickerEmpty {
+  margin: 0;
+  padding: 14px 12px;
+  color: var(--color-text-faint);
+  font-size: 12px;
+}
+
+/* Calm boxes in the app's own colors, not the system's. */
+.check {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  flex: none;
+  margin: 0;
+  display: grid;
+  place-content: center;
+  background: var(--color-field);
+  border: 1px solid var(--color-text-ghost);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.check:checked,
+.check:indeterminate {
+  background: var(--color-text);
+  border-color: var(--color-text);
+}
+
+.check:checked::after {
+  content: '';
+  width: 8px;
+  height: 4px;
+  margin-top: -2px;
+  border-bottom: 2px solid var(--color-bg);
+  border-left: 2px solid var(--color-bg);
+  transform: rotate(-45deg);
+}
+
+.check:indeterminate::after {
+  content: '';
+  width: 8px;
+  height: 2px;
+  background: var(--color-bg);
+}
+
+.check:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+.count {
+  color: var(--color-text-faint);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.retryCell {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.retryToggle {
+  height: 34px;
+  display: flex;
+  align-items: center;
+}
+
 .pacing {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.pacingRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -314,22 +440,6 @@
   font-size: 13px;
 }
 
-.retry {
-  padding: 12px 0;
-  border-top: 1px solid var(--color-line);
-  color: var(--color-text);
-}
-
-.run {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.runButton {
-  height: 42px;
-  padding: 0 20px;
-}
-
 .error {
   margin: 0;
   color: var(--color-danger);
@@ -342,6 +452,7 @@
 
 .queue {
   flex: 1 1 280px;
+  max-width: 360px;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -364,8 +475,8 @@
   cursor: pointer;
 }
 
-.target:focus-visible,
-.task:focus-visible,
+.card:focus-visible,
+.pickerLink:focus-visible,
 .job:focus-visible,
 .link:focus-visible {
   outline: 2px solid var(--color-text);

@@ -1,12 +1,8 @@
 export const tasks = {
   title: 'Tasks',
-  subtitle:
-    'Run actions on a whole group of accounts, with limits and random pauses',
-  groups: 'Groups',
+  subtitle: 'Pick a task, then the accounts to run it on',
   allAccounts: 'All accounts',
   noGroup: 'No group',
-  groupsHint: 'Make groups on the Accounts screen.',
-  task: 'Task',
   /** By the task's kind, as the backend names it. */
   kinds: {
     hourBoost: {
@@ -79,9 +75,28 @@ export const tasks = {
   pause: 'Pause between accounts',
   noPause: 'None',
   seconds: (min: number, max: number) => `${min}–${max} s`,
-  retry: 'Retry failed accounts (up to 3 times)',
+  retry: 'Retry failed, up to 3 times',
   retryLabel: 'Retry failed accounts',
   runOn: (target: string, n: number) => `Run on ${target} (${n})`,
+  sections: {
+    playing: 'Playing',
+    profile: 'Profile and activity',
+    items: 'Items and trades',
+    store: 'Store and events',
+    checks: 'Checks',
+  },
+  running: 'Running',
+  accounts: 'Accounts',
+  pickAccounts: 'Pick accounts…',
+  pickedAccounts: 'Chosen accounts',
+  accountCount: (n: number) => (n === 1 ? '1 account' : `${n} accounts`),
+  selected: (n: number, total: number) => `${n} of ${total} selected`,
+  search: 'Search accounts',
+  pickAll: 'All',
+  pickNone: 'None',
+  noMatches: 'No accounts match.',
+  runOnPicked: (n: number) =>
+    `Run on ${n === 1 ? '1 account' : `${n} accounts`}`,
   started: (task: string, target: string) => `“${task}” started on ${target}`,
 
   profile: {

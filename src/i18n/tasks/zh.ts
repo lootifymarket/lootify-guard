@@ -2,12 +2,9 @@ import type { tasks as en } from './en.ts'
 
 export const tasks: typeof en = {
   title: '任务',
-  subtitle: '对整组账户批量执行操作，可限制并发并随机暂停',
-  groups: '分组',
+  subtitle: '先选择任务，再选择要运行的账户',
   allAccounts: '所有账户',
   noGroup: '未分组',
-  groupsHint: '在“账户”页面创建分组。',
-  task: '任务',
   kinds: {
     hourBoost: {
       name: '挂时长',
@@ -77,9 +74,27 @@ export const tasks: typeof en = {
   pause: '账户之间的暂停',
   noPause: '无',
   seconds: (min, max) => `${min}–${max} 秒`,
-  retry: '重试失败的账户（最多 3 次）',
+  retry: '失败时重试，最多 3 次',
   retryLabel: '重试失败的账户',
   runOn: (target, n) => `在 ${target} 上运行（${n}）`,
+  sections: {
+    playing: '游戏',
+    profile: '资料与活跃',
+    items: '物品与交易',
+    store: '商店与活动',
+    checks: '检查',
+  },
+  running: '运行中',
+  accounts: '账户',
+  pickAccounts: '选择账户…',
+  pickedAccounts: '已选账户',
+  accountCount: (n: number) => `${n} 个账户`,
+  selected: (n: number, total: number) => `已选 ${n} / ${total}`,
+  search: '搜索账户',
+  pickAll: '全选',
+  pickNone: '全不选',
+  noMatches: '没有匹配的账户。',
+  runOnPicked: (n: number) => `在 ${n} 个账户上运行`,
   started: (task, target) => `已在 ${target} 上启动「${task}」`,
 
   profile: {

@@ -22,11 +22,13 @@ const SKELETON_JOBS = 4
 type Props = {
   /** Goes up whenever a job starts, so the queue asks again at once. */
   started: number
+  /** Every answer, so the page can tell which tasks are running. */
+  onJobs?: (jobs: Job[]) => void
 }
 
 type JobState = 'running' | 'stopped' | 'error' | 'done'
 
-export default function Queue({ started }: Props) {
+export default function Queue({ started, onJobs }: Props) {
   const t = useT().tasks.queue
   const toast = useToast()
   // `null` until the first answer.
@@ -38,6 +40,7 @@ export default function Queue({ started }: Props) {
   const loaded = useEffectEvent((next: Job[]) => {
     setJobs(next)
     setError('')
+    onJobs?.(next)
   })
   const failed = useEffectEvent((err: unknown) => setError(errorMessage(err)))
   useEffect(() => {
